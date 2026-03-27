@@ -63,7 +63,7 @@
       </button>
       <button class="btn btn-secondary" onclick="window.location.href='fiyatlar.html'" style="flex-direction:column;gap:8px;padding:16px;height:auto">
         <span style="font-size:28px">💰</span>
-        <span style="font-size:13px">Fiyat Hesapla</span>
+        <span style="font-size:13px">Ürün/Set Ekle</span>
       </button>
       <button class="btn btn-secondary" onclick="window.location.href='alis-hesap.html'" style="flex-direction:column;gap:8px;padding:16px;height:auto">
         <span style="font-size:28px">🎯</span>
@@ -143,7 +143,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, urunlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
+import { auth, urunlerDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
 
 const o = auth.oturum();
 if (!o) { window.location.href = 'index.html'; }
@@ -168,11 +168,18 @@ function render() {
   // Bugün
   let bugunAdet = 0, bugunGelir = 0;
   satislar.forEach(s => {
-    const u = urunlerDB.bul(s.urunId);
-    if (!u) return;
+    const hedefId = s.hedefId || s.urunId;
+    const obj = s.tip==='set' ? setlerDB.bul(hedefId) : urunlerDB.bul(hedefId);
+    if (!obj) return;
     bugunAdet += s.adet;
-    const fiyat = hesapla.satisFiyati(u, ayarlar, s.adet);
-    if (fiyat) bugunGelir += fiyat.netKar;
+    const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati*(obj.paketAdet||1));
+    const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : obj;
+    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1));
+    if (fiyat) {
+      const gercekFiyat = s.gercekFiyat || fiyat.yuvarlak;
+      const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo);
+      bugunGelir += kar.net;
+    }
   });
 
   document.getElementById('bugun-satis').textContent = bugunAdet;
@@ -196,11 +203,18 @@ function render() {
   const aySatis = satislarDB.aralik(ayBas, bugunStr);
   let ayAdet = 0, ayGelir = 0; const ayUrunler = new Set();
   aySatis.forEach(s => {
-    const u = urunlerDB.bul(s.urunId);
-    if (!u) return;
-    ayAdet += s.adet; ayUrunler.add(s.urunId);
-    const fiyat = hesapla.satisFiyati(u, ayarlar);
-    if (fiyat) ayGelir += fiyat.netKar * s.adet;
+    const hedefId = s.hedefId || s.urunId;
+    const obj = s.tip==='set' ? setlerDB.bul(hedefId) : urunlerDB.bul(hedefId);
+    if (!obj) return;
+    ayAdet += s.adet; ayUrunler.add(hedefId);
+    const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati*(obj.paketAdet||1));
+    const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : obj;
+    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1));
+    if (fiyat) {
+      const gercekFiyat = s.gercekFiyat || fiyat.yuvarlak;
+      const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo);
+      ayGelir += kar.net;
+    }
   });
   document.getElementById('ay-satis').textContent = ayAdet;
   document.getElementById('ay-gelir').textContent = para(ayGelir);
@@ -211,17 +225,22 @@ function render() {
   const sonEl = document.getElementById('son-satislar');
   if (!sonSatis.length) return;
   sonEl.innerHTML = sonSatis.map(s => {
-    const u = urunlerDB.bul(s.urunId);
-    if (!u) return '';
-    const fiyat = hesapla.satisFiyati(u, ayarlar);
+    const hedefId = s.hedefId || s.urunId;
+    const obj = s.tip==='set' ? setlerDB.bul(hedefId) : urunlerDB.bul(hedefId);
+    if (!obj) return '';
+    const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati*(obj.paketAdet||1));
+    const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : obj;
+    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1));
+    const gercekFiyat = s.gercekFiyat || fiyat?.yuvarlak || 0;
+    const kar = fiyat ? hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo) : null;
     return `<div class="urun-row">
-      <div class="urun-avatar">🛒</div>
+      <div class="urun-avatar">${s.tip==='set'?'📦':'🛒'}</div>
       <div class="urun-info">
-        <div class="urun-ad">${u.ad}</div>
+        <div class="urun-ad">${obj.ad}</div>
         <div class="urun-meta">${s.adet} adet · ${s.tarih}</div>
       </div>
       <div class="urun-fiyat">
-        <div class="urun-fiyat-ana text-green">+${fiyat ? Math.round(fiyat.netKar)+'₺' : '-'}</div>
+        <div class="urun-fiyat-ana text-green">+${kar ? Math.round(kar.net)+'₺' : '-'}</div>
         <div class="urun-fiyat-sub">net kar</div>
       </div>
     </div>`;

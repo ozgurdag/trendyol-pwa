@@ -13,6 +13,7 @@
   <div class="topbar">
     <div class="topbar-title">📦 Stok Durumu</div>
     <div class="topbar-action" onclick="excelIndir()">⬇</div>
+    <div class="topbar-action" onclick="urunEkleModalAc()" title="Ürün Ekle">＋</div>
   </div>
 
   <div class="page-content">
@@ -108,6 +109,42 @@
       </div>
     </div>
     <button class="btn btn-primary btn-full" onclick="stokKaydet()">Kaydet</button>
+  </div>
+</div>
+
+<!-- ÜRÜN EKLE MODAL -->
+<div class="modal-overlay" id="urun-ekle-modal" onclick="document.getElementById('urun-ekle-modal').classList.remove('open')">
+  <div class="modal-sheet" onclick="event.stopPropagation()" style="max-height:90dvh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Stoka Ürün Ekle</div>
+    <div class="form-group">
+      <label class="form-label">Ürün Adı</label>
+      <input class="form-input" id="ne-ad" placeholder="Ürün adı">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Alış Fiyatı (₺)</label>
+        <input class="form-input" type="number" id="ne-alis" placeholder="0.00" step="0.01">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Stok Adedi</label>
+        <input class="form-input" type="number" id="ne-stok" value="0" min="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Desi</label>
+        <input class="form-input" type="number" id="ne-desi" value="1" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Komisyon (%)</label>
+        <input class="form-input" type="number" id="ne-kom" value="4" step="0.1">
+      </div>
+    </div>
+    <div style="background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--r-md);padding:9px 12px;font-size:12px;color:var(--blue);margin-bottom:12px">
+      💡 Kategori ve fiyat hesabı için Ürün/Set Oluştur sayfasını kullanın
+    </div>
+    <button class="btn btn-primary btn-full" onclick="stokUrunEkle()">Stoka Ekle</button>
   </div>
 </div>
 
@@ -225,6 +262,27 @@ window.toast = (msg,tip='info') => {
   const cont=document.getElementById('toastCont');
   const el=document.createElement('div'); el.className=`toast ${tip}`; el.textContent=msg;
   cont.appendChild(el); setTimeout(()=>el.remove(),3000);
+};
+
+window.urunEkleModalAc = () => {
+  document.getElementById('urun-ekle-modal').classList.add('open');
+};
+
+window.stokUrunEkle = () => {
+  const ad = document.getElementById('ne-ad').value.trim();
+  const alis = +document.getElementById('ne-alis').value || 0;
+  const stok = +document.getElementById('ne-stok').value || 0;
+  const desi = +document.getElementById('ne-desi').value || 1;
+  const kom = (+document.getElementById('ne-kom').value || 4) / 100;
+  if (!ad || !alis) { toast('Ad ve alış fiyatı zorunlu', 'error'); return; }
+  urunlerDB.ekle({ ad, alisFiyati: alis, stok, desi, komisyon: kom });
+  ['ne-ad','ne-alis'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ne-stok').value = '0';
+  document.getElementById('ne-desi').value = '1';
+  document.getElementById('ne-kom').value = '4';
+  document.getElementById('urun-ekle-modal').classList.remove('open');
+  render();
+  toast('"' + ad + '" stoka eklendi', 'success');
 };
 
 render();

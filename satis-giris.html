@@ -102,7 +102,13 @@ window.tipSec=t=>{
 
 function doldurDropdown(){
   const sel=document.getElementById('satis-hedef');
-  const liste=aktifTip==='urun'?urunlerDB.hepsini():setlerDB.hepsini();
+  // Sadece satisFiyatiGercek girilmiş olanları göster (fiyatlar sayfasında oluşturulmuşlar)
+  // Eğer yoksa hepsini göster
+  const tumurunler=urunlerDB.hepsini();
+  const tumsetler=setlerDB.hepsini();
+  const liste=aktifTip==='urun'
+    ? (tumurunler.filter(u=>u.satisFiyatiGercek).length ? tumurunler.filter(u=>u.satisFiyatiGercek) : tumurunler)
+    : (tumsetler.filter(s=>s.satisFiyatiGercek).length ? tumsetler.filter(s=>s.satisFiyatiGercek) : tumsetler);
   sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>`<option value="${x.id}">${x.ad} (Stok: ${x.stok||0})</option>`).join('');
 }
 

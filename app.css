@@ -731,3 +731,70 @@ img { display: block; max-width: 100%; }
   transition: transform .15s;
 }
 .fab:active { transform: scale(.92); }
+
+/* ── ARANILIR DROPDOWN ───────────────────────────────────────── */
+.searchable-wrap { position:relative; }
+.searchable-input {
+  width:100%; background:var(--bg3); border:1px solid var(--border2);
+  border-radius:var(--r-md); padding:11px 14px; font-size:14px;
+  color:var(--t1); cursor:pointer;
+}
+.searchable-input:focus { border-color:var(--accent); outline:none; }
+.searchable-dropdown {
+  position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:300;
+  background:var(--bg2); border:1px solid var(--border2);
+  border-radius:var(--r-md); max-height:220px; overflow-y:auto;
+  box-shadow:var(--shadow-md); display:none;
+}
+.searchable-dropdown.open { display:block; }
+.searchable-search {
+  padding:10px 12px; border-bottom:1px solid var(--border);
+}
+.searchable-search input {
+  width:100%; background:var(--bg3); border:1px solid var(--border2);
+  border-radius:var(--r-sm); padding:7px 10px; font-size:13px; color:var(--t1);
+}
+.searchable-option {
+  padding:10px 14px; font-size:13px; color:var(--t1);
+  cursor:pointer; border-bottom:1px solid var(--border); transition:background .1s;
+}
+.searchable-option:hover { background:var(--bg3); }
+.searchable-option:last-child { border-bottom:none; }
+.searchable-option .opt-sub { font-size:11px; color:var(--t3); margin-top:2px; }
+.searchable-none { padding:12px 14px; font-size:13px; color:var(--t3); text-align:center; }
+
+/* ── ÜRÜN KARTI (oluşturulmuş ürünler) ──────────────────────── */
+.urun-kart {
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:14px; margin-bottom:10px;
+}
+.urun-kart-header {
+  display:flex; align-items:flex-start; gap:10px; margin-bottom:10px;
+}
+.urun-kart-ikon {
+  width:40px; height:40px; background:var(--bg3); border-radius:var(--r-md);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0;
+}
+.urun-kart-bilgi { flex:1; min-width:0; }
+.urun-kart-ad {
+  font-size:14px; font-weight:600; color:var(--t1);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.urun-kart-meta { font-size:11px; color:var(--t3); margin-top:3px; }
+.urun-kart-fiyatlar {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px;
+}
+.urun-kart-fiyat-item { background:var(--bg3); border-radius:var(--r-md); padding:8px 10px; }
+.urun-kart-fiyat-label { font-size:10px; color:var(--t3); text-transform:uppercase; letter-spacing:.4px; }
+.urun-kart-fiyat-val { font-size:15px; font-weight:700; font-family:var(--mono); margin-top:2px; }
+.kar-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px; border-radius:var(--r-md); font-size:12px; font-weight:600;
+  width:100%; justify-content:space-between; margin-bottom:8px;
+}
+.kar-badge.kar  { background:var(--green-l); color:var(--green); border:1px solid var(--green); }
+.kar-badge.zarar{ background:var(--red-l);   color:var(--red);   border:1px solid var(--red); }
+.urun-kart-actions {
+  display:flex; gap:6px;
+}

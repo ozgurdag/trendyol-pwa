@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0A0E1A">
 <title>Ayarlar · Satış Yönetim</title>
-<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="./app.css">
 </head>
 <body>
 <div class="app-shell">
@@ -147,7 +147,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, ayarlarDB } from 'state.js';
+import { auth, ayarlarDB } from './state.js';
 const o = auth.oturum();
 if (!o) window.location.href='index.html';
 

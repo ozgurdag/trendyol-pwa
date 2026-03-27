@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<title>Max Alış Hesapla · Satış Yönetim</title>
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<div class="app-shell">
+
+  <div class="topbar">
+    <div class="topbar-title">🎯 Max Alış Hesapla</div>
+  </div>
+
+  <div class="page-content">
+
+    <!-- SATIŞ FİYATI -->
+    <div class="card mb-12">
+      <div class="card-title mb-12">Satış Parametreleri</div>
+      <div class="form-group">
+        <label class="form-label">Hedef Satış Fiyatı (₺)</label>
+        <input class="form-input" type="number" id="h-satis" value="150" step="0.01" oninput="hesapla()">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Aynı Gün Kargo</label>
+          <select class="form-select" id="h-aynigun" onchange="hesapla()">
+            <option value="0">Hayır (13.19₺)</option>
+            <option value="1">Evet (8.39₺)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Desi</label>
+          <input class="form-input" type="number" id="h-desi" value="1" min="1" max="50" oninput="hesapla()">
+        </div>
+      </div>
+    </div>
+
+    <!-- KATEGORİ & KOMİSYON -->
+    <div class="card mb-12">
+      <div class="card-title mb-12">Komisyon</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Komisyon Oranı (%)</label>
+          <input class="form-input" type="number" id="h-komisyon" value="4" step="0.1" min="0" max="30" oninput="hesapla()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hedef ROI (%)</label>
+          <input class="form-input" type="number" id="h-roi" value="30" min="0" max="500" oninput="hesapla()">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Kargo Firması</label>
+          <select class="form-select" id="h-firma" onchange="hesapla()">
+            <option>Aras</option><option>DHL eCommerce</option>
+            <option>Kolay Gelsin</option><option>PTT</option>
+            <option>Sürat</option><option>Yurtiçi</option><option>Horoz</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reklam (₺)</label>
+          <input class="form-input" type="number" id="h-reklam" value="0" min="0" step="0.01" oninput="hesapla()">
+        </div>
+      </div>
+    </div>
+
+    <!-- SONUÇ -->
+    <div class="sonuc-box mb-12">
+      <div class="sonuc-label">Maksimum Alış Fiyatı</div>
+      <div class="sonuc-value" id="sonuc-alis">—</div>
+      <div class="sonuc-sub" id="sonuc-acikla">Bu fiyata veya altına alırsanız hedefe ulaşırsınız</div>
+    </div>
+
+    <div class="detay-grid mb-12">
+      <div class="detay-item"><div class="detay-label">Komisyon</div><div class="detay-value" id="d-komisyon">—</div></div>
+      <div class="detay-item"><div class="detay-label">Platform</div><div class="detay-value" id="d-platform">—</div></div>
+      <div class="detay-item"><div class="detay-label">Kargo</div><div class="detay-value" id="d-kargo">—</div></div>
+      <div class="detay-item"><div class="detay-label">Barem</div><div class="detay-value text-accent" id="d-barem">—</div></div>
+    </div>
+
+    <!-- BİLGİ KUTUSU -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px">
+      <div style="font-size:12px;color:var(--t3);line-height:1.6">
+        <div style="font-weight:600;color:var(--t2);margin-bottom:6px">Kargo Barem Kuralları</div>
+        Satış &lt; 150₺ → <span style="color:var(--accent)">51.49₺</span> · 
+        150-300₺ → <span style="color:var(--accent)">88.49₺</span> · 
+        ≥300₺ veya desi>10 → <span style="color:var(--accent)">Desi tablosu</span>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Panel</span>
+    </a>
+    <a class="nav-item" href="fiyatlar.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <span class="nav-label">Fiyatlar</span>
+    </a>
+    <a class="nav-item" href="satis-giris.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg>
+      <span class="nav-label">Satış</span>
+    </a>
+    <a class="nav-item active" href="alis-hesap.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <span class="nav-label">Max Alış</span>
+    </a>
+    <a class="nav-item" href="ayarlar.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="nav-label">Ayarlar</span>
+    </a>
+  </nav>
+
+</div>
+
+<script type="module">
+import { auth, ayarlarDB } from '../js/state.js';
+if (!auth.oturum()) window.location.href='../index.html';
+
+const KARGO_TABLOSU = {
+  'Aras':83.93,'DHL eCommerce':83.93,'Kolay Gelsin':83.93,
+  'PTT':83.93,'Sürat':83.93,'TEX':83.93,'Yurtiçi':83.93,'Horoz':83.93
+};
+
+function para(n) { return (+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺'; }
+
+window.hesapla = () => {
+  const satis   = +document.getElementById('h-satis').value || 0;
+  const desi    = +document.getElementById('h-desi').value || 1;
+  const kom     = (+document.getElementById('h-komisyon').value || 4) / 100;
+  const roi     = (+document.getElementById('h-roi').value || 30) / 100;
+  const aynigun = document.getElementById('h-aynigun').value === '1';
+  const firma   = document.getElementById('h-firma').value;
+  const reklam  = +document.getElementById('h-reklam').value || 0;
+
+  const platform = aynigun ? 8.388 : 13.188;
+  const desiKargo = (KARGO_TABLOSU[firma] || 83.93) * 1.2;
+
+  // Self-consistent kargo seçimi
+  let kargo, baremAcikl;
+  if (desi > 10) {
+    kargo = desiKargo; baremAcikl = 'Desi tablosu';
+  } else if (satis < 150) {
+    kargo = 51.492; baremAcikl = 'Alt barem';
+  } else if (satis < 300) {
+    kargo = 88.488; baremAcikl = 'Üst barem';
+  } else {
+    kargo = desiKargo; baremAcikl = 'Desi tablosu';
+  }
+
+  // Max alış = [Satış*(1-kom) - platform - kargo - reklam] / (1+roi)
+  const maxAlis = (satis * (1 - kom) - platform - kargo - reklam) / (1 + roi);
+
+  if (maxAlis <= 0) {
+    document.getElementById('sonuc-alis').textContent = '—';
+    document.getElementById('sonuc-acikla').textContent = 'Bu satış fiyatı maliyetleri karşılamıyor';
+    return;
+  }
+
+  document.getElementById('sonuc-alis').textContent = para(maxAlis);
+  document.getElementById('sonuc-acikla').textContent = `%${Math.round(roi*100)} ROI · ${baremAcikl}`;
+  document.getElementById('d-komisyon').textContent = para(satis * kom);
+  document.getElementById('d-platform').textContent = para(platform);
+  document.getElementById('d-kargo').textContent    = para(kargo);
+  document.getElementById('d-barem').textContent    = baremAcikl;
+};
+
+hesapla();
+</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<title>Stok · Satış Yönetim</title>
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<div class="app-shell">
+
+  <div class="topbar">
+    <div class="topbar-title">📦 Stok Durumu</div>
+    <div class="topbar-action" onclick="excelIndir()">⬇</div>
+  </div>
+
+  <div class="page-content">
+
+    <!-- ÖZET -->
+    <div class="stat-grid mb-16">
+      <div class="stat-card">
+        <div class="stat-label">Toplam Stok</div>
+        <div class="stat-value" id="st-toplam">0</div>
+        <div class="stat-sub">adet</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Stok Değeri</div>
+        <div class="stat-value accent" id="st-deger">0₺</div>
+        <div class="stat-sub">alış bazlı</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Kritik Stok</div>
+        <div class="stat-value red" id="st-kritik">0</div>
+        <div class="stat-sub">&lt;5 adet</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tükenen</div>
+        <div class="stat-value red" id="st-bitti">0</div>
+        <div class="stat-sub">0 adet</div>
+      </div>
+    </div>
+
+    <!-- FILTRE -->
+    <div class="tabs mb-12">
+      <div class="tab active" onclick="filtreSec('hepsi')">Hepsi</div>
+      <div class="tab" onclick="filtreSec('kritik')">Kritik</div>
+      <div class="tab" onclick="filtreSec('bitti')">Tükenen</div>
+    </div>
+
+    <!-- ARAMA -->
+    <div class="search-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Ürün ara..." id="arama" oninput="render()">
+    </div>
+
+    <!-- LİSTE -->
+    <div id="stok-listesi"></div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Panel</span>
+    </a>
+    <a class="nav-item" href="fiyatlar.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <span class="nav-label">Fiyatlar</span>
+    </a>
+    <a class="nav-item" href="satis-giris.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg>
+      <span class="nav-label">Satış</span>
+    </a>
+    <a class="nav-item active" href="stok.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      <span class="nav-label">Stok</span>
+    </a>
+    <a class="nav-item" href="ayarlar.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="nav-label">Ayarlar</span>
+    </a>
+  </nav>
+
+</div>
+
+<!-- STOK GÜNCELLE MODAL -->
+<div class="modal-overlay" id="stok-modal" onclick="document.getElementById('stok-modal').classList.remove('open')">
+  <div class="modal-sheet" onclick="e=>e.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="stok-modal-ad">Stok Güncelle</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+      <button class="btn btn-secondary" style="font-size:20px;width:48px;height:48px;padding:0" onclick="stokDegistir(-1)">−</button>
+      <div style="flex:1;text-align:center">
+        <div style="font-size:42px;font-weight:700;font-family:var(--mono);color:var(--t1)" id="stok-modal-sayi">0</div>
+        <div style="font-size:12px;color:var(--t3)">adet</div>
+      </div>
+      <button class="btn btn-secondary" style="font-size:20px;width:48px;height:48px;padding:0" onclick="stokDegistir(1)">+</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Veya direkt girin</label>
+        <input class="form-input" type="number" id="stok-input" min="0" oninput="document.getElementById('stok-modal-sayi').textContent=this.value">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alış Fiyatı (₺)</label>
+        <input class="form-input" type="number" id="stok-alis-input" step="0.01">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="stokKaydet()">Kaydet</button>
+  </div>
+</div>
+
+<div class="toast-container" id="toastCont"></div>
+
+<script type="module">
+import { auth, urunlerDB } from '../js/state.js';
+if (!auth.oturum()) window.location.href='../index.html';
+
+let aktifId = null;
+let aktifFiltre = 'hepsi';
+
+function para(n) { return (+n).toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:0})+'₺'; }
+
+window.filtreSec = (f) => {
+  aktifFiltre = f;
+  document.querySelectorAll('.tabs .tab').forEach((t,i) =>
+    t.classList.toggle('active', ['hepsi','kritik','bitti'][i]===f));
+  render();
+};
+
+window.render = () => {
+  const urunler = urunlerDB.hepsini();
+  const ara = document.getElementById('arama')?.value?.toLowerCase() || '';
+
+  let liste = urunler.filter(u => u.ad.toLowerCase().includes(ara));
+  if (aktifFiltre === 'kritik') liste = liste.filter(u => (u.stok||0) > 0 && (u.stok||0) < 5);
+  if (aktifFiltre === 'bitti')  liste = liste.filter(u => (u.stok||0) === 0);
+
+  // Özetler
+  const toplam = urunler.reduce((s,u)=>s+(u.stok||0),0);
+  const deger  = urunler.reduce((s,u)=>s+(u.stok||0)*(u.alisFiyati||0),0);
+  const kritik = urunler.filter(u=>(u.stok||0)>0&&(u.stok||0)<5).length;
+  const bitti  = urunler.filter(u=>(u.stok||0)===0).length;
+  document.getElementById('st-toplam').textContent = toplam;
+  document.getElementById('st-deger').textContent  = para(deger);
+  document.getElementById('st-kritik').textContent = kritik;
+  document.getElementById('st-bitti').textContent  = bitti;
+
+  const el = document.getElementById('stok-listesi');
+  if (!liste.length) {
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">Ürün bulunamadı</div></div>`;
+    return;
+  }
+
+  el.innerHTML = liste
+    .sort((a,b) => (a.stok||0)-(b.stok||0))
+    .map(u => {
+      const stok = u.stok || 0;
+      const max  = Math.max(stok, 50);
+      const pct  = Math.round((stok/max)*100);
+      const sinif = stok===0?'stok-bitti':stok<5?'stok-az':'stok-ok';
+      const badge = stok===0
+        ? `<span class="badge badge-red">Tükendi</span>`
+        : stok<5
+          ? `<span class="badge badge-yellow">${stok} adet</span>`
+          : `<span class="badge badge-green">${stok} adet</span>`;
+      return `<div class="urun-row" onclick="stokModalAc('${u.id}')">
+        <div class="urun-avatar">📦</div>
+        <div class="urun-info" style="flex:1">
+          <div class="urun-ad">${u.ad}</div>
+          <div class="urun-meta">${(u.alisFiyati||0).toLocaleString('tr-TR',{minimumFractionDigits:2})}₺ alış</div>
+          <div class="${sinif}">
+            <div class="stok-bar"><div class="stok-bar-fill" style="width:${pct}%"></div></div>
+          </div>
+        </div>
+        <div style="margin-left:12px">${badge}</div>
+      </div>`;
+    }).join('');
+};
+
+window.stokModalAc = (id) => {
+  const u = urunlerDB.bul(id);
+  if (!u) return;
+  aktifId = id;
+  document.getElementById('stok-modal-ad').textContent = u.ad;
+  document.getElementById('stok-modal-sayi').textContent = u.stok || 0;
+  document.getElementById('stok-input').value  = u.stok || 0;
+  document.getElementById('stok-alis-input').value = u.alisFiyati || 0;
+  document.getElementById('stok-modal').classList.add('open');
+};
+
+window.stokDegistir = (delta) => {
+  const el = document.getElementById('stok-input');
+  const yeni = Math.max(0, (+el.value||0)+delta);
+  el.value = yeni;
+  document.getElementById('stok-modal-sayi').textContent = yeni;
+};
+
+window.stokKaydet = () => {
+  if (!aktifId) return;
+  urunlerDB.guncelle(aktifId, {
+    stok:       +document.getElementById('stok-input').value,
+    alisFiyati: +document.getElementById('stok-alis-input').value,
+  });
+  document.getElementById('stok-modal').classList.remove('open');
+  render();
+  toast('Stok güncellendi','success');
+};
+
+window.excelIndir = async () => {
+  const { utils, writeFile } = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+  const data = urunlerDB.hepsini().map(u => ({
+    'Ürün Adı': u.ad, 'Alış Fiyatı (₺)': u.alisFiyati,
+    'Stok': u.stok||0, 'Stok Değeri (₺)': (u.stok||0)*(u.alisFiyati||0),
+    'Desi': u.desi||1, 'Durum': (u.stok||0)===0?'Tükendi':(u.stok||0)<5?'Kritik':'Normal',
+  }));
+  const ws = utils.json_to_sheet(data);
+  const wb = utils.book_new(); utils.book_append_sheet(wb, ws, 'Stok');
+  writeFile(wb, `stok_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Excel indirildi','success');
+};
+
+window.toast = (msg,tip='info') => {
+  const cont=document.getElementById('toastCont');
+  const el=document.createElement('div'); el.className=`toast ${tip}`; el.textContent=msg;
+  cont.appendChild(el); setTimeout(()=>el.remove(),3000);
+};
+
+render();
+</script>
+</body>
+</html>

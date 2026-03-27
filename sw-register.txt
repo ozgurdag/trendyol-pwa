@@ -1,0 +1,8 @@
+<!-- Bu satırı index.html'in </body> tagından hemen önce ekleyin -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js')
+    .then(() => console.log('SW kayıtlı'))
+    .catch(e => console.log('SW hatası:', e));
+}
+</script>

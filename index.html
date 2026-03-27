@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Satış Yönetim">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>Satış Yönetim</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div class="login-wrap" id="loginWrap">
+  <div class="login-logo">
+    <div class="login-logo-icon">🛍️</div>
+    <div class="login-logo-title">Satış Yönetim</div>
+    <div class="login-logo-sub">Trendyol Satıcı Paneli</div>
+  </div>
+
+  <div class="login-card">
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="sekmeAc('giris')">Giriş</div>
+      <div class="login-tab" onclick="sekmeAc('kayit')">Yeni Hesap</div>
+      <div class="login-tab" onclick="sekmeAc('ortak')">Ortak</div>
+    </div>
+
+    <!-- GİRİŞ -->
+    <div id="sekme-giris">
+      <div class="form-group">
+        <label class="form-label">E-posta</label>
+        <input class="form-input" type="email" id="giris-email" placeholder="ornek@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Şifre</label>
+        <input class="form-input" type="password" id="giris-sifre" placeholder="••••••" autocomplete="current-password">
+      </div>
+      <div id="giris-hata" class="text-red" style="font-size:13px;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-primary btn-full" onclick="girisYap()">Giriş Yap</button>
+      <button class="btn btn-ghost btn-full mt-8" style="font-size:13px" onclick="demoGiris()">
+        Demo ile dene
+      </button>
+    </div>
+
+    <!-- KAYIT -->
+    <div id="sekme-kayit" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Adınız</label>
+        <input class="form-input" type="text" id="kayit-ad" placeholder="Ad Soyad">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-posta</label>
+        <input class="form-input" type="email" id="kayit-email" placeholder="ornek@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Şifre</label>
+        <input class="form-input" type="password" id="kayit-sifre" placeholder="En az 6 karakter">
+      </div>
+      <div id="kayit-hata" class="text-red" style="font-size:13px;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-primary btn-full" onclick="kayitOl()">Hesap Oluştur</button>
+    </div>
+
+    <!-- ORTAK GİRİŞİ -->
+    <div id="sekme-ortak" style="display:none">
+      <div style="background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--r-md);padding:10px 12px;font-size:12px;color:var(--blue);margin-bottom:14px">
+        Ortağınızdan aldığınız 8 haneli kodu girin
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ortak Kodu</label>
+        <input class="form-input mono" type="text" id="ortak-kod" placeholder="ABC12345" maxlength="8" style="text-transform:uppercase;letter-spacing:2px">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-posta</label>
+        <input class="form-input" type="email" id="ortak-email" placeholder="ornek@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Şifre</label>
+        <input class="form-input" type="password" id="ortak-sifre" placeholder="En az 6 karakter">
+      </div>
+      <div id="ortak-hata" class="text-red" style="font-size:13px;margin-bottom:10px;display:none"></div>
+      <button class="btn btn-primary btn-full" onclick="ortakGiris()">Bağlan</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastCont"></div>
+
+<script type="module">
+import { auth, demoYukle } from './js/state.js';
+
+window.sekmeAc = (sekme) => {
+  ['giris','kayit','ortak'].forEach(s => {
+    document.getElementById('sekme-'+s).style.display = s===sekme ? '' : 'none';
+  });
+  document.querySelectorAll('.login-tab').forEach((t,i) => {
+    t.classList.toggle('active', ['giris','kayit','ortak'][i]===sekme);
+  });
+};
+
+window.girisYap = () => {
+  const email = document.getElementById('giris-email').value.trim();
+  const sifre = document.getElementById('giris-sifre').value;
+  const el = document.getElementById('giris-hata');
+  const sonuc = auth.girisYap(email, sifre);
+  if (sonuc.hata) { el.textContent = sonuc.hata; el.style.display=''; return; }
+  el.style.display = 'none';
+  window.location.href = 'dashboard.html';
+};
+
+window.kayitOl = () => {
+  const ad    = document.getElementById('kayit-ad').value.trim();
+  const email = document.getElementById('kayit-email').value.trim();
+  const sifre = document.getElementById('kayit-sifre').value;
+  const el    = document.getElementById('kayit-hata');
+  if (!ad || !email || !sifre) { el.textContent='Tüm alanları doldurun'; el.style.display=''; return; }
+  if (sifre.length < 6) { el.textContent='Şifre en az 6 karakter'; el.style.display=''; return; }
+  const sonuc = auth.kayitOl(email, sifre, ad);
+  if (sonuc.hata) { el.textContent=sonuc.hata; el.style.display=''; return; }
+  demoYukle();
+  window.location.href = 'dashboard.html';
+};
+
+window.ortakGiris = () => {
+  const kod   = document.getElementById('ortak-kod').value.trim().toUpperCase();
+  const email = document.getElementById('ortak-email').value.trim();
+  const sifre = document.getElementById('ortak-sifre').value;
+  const el    = document.getElementById('ortak-hata');
+  const sonuc = auth.ortakGiris(email, sifre, kod);
+  if (sonuc.hata) { el.textContent=sonuc.hata; el.style.display=''; return; }
+  window.location.href = 'dashboard.html';
+};
+
+window.demoGiris = () => {
+  auth.kayitOl('demo@test.com','demo123','Demo Kullanıcı');
+  demoYukle();
+  window.location.href = 'dashboard.html';
+};
+
+// Zaten giriş yapmışsa direkt yönlendir
+const o = auth.oturum();
+if (o) window.location.href = 'dashboard.html';
+
+// Enter tuşu
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const aktif = document.querySelector('.login-tab.active')?.textContent;
+    if (aktif === 'Giriş') girisYap();
+    else if (aktif === 'Yeni Hesap') kayitOl();
+    else if (aktif === 'Ortak') ortakGiris();
+  }
+});
+</script>
+</body>
+</html>

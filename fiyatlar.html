@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<title>Fiyat Hesapla · Satış Yönetim</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app-shell">
+
+  <div class="topbar">
+    <div class="topbar-title">💰 Satış Fiyatları</div>
+    <div class="topbar-action" onclick="excelIndir()" title="Excel İndir">⬇</div>
+    <div class="topbar-action" onclick="modalAc('urun-ekle-modal')" title="Ürün Ekle">＋</div>
+  </div>
+
+  <div class="page-content">
+
+    <!-- TOPLU AYAR -->
+    <div class="card mb-16">
+      <div class="card-header" style="margin-bottom:10px">
+        <div class="card-title">Hesap Ayarları</div>
+        <span id="ayar-ozet" style="font-size:11px;color:var(--accent)"></span>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Aynı Gün Kargo</label>
+          <select class="form-select" id="ayar-aynigun" onchange="ayarKaydet()">
+            <option value="0">Hayır (13.19₺)</option>
+            <option value="1">Evet (8.39₺)</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Kargo Firması</label>
+          <select class="form-select" id="ayar-firma" onchange="ayarKaydet()">
+            <option>Aras</option><option>DHL eCommerce</option>
+            <option>Kolay Gelsin</option><option>PTT</option>
+            <option>Sürat</option><option>TEX</option>
+            <option>Yurtiçi</option><option>Horoz</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:8px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Satış Adedi (varsayılan)</label>
+          <select class="form-select" id="ayar-adet" onchange="ayarKaydet()">
+            <option value="1">1 adet</option>
+            <option value="2">2 adet</option>
+            <option value="3">3 adet</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Hedef ROI</label>
+          <input class="form-input" type="number" id="ayar-roi" value="30" min="0" max="200" onchange="ayarKaydet()">
+        </div>
+      </div>
+    </div>
+
+    <!-- ARAMA -->
+    <div class="search-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Ürün ara..." id="arama" oninput="filtrele()">
+    </div>
+
+    <!-- ÜRÜN LİSTESİ -->
+    <div id="urun-listesi"></div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <a class="nav-item" href="dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="nav-label">Panel</span>
+    </a>
+    <a class="nav-item active" href="fiyatlar.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <span class="nav-label">Fiyatlar</span>
+    </a>
+    <a class="nav-item" href="satis-giris.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg>
+      <span class="nav-label">Satış</span>
+    </a>
+    <a class="nav-item" href="stok.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      <span class="nav-label">Stok</span>
+    </a>
+    <a class="nav-item" href="ayarlar.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span class="nav-label">Ayarlar</span>
+    </a>
+  </nav>
+
+</div>
+
+<!-- ÜRÜN DETAY MODAL -->
+<div class="modal-overlay" id="detay-modal" onclick="modalKapat('detay-modal')">
+  <div class="modal-sheet" onclick="e=>e.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="detay-urun-ad">Ürün Detayı</div>
+
+    <div class="sonuc-box mb-16">
+      <div class="sonuc-label">Önerilen Satış Fiyatı</div>
+      <div class="sonuc-value" id="detay-satis">—</div>
+      <div class="sonuc-sub" id="detay-basabas"></div>
+    </div>
+
+    <div class="detay-grid mb-16">
+      <div class="detay-item"><div class="detay-label">Alış Fiyatı</div><div class="detay-value" id="d-alis">—</div></div>
+      <div class="detay-item"><div class="detay-label">Komisyon</div><div class="detay-value" id="d-kom">—</div></div>
+      <div class="detay-item"><div class="detay-label">Platform</div><div class="detay-value" id="d-platform">—</div></div>
+      <div class="detay-item"><div class="detay-label">Kargo</div><div class="detay-value" id="d-kargo">—</div></div>
+      <div class="detay-item"><div class="detay-label">Net Kar</div><div class="detay-value text-green" id="d-netkar">—</div></div>
+      <div class="detay-item"><div class="detay-label">ROI</div><div class="detay-value text-accent" id="d-roi">—</div></div>
+    </div>
+
+    <!-- Alış fiyatı güncelle -->
+    <div class="form-row">
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Alış Fiyatı Güncelle (₺)</label>
+        <input class="form-input" type="number" id="detay-alis-input" step="0.01">
+      </div>
+      <div class="form-group" style="margin:0">
+        <label class="form-label">Desi</label>
+        <input class="form-input" type="number" id="detay-desi-input" min="1" max="50">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="urunGuncelle()">Kaydet</button>
+      <button class="btn btn-danger btn-icon" onclick="urunSilOnayla()">🗑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ÜRÜN EKLE MODAL -->
+<div class="modal-overlay" id="urun-ekle-modal" onclick="modalKapat('urun-ekle-modal')">
+  <div class="modal-sheet" onclick="e=>e.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Ürün Ekle</div>
+
+    <div class="tabs mb-16">
+      <div class="tab active" onclick="ekleSekmeSec('tek')">Tek Ürün</div>
+      <div class="tab" onclick="ekleSekmeSec('excel')">Excel İçe Aktar</div>
+    </div>
+
+    <div id="ekle-tek">
+      <div class="form-group">
+        <label class="form-label">Ürün Adı</label>
+        <input class="form-input" id="ekle-ad" placeholder="Ürün adını girin">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Alış Fiyatı (₺)</label>
+          <input class="form-input" type="number" id="ekle-alis" placeholder="0.00" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Başlangıç Stok</label>
+          <input class="form-input" type="number" id="ekle-stok" placeholder="0" min="0">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Desi</label>
+          <input class="form-input" type="number" id="ekle-desi" placeholder="1" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Komisyon (%)</label>
+          <input class="form-input" type="number" id="ekle-komisyon" placeholder="4" step="0.1">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full mt-8" onclick="urunEkle()">Ekle</button>
+    </div>
+
+    <div id="ekle-excel" style="display:none;text-align:center;padding:20px 0">
+      <div style="font-size:40px;margin-bottom:12px">📊</div>
+      <div style="font-size:14px;color:var(--t2);margin-bottom:16px">Excel dosyası yükleyin<br><span style="font-size:12px;color:var(--t3)">Ad, Alış Fiyatı, Stok, Desi, Komisyon sütunları</span></div>
+      <input type="file" id="excel-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="excelIceriAktar(event)">
+      <button class="btn btn-secondary" onclick="document.getElementById('excel-file').click()">📁 Dosya Seç</button>
+      <div id="excel-import-sonuc" style="margin-top:12px;font-size:13px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastCont"></div>
+
+<script type="module">
+import { auth, urunlerDB, ayarlarDB, hesapla } from 'state.js';
+
+if (!auth.oturum()) window.location.href='index.html';
+
+let aktifUrunId = null;
+let tumUrunler  = [];
+let ayarlar     = ayarlarDB.oku();
+
+// Ayarları yükle
+document.getElementById('ayar-aynigun').value = ayarlar.ayniGunKargo ? '1' : '0';
+document.getElementById('ayar-firma').value   = ayarlar.kargoFirma || 'Aras';
+document.getElementById('ayar-roi').value     = Math.round((ayarlar.hedefKarROI||0.30)*100);
+
+window.ayarKaydet = () => {
+  ayarlarDB.kaydet({
+    ayniGunKargo: document.getElementById('ayar-aynigun').value === '1',
+    kargoFirma:   document.getElementById('ayar-firma').value,
+    hedefKarROI:  +document.getElementById('ayar-roi').value / 100,
+  });
+  ayarlar = ayarlarDB.oku();
+  render();
+};
+
+function para(n) { return (+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺'; }
+
+function stokDurumu(stok) {
+  if (stok === 0)  return { cls:'badge-red',    txt:'Tükendi' };
+  if (stok < 5)   return { cls:'badge-red',    txt:`${stok} adet` };
+  if (stok < 10)  return { cls:'badge-yellow', txt:`${stok} adet` };
+  return                  { cls:'badge-green',  txt:`${stok} adet` };
+}
+
+function kargoAcikla(kargo) {
+  if (kargo < 60) return 'Alt barem';
+  if (kargo < 95) return 'Üst barem';
+  return 'Desi tablosu';
+}
+
+function render() {
+  const adet = +(document.getElementById('ayar-adet')?.value || 1);
+  tumUrunler = urunlerDB.hepsini();
+  const ara  = document.getElementById('arama')?.value?.toLowerCase() || '';
+  const liste = tumUrunler.filter(u => u.ad.toLowerCase().includes(ara));
+
+  const el = document.getElementById('urun-listesi');
+  if (!liste.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">Ürün bulunamadı</div><div class="empty-sub">Ürün eklemek için + butonuna tıklayın</div></div>`;
+    return;
+  }
+
+  el.innerHTML = liste.map(u => {
+    const f = hesapla.satisFiyati(u, ayarlar, adet);
+    const stok = stokDurumu(u.stok || 0);
+    const roiPct = f ? Math.round(f.roi*100) : 0;
+    const roiRenk = roiPct >= 20 ? 'var(--green)' : roiPct >= 10 ? 'var(--yellow)' : 'var(--red)';
+
+    return `<div class="urun-row" onclick="detayAc('${u.id}')">
+      <div class="urun-avatar">🏷️</div>
+      <div class="urun-info">
+        <div class="urun-ad">${u.ad}</div>
+        <div class="urun-meta" style="display:flex;gap:6px;align-items:center">
+          <span>Alış: ${para(u.alisFiyati)}</span>
+          <span>·</span>
+          <span class="badge ${stok.cls}" style="padding:1px 6px;font-size:10px">${stok.txt}</span>
+        </div>
+      </div>
+      <div class="urun-fiyat">
+        <div class="urun-fiyat-ana">${f ? para(f.yuvarlak) : '—'}</div>
+        <div class="urun-fiyat-sub" style="color:${roiRenk}">%${roiPct} ROI</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.filtrele = render;
+
+window.detayAc = (id) => {
+  const u = urunlerDB.bul(id);
+  if (!u) return;
+  aktifUrunId = id;
+  const adet = +(document.getElementById('ayar-adet')?.value || 1);
+  const f = hesapla.satisFiyati(u, ayarlar, adet);
+
+  document.getElementById('detay-urun-ad').textContent = u.ad;
+  document.getElementById('detay-satis').textContent   = f ? para(f.yuvarlak) : '—';
+  document.getElementById('detay-basabas').textContent = f ? `Başabaş: ${para(f.basabas)}` : '';
+  document.getElementById('d-alis').textContent     = para(u.alisFiyati);
+  document.getElementById('d-kom').textContent      = f ? `%${(f.kom*100).toFixed(1)}` : '—';
+  document.getElementById('d-platform').textContent = f ? para(f.platform) : '—';
+  document.getElementById('d-kargo').textContent    = f ? `${para(f.kargo)} (${kargoAcikla(f.kargo)})` : '—';
+  document.getElementById('d-netkar').textContent   = f ? para(f.netKar) : '—';
+  document.getElementById('d-roi').textContent      = f ? `%${Math.round(f.roi*100)}` : '—';
+  document.getElementById('detay-alis-input').value = u.alisFiyati;
+  document.getElementById('detay-desi-input').value = u.desi || 1;
+  modalAc('detay-modal');
+};
+
+window.urunGuncelle = () => {
+  if (!aktifUrunId) return;
+  urunlerDB.guncelle(aktifUrunId, {
+    alisFiyati: +document.getElementById('detay-alis-input').value,
+    desi:       +document.getElementById('detay-desi-input').value,
+  });
+  modalKapat('detay-modal');
+  render();
+  toast('Ürün güncellendi', 'success');
+};
+
+window.urunSilOnayla = () => {
+  if (!aktifUrunId) return;
+  if (!confirm('Bu ürünü silmek istediğinize emin misiniz?')) return;
+  urunlerDB.sil(aktifUrunId);
+  modalKapat('detay-modal');
+  render();
+  toast('Ürün silindi', 'info');
+};
+
+window.urunEkle = () => {
+  const ad    = document.getElementById('ekle-ad').value.trim();
+  const alis  = +document.getElementById('ekle-alis').value;
+  const stok  = +document.getElementById('ekle-stok').value || 0;
+  const desi  = +document.getElementById('ekle-desi').value || 1;
+  const kom   = (+document.getElementById('ekle-komisyon').value || 4) / 100;
+  if (!ad || !alis) { toast('Ad ve alış fiyatı zorunlu','error'); return; }
+  urunlerDB.ekle({ ad, alisFiyati: alis, stok, desi, komisyon: kom });
+  modalKapat('urun-ekle-modal');
+  ['ekle-ad','ekle-alis','ekle-stok','ekle-desi','ekle-komisyon'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  render();
+  toast(`"${ad}" eklendi`, 'success');
+};
+
+window.ekleSekmeSec = (s) => {
+  document.getElementById('ekle-tek').style.display    = s==='tek'   ? '' : 'none';
+  document.getElementById('ekle-excel').style.display  = s==='excel' ? '' : 'none';
+  document.querySelectorAll('#urun-ekle-modal .tab').forEach((t,i) =>
+    t.classList.toggle('active', ['tek','excel'][i]===s));
+};
+
+window.excelIceriAktar = async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  const sonucEl = document.getElementById('excel-import-sonuc');
+  sonucEl.textContent = 'Yükleniyor...';
+  try {
+    const { read, utils } = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+    const buf  = await file.arrayBuffer();
+    const wb   = read(buf);
+    const data = utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    let sayi = 0;
+    data.forEach(row => {
+      const ad   = row['Ad'] || row['Ürün Adı'] || row['ad'] || row['urun'] || '';
+      const alis = +row['Alış Fiyatı'] || +row['alis'] || +row['Alış'] || 0;
+      if (ad && alis) {
+        urunlerDB.ekle({
+          ad, alisFiyati: alis,
+          stok:     +row['Stok'] || +row['stok'] || 0,
+          desi:     +row['Desi'] || +row['desi'] || 1,
+          komisyon: (+row['Komisyon'] || +row['komisyon'] || 4) / 100,
+        });
+        sayi++;
+      }
+    });
+    sonucEl.innerHTML = `<span class="text-green">✓ ${sayi} ürün içe aktarıldı</span>`;
+    render();
+    setTimeout(() => { modalKapat('urun-ekle-modal'); sonucEl.textContent=''; }, 1500);
+  } catch(err) {
+    sonucEl.innerHTML = `<span class="text-red">Hata: ${err.message}</span>`;
+  }
+};
+
+window.excelIndir = async () => {
+  const { utils, writeFile } = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+  const adet = +(document.getElementById('ayar-adet')?.value || 1);
+  const data = urunlerDB.hepsini().map(u => {
+    const f = hesapla.satisFiyati(u, ayarlar, adet);
+    return {
+      'Ürün Adı':         u.ad,
+      'Alış Fiyatı (₺)': u.alisFiyati,
+      'Stok':             u.stok || 0,
+      'Desi':             u.desi || 1,
+      'Komisyon %':       ((u.komisyon||0.04)*100).toFixed(1),
+      'Kargo (₺)':        f ? f.kargo.toFixed(2) : '',
+      'Başabaş (₺)':      f ? f.basabas.toFixed(2) : '',
+      'Önerilen Fiyat (₺)': f ? f.yuvarlak.toFixed(2) : '',
+      'Net Kar (₺)':      f ? f.netKar.toFixed(2) : '',
+      'ROI %':            f ? Math.round(f.roi*100) : '',
+    };
+  });
+  const ws = utils.json_to_sheet(data);
+  const wb = utils.book_new(); utils.book_append_sheet(wb, ws, 'Fiyatlar');
+  writeFile(wb, `fiyatlar_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Excel indirildi','success');
+};
+
+window.modalAc  = id => document.getElementById(id).classList.add('open');
+window.modalKapat = id => document.getElementById(id).classList.remove('open');
+
+window.toast = (mesaj, tip='info') => {
+  const cont = document.getElementById('toastCont');
+  const el = document.createElement('div');
+  el.className = `toast ${tip}`;
+  el.textContent = mesaj;
+  cont.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+};
+
+render();
+</script>
+</body>
+</html>

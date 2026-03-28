@@ -226,6 +226,29 @@ window.veriSifirla = () => {
 
 window.cikis = () => { auth.cikis(); window.location.href='index.html'; };
 
+// Ortak kısıtlamaları
+if(!_isAdmin){
+  // Tüm input ve select'leri disable et
+  document.querySelectorAll('input, select').forEach(el=>{
+    el.disabled = true;
+    el.style.opacity = '0.6';
+    el.style.cursor = 'not-allowed';
+  });
+  // Kaydet butonlarını gizle
+  document.querySelectorAll('button:not(#btn-cikis)').forEach(el=>{
+    if(el.textContent.includes('Kaydet')||el.textContent.includes('Yükle')||
+       el.textContent.includes('Yedek')||el.textContent.includes('Sıfırla')||
+       el.textContent.includes('Bağlan')||el.textContent.includes('Senkronize')){
+      el.style.display='none';
+    }
+  });
+  // Uyarı banner ekle
+  const banner = document.createElement('div');
+  banner.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--t3);text-align:center';
+  banner.textContent='👁 Salt okunur mod — Ayarlar yalnızca admin tarafından değiştirilebilir';
+  document.querySelector('.page-content')?.prepend(banner);
+}
+
 window.toast = (msg,tip='info') => {
   const cont=document.getElementById('toastCont');
   const el=document.createElement('div'); el.className=`toast ${tip}`; el.textContent=msg;

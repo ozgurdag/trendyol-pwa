@@ -150,13 +150,25 @@ export async function supabasedenYukle(){
       tarih:u.created_at?.slice(0,10),
     }))); }
 
-    if(rL.ok){ const d=await rL.json(); if(d?.length) set(DB_KEYS.listing, d.map(l=>({
-      id:l.id, ad:l.ad, satisFiyatiGercek:l.satis_fiyati, komisyon:l.komisyon||0.04,
-      kategori1:l.kategori1||null, ayniGunKargo:l.ayni_gun_kargo||false,
-      desi:l.desi||1, hedefKar:l.hedef_kar||0.30,
-      stokBilesenleri:l.stok_bilesenleri||[], onaylandi:l.onaylandi||false,
-      tarih:l.created_at?.slice(0,10),
-    }))); }
+    if(rL.ok){ const d=await rL.json(); if(d?.length) {
+      const stoklar = get(DB_KEYS.stok)||[];
+      set(DB_KEYS.listing, d.map(l=>{
+        const bilesenler = l.stok_bilesenleri||[];
+        // alisFiyati: stok kalemlerinden hesapla
+        const alisFiyati = bilesenler.reduce((t,b)=>{
+          const u=stoklar.find(s=>s.id===b.urunId);
+          return t+(u?(u.alisFiyati||0)*b.adet:0);
+        },0);
+        return {
+          id:l.id, ad:l.ad, satisFiyatiGercek:l.satis_fiyati, komisyon:l.komisyon||0.04,
+          kategori1:l.kategori1||null, ayniGunKargo:l.ayni_gun_kargo||false,
+          desi:l.desi||1, hedefKar:l.hedef_kar||0.30,
+          stokBilesenleri:bilesenler, onaylandi:l.onaylandi||false,
+          alisFiyati: alisFiyati,
+          tarih:l.created_at?.slice(0,10),
+        };
+      }));
+    }}
 
     if(rSet.ok){ const d=await rSet.json(); if(d?.length) set(DB_KEYS.setler, d.map(s=>({
       id:s.id, ad:s.ad, desi:s.desi||2, komisyon:s.komisyon||0.04,
@@ -329,7 +341,7 @@ export const listingDB = {
     if(d.hedefKar!==undefined)          v.hedef_kar=d.hedefKar;
     if(d.stokBilesenleri!==undefined)   v.stok_bilesenleri=d.stokBilesenleri;
     if(d.onaylandi!==undefined)         v.onaylandi=d.onaylandi;
-    if(d.alisFiyati!==undefined)        v.alis_fiyati_hesap=d.alisFiyati;
+    // alisFiyati localStorage'da tutulur, stok_bilesenleri üzerinden hesaplanır
     if(Object.keys(v).length) sbPatch('listingler',id,v).then(()=>broadcastGonder());
   },
 

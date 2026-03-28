@@ -81,7 +81,7 @@
         <div id="sb-led" style="width:8px;height:8px;border-radius:50%;background:var(--yellow);flex-shrink:0"></div>
         <span id="sb-durum-text" style="font-size:13px;color:var(--t3)">Bağlanıyor…</span>
       </div>
-      <button class="btn btn-secondary btn-full mb-8" onclick="sbSenkronize()">🔄 Ortakla Senkronize Et</button>
+      <button class="btn btn-secondary btn-full mb-8" onclick="manuelSenkronize()">🔄 Ortakla Senkronize Et</button>
       <button class="btn btn-secondary btn-full mb-8" onclick="manuelSenkronize()">☁️ Supabase'den Yenile</button>
       <button class="btn btn-ghost btn-full mb-8" onclick="migrasyonYap()">📤 Mevcut Veriyi Supabase'e Yükle</button>
       <button class="btn btn-ghost btn-full" onclick="sbYenidenBaglan()" style="font-size:12px">Yeniden Bağlan</button>
@@ -182,7 +182,7 @@ document.getElementById('ay-esik2').value  = ay.kargoBaremEsik2;
 document.getElementById('ay-ucret2').value = ay.kargoBaremUcret2;
 
 window.ayarKaydet = () => {
-  if(!auth.adminMi()){showToast('Bu işlem için admin yetkisi gerekli','error');return;}
+  if(!auth.adminMi()){toast('Bu işlem için admin yetkisi gerekli','error');return;}
   ayarlarDB.kaydet({
     kargoBaremEsik1:  +document.getElementById('ay-esik1').value,
     kargoBaremUcret1: +document.getElementById('ay-ucret1').value,
@@ -248,18 +248,18 @@ window.toast = (msg,tip='info') => {
 
 window.migrasyonYap = async () => {
   if(!confirm('localStorage\'daki tüm veriler Supabase\'e yüklenecek. Devam?')) return;
-  showToast('Yükleniyor...','info');
+  toast('Yükleniyor...','info');
   const {localdenSupabaseYukle} = await import('./state.js');
   const sonuc = await localdenSupabaseYukle();
-  showToast(sonuc.ok ? `✅ ${sonuc.yuklenen} kayıt yüklendi` : '❌ Hata oluştu', sonuc.ok?'success':'error');
+  toast(sonuc.ok ? `✅ ${sonuc.yuklenen} kayıt yüklendi` : '❌ Hata oluştu', sonuc.ok?'success':'error');
 };
 
 window.manuelSenkronize = async () => {
-  showToast('Supabase\'den veriler çekiliyor...','info');
+  toast('Supabase\'den veriler çekiliyor...','info');
   const {supabasedenYukle} = await import('./state.js');
   localStorage.removeItem('tsx_son_sync'); // zorla yeniden çek
   const ok = await supabasedenYukle();
-  showToast(ok ? '✅ Veriler güncellendi' : '❌ Bağlantı hatası','success');
+  toast(ok ? '✅ Veriler güncellendi' : '❌ Bağlantı hatası','success');
 };
 </script>
 </body>

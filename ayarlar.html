@@ -255,7 +255,7 @@ window.migrasyonYap = async () => {
 };
 
 window.manuelSenkronize = async () => {
-  showToast('Supabase'den veriler çekiliyor...','info');
+  showToast('Supabase\'den veriler çekiliyor...','info');
   const {supabasedenYukle} = await import('./state.js');
   localStorage.removeItem('tsx_son_sync'); // zorla yeniden çek
   const ok = await supabasedenYukle();

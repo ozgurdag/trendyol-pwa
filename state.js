@@ -32,8 +32,10 @@ const SB_KEY = 'sb_publishable_XipAv4wzmw8iTx6k942DkA_A8CkKh_X';
 
 async function gecerliToken(){
   const o = auth.oturum();
-  if(!o) return SB_KEY;
-  if(o.bitis && Date.now() > o.bitis - 5*60*1000){
+  if(!o?.token) return SB_KEY;
+  // bitis alanı yoksa (eski oturum) token'ı direkt kullan
+  if(!o.bitis) return o.token;
+  if(Date.now() > o.bitis - 5*60*1000){
     try {
       const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{
         method:'POST',
@@ -67,19 +69,39 @@ function sbHdr(token){
 async function sirketId(){
   const cached = localStorage.getItem('tsx_sirket_id');
   if(cached) return cached;
+  const o = auth.oturum();
+  if(!o?.token){ console.warn('sirketId: oturum yok'); return null; }
   try {
     const token = await gecerliToken();
+    // Önce mevcut şirketlere bak
     const r = await fetch(`${SB_URL}/rest/v1/sirketler?select=id&limit=1`,{headers:sbHdr(token)});
+    if(!r.ok){ console.warn('sirketId HTTP:', r.status, await r.text()); return null; }
     const d = await r.json();
     if(d?.[0]?.id){ localStorage.setItem('tsx_sirket_id',d[0].id); return d[0].id; }
-  } catch(e){}
+    // Şirket yok — admin ise oluştur
+    if(o.rol === 'admin'){
+      const cr = await fetch(`${SB_URL}/rest/v1/sirketler`,{
+        method:'POST',
+        headers:{...sbHdr(token),'Prefer':'return=representation'},
+        body:JSON.stringify({ad:'Satış Yönetim', ortak_kod:'TSX2026'})
+      });
+      if(cr.ok){
+        const cd = await cr.json();
+        const newId = Array.isArray(cd)?cd[0]?.id:cd?.id;
+        if(newId){ localStorage.setItem('tsx_sirket_id',newId); return newId; }
+      }
+    }
+    console.warn('sirketId: şirket bulunamadı/oluşturulamadı');
+  } catch(e){ console.warn('sirketId hata:', e.message); }
   return null;
 }
 
 async function sbPost(tablo, veri){
   try {
-    const token = await gecerliToken(); if(!token) return;
-    const sid = await sirketId(); if(!sid) return;
+    const token = await gecerliToken();
+    if(!token || token === SB_KEY){ console.warn('sbPost: geçerli token yok, anonim key ile deneniyor'); }
+    const sid = await sirketId();
+    if(!sid){ console.warn('sbPost: sirket_id yok, yazma iptal'); return; }
     const payload = Array.isArray(veri)
       ? veri.map(v=>({...v,sirket_id:sid}))
       : {...veri,sirket_id:sid};

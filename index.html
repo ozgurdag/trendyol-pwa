@@ -4,154 +4,110 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0A0E1A">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Satış Yönetim">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<title>Satış Yönetim</title>
+<meta name="mobile-web-app-capable" content="yes">
+<title>Satış Yönetim · Giriş</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="stylesheet" href="./app.css">
+<style>
+.giris-wrap{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;background:var(--bg0)}
+.giris-logo{font-size:52px;margin-bottom:16px}
+.giris-baslik{font-size:24px;font-weight:700;color:var(--t1);margin-bottom:6px;text-align:center}
+.giris-alt{font-size:13px;color:var(--t3);margin-bottom:32px;text-align:center}
+.giris-kart{width:100%;max-width:360px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px}
+.giris-hata{background:var(--red-l);border:1px solid var(--red);border-radius:var(--r-md);padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;display:none;text-align:center}
+.kul-sec{display:flex;gap:8px;margin-bottom:20px}
+.kul-btn{flex:1;padding:10px;border-radius:var(--r-md);border:2px solid var(--border2);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:.2s}
+.kul-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-l)}
+.giris-spinner{display:none;text-align:center;padding:8px;font-size:13px;color:var(--t3)}
+</style>
 </head>
 <body>
+<div class="giris-wrap">
+  <div class="giris-logo">🛍️</div>
+  <div class="giris-baslik">Satış Yönetim</div>
+  <div class="giris-alt">Trendyol Satıcı Paneli</div>
 
-<div class="login-wrap" id="loginWrap">
-  <div class="login-logo">
-    <div class="login-logo-icon">🛍️</div>
-    <div class="login-logo-title">Satış Yönetim</div>
-    <div class="login-logo-sub">Trendyol Satıcı Paneli</div>
-  </div>
-
-  <div class="login-card">
-    <div class="login-tabs">
-      <div class="login-tab active" onclick="sekmeAc('giris')">Giriş</div>
-      <div class="login-tab" onclick="sekmeAc('kayit')">Yeni Hesap</div>
-      <div class="login-tab" onclick="sekmeAc('ortak')">Ortak</div>
+  <div class="giris-kart">
+    <div class="kul-sec">
+      <div class="kul-btn active" id="btn-admin" onclick="kulSec('admin')">👤 Admin</div>
+      <div class="kul-btn" id="btn-ortak" onclick="kulSec('ortak')">🤝 Ortak</div>
     </div>
 
-    <!-- GİRİŞ -->
-    <div id="sekme-giris">
-      <div class="form-group">
-        <label class="form-label">E-posta</label>
-        <input class="form-input" type="email" id="giris-email" placeholder="ornek@email.com" autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Şifre</label>
-        <input class="form-input" type="password" id="giris-sifre" placeholder="••••••" autocomplete="current-password">
-      </div>
-      <div id="giris-hata" class="text-red" style="font-size:13px;margin-bottom:10px;display:none"></div>
-      <button class="btn btn-primary btn-full" onclick="girisYap()">Giriş Yap</button>
-      <button class="btn btn-ghost btn-full mt-8" style="font-size:13px" onclick="demoGiris()">
-        Demo ile dene
-      </button>
+    <div id="giris-hata" class="giris-hata"></div>
+
+    <div class="form-group">
+      <label class="form-label">Şifre</label>
+      <input class="form-input" type="password" id="giris-sifre"
+        placeholder="Supabase şifreniz"
+        onkeydown="if(event.key==='Enter')girisYap()">
     </div>
 
-    <!-- KAYIT -->
-    <div id="sekme-kayit" style="display:none">
-      <div class="form-group">
-        <label class="form-label">Adınız</label>
-        <input class="form-input" type="text" id="kayit-ad" placeholder="Ad Soyad">
-      </div>
-      <div class="form-group">
-        <label class="form-label">E-posta</label>
-        <input class="form-input" type="email" id="kayit-email" placeholder="ornek@email.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Şifre</label>
-        <input class="form-input" type="password" id="kayit-sifre" placeholder="En az 6 karakter">
-      </div>
-      <div id="kayit-hata" class="text-red" style="font-size:13px;margin-bottom:10px;display:none"></div>
-      <button class="btn btn-primary btn-full" onclick="kayitOl()">Hesap Oluştur</button>
-    </div>
+    <div class="giris-spinner" id="giris-spinner">⏳ Giriş yapılıyor…</div>
+    <button class="btn btn-primary btn-full mt-8" id="giris-btn" onclick="girisYap()">Giriş Yap</button>
 
-    <!-- ORTAK GİRİŞİ -->
-    <div id="sekme-ortak" style="display:none">
-      <div style="background:var(--blue-l);border:1px solid var(--blue);border-radius:var(--r-md);padding:10px 12px;font-size:12px;color:var(--blue);margin-bottom:14px">
-        Ortağınızdan aldığınız 8 haneli kodu girin
-      </div>
-      <div class="form-group">
-        <label class="form-label">Ortak Kodu</label>
-        <input class="form-input mono" type="text" id="ortak-kod" placeholder="ABC12345" maxlength="8" style="text-transform:uppercase;letter-spacing:2px">
-      </div>
-      <div class="form-group">
-        <label class="form-label">E-posta</label>
-        <input class="form-input" type="email" id="ortak-email" placeholder="ornek@email.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Şifre</label>
-        <input class="form-input" type="password" id="ortak-sifre" placeholder="En az 6 karakter">
-      </div>
-      <div id="ortak-hata" class="text-red" style="font-size:13px;margin-bottom:10px;display:none"></div>
-      <button class="btn btn-primary btn-full" onclick="ortakGiris()">Bağlan</button>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--t3);text-align:center;line-height:1.6">
+      🔒 Supabase Authentication ile güvenli giriş<br>
+      Admin: <code style="color:var(--accent)">admin@trendyol-satis.com</code><br>
+      Ortak: <code style="color:var(--accent)">ortak@trendyol-satis.com</code>
     </div>
   </div>
 </div>
 
-<div class="toast-container" id="toastCont"></div>
-
 <script type="module">
-import { auth, demoYukle } from './state.js';
+import { sbAuth } from './supabase.js';
 
-window.sekmeAc = (sekme) => {
-  ['giris','kayit','ortak'].forEach(s => {
-    document.getElementById('sekme-'+s).style.display = s===sekme ? '' : 'none';
-  });
-  document.querySelectorAll('.login-tab').forEach((t,i) => {
-    t.classList.toggle('active', ['giris','kayit','ortak'][i]===sekme);
-  });
+// Email → kullanıcı tipi mapping
+const EMAILS = {
+  admin: 'admin@trendyol-satis.com',
+  ortak: 'ortak@trendyol-satis.com',
 };
 
-window.girisYap = () => {
-  const email = document.getElementById('giris-email').value.trim();
-  const sifre = document.getElementById('giris-sifre').value;
-  const el = document.getElementById('giris-hata');
-  const sonuc = auth.girisYap(email, sifre);
-  if (sonuc.hata) { el.textContent = sonuc.hata; el.style.display=''; return; }
-  el.style.display = 'none';
-  window.location.href = 'dashboard.html';
+// Zaten giriş yapılmışsa yönlendir
+if(sbAuth.oturum()?.token) {
+  window.location.href = './dashboard.html';
+}
+
+let secili = 'admin';
+
+window.kulSec = (k) => {
+  secili = k;
+  document.getElementById('btn-admin').classList.toggle('active', k==='admin');
+  document.getElementById('btn-ortak').classList.toggle('active', k==='ortak');
+  document.getElementById('giris-sifre').value = '';
+  document.getElementById('giris-hata').style.display = 'none';
 };
 
-window.kayitOl = () => {
-  const ad    = document.getElementById('kayit-ad').value.trim();
-  const email = document.getElementById('kayit-email').value.trim();
-  const sifre = document.getElementById('kayit-sifre').value;
-  const el    = document.getElementById('kayit-hata');
-  if (!ad || !email || !sifre) { el.textContent='Tüm alanları doldurun'; el.style.display=''; return; }
-  if (sifre.length < 6) { el.textContent='Şifre en az 6 karakter'; el.style.display=''; return; }
-  const sonuc = auth.kayitOl(email, sifre, ad);
-  if (sonuc.hata) { el.textContent=sonuc.hata; el.style.display=''; return; }
-  demoYukle();
-  window.location.href = 'dashboard.html';
-};
+window.girisYap = async () => {
+  const sifre = document.getElementById('giris-sifre').value.trim();
+  const hataEl = document.getElementById('giris-hata');
+  const btn = document.getElementById('giris-btn');
+  const spinner = document.getElementById('giris-spinner');
 
-window.ortakGiris = () => {
-  const kod   = document.getElementById('ortak-kod').value.trim().toUpperCase();
-  const email = document.getElementById('ortak-email').value.trim();
-  const sifre = document.getElementById('ortak-sifre').value;
-  const el    = document.getElementById('ortak-hata');
-  const sonuc = auth.ortakGiris(email, sifre, kod);
-  if (sonuc.hata) { el.textContent=sonuc.hata; el.style.display=''; return; }
-  window.location.href = 'dashboard.html';
-};
-
-window.demoGiris = () => {
-  auth.kayitOl('demo@test.com','demo123','Demo Kullanıcı');
-  demoYukle();
-  window.location.href = 'dashboard.html';
-};
-
-// Zaten giriş yapmışsa direkt yönlendir
-const o = auth.oturum();
-if (o) window.location.href = 'dashboard.html';
-
-// Enter tuşu
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const aktif = document.querySelector('.login-tab.active')?.textContent;
-    if (aktif === 'Giriş') girisYap();
-    else if (aktif === 'Yeni Hesap') kayitOl();
-    else if (aktif === 'Ortak') ortakGiris();
+  if(!sifre) {
+    hataEl.textContent = 'Şifre giriniz';
+    hataEl.style.display = '';
+    return;
   }
-});
+
+  btn.disabled = true;
+  spinner.style.display = '';
+  hataEl.style.display = 'none';
+
+  const sonuc = await sbAuth.girisYap(EMAILS[secili], sifre);
+
+  btn.disabled = false;
+  spinner.style.display = 'none';
+
+  if(sonuc.ok) {
+    window.location.href = './dashboard.html';
+  } else {
+    hataEl.textContent = sonuc.hata || 'Hatalı şifre';
+    hataEl.style.display = '';
+    document.getElementById('giris-sifre').value = '';
+    document.getElementById('giris-sifre').focus();
+  }
+};
 </script>
 </body>
 </html>

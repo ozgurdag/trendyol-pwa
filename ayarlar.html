@@ -171,6 +171,7 @@ document.getElementById('ay-esik2').value  = ay.kargoBaremEsik2;
 document.getElementById('ay-ucret2').value = ay.kargoBaremUcret2;
 
 window.ayarKaydet = () => {
+  if(!auth.adminMi()){showToast('Bu işlem için admin yetkisi gerekli','error');return;}
   ayarlarDB.kaydet({
     kargoBaremEsik1:  +document.getElementById('ay-esik1').value,
     kargoBaremUcret1: +document.getElementById('ay-ucret1').value,

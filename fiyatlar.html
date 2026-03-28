@@ -318,7 +318,8 @@
 import{auth,urunlerDB,setlerDB,ayarlarDB,hesapla}from'./state.js';
 import{KATEGORILER,ALT_KATEGORILER,URUN_GRUPLARI,komisyonOrani}from'./kategoriler.js';
 import{kargoUcreti}from'./kargo.js';
-if(!auth.oturum()) window.location.href='./index.html';
+if(!auth.oturum()?.token) {window.location.href='./index.html';}
+if(!auth.adminMi()) {window.location.href='./satis-giris.html';}
 
 let ay=ayarlarDB.oku(), edId=null, edTip=null, sIc=[], uSecId=null, uSecKom=0.04;
 const p=n=>(+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';

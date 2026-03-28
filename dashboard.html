@@ -73,7 +73,7 @@
         <span style="font-size:28px">🛒</span>
         <span style="font-size:13px">Satış Girişi</span>
       </button>
-      <button class="btn btn-secondary" onclick="window.location.href='fiyatlar.html'" style="flex-direction:column;gap:8px;padding:16px;height:auto">
+      <button class="btn btn-secondary" id="btn-urun-set-ekle" onclick="window.location.href='fiyatlar.html'" style="flex-direction:column;gap:8px;padding:16px;height:auto">
         <span style="font-size:28px">🏷️</span>
         <span style="font-size:13px">Ürün/Set Ekle</span>
       </button>
@@ -268,6 +268,11 @@ function render() {
 
 render();
 renderDashGrafik();
+// Ortak kullanıcı - admin butonlarını gizle
+if(!auth.adminMi()){
+  const b=document.getElementById('btn-urun-set-ekle');
+  if(b) b.style.display='none';
+}
 
 function renderDashGrafik(){
   const bugun=new Date();
@@ -277,7 +282,8 @@ function renderDashGrafik(){
 
   for(let i=6;i>=0;i--){
     const d=new Date(bugun);d.setDate(d.getDate()-i);
-    const tarih=d.toISOString().slice(0,10);
+    // Yerel saat ile tarih (UTC farkını önle)
+    const tarih=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const gSatis=satislarDB.guneBGore(tarih);
     let adet=0, kar=0;
     gSatis.forEach(s=>{

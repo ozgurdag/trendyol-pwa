@@ -15,39 +15,15 @@ const uid = () => {
     return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
 };
-const today= ()=>new Date().toISOString().slice(0,10);
+const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 
+// Auth - supabase.js'deki sbAuth'ı kullanır
+// Tüm sayfalar bu import'u kullanır
 export const auth = {
-  girisYap(email,sifre){
-    const k=get(DB_KEYS.kullanici);
-    if(!k) return{hata:'Hesap bulunamadı'};
-    if(k.email!==email||k.sifre!==sifre) return{hata:'E-posta veya şifre hatalı'};
-    set('tsx_oturum',{...k,giris:Date.now()}); return{ok:true,kullanici:k};
-  },
-  kayitOl(email,sifre,ad){
-    if(get(DB_KEYS.kullanici)) return{hata:'Bu cihazda zaten hesap var'};
-    const k={id:uid(),email,sifre,ad,rol:'sahip',ortakKod:uid().slice(0,8).toUpperCase(),tarih:today()};
-    set(DB_KEYS.kullanici,k); set('tsx_oturum',{...k,giris:Date.now()}); return{ok:true,kullanici:k};
-  },
-  ortakGiris(email,sifre,ortakKod){
-    const sahip=get(DB_KEYS.kullanici);
-    if(!sahip||sahip.ortakKod!==ortakKod) return{hata:'Ortak kodu hatalı'};
-    const ortaklar=get(DB_KEYS.ortak)||[];
-    let ortak=ortaklar.find(o=>o.email===email);
-    if(!ortak){
-      if(sifre.length<6) return{hata:'Şifre en az 6 karakter'};
-      ortak={id:uid(),email,sifre,ad:email.split('@')[0],rol:'ortak',tarih:today()};
-      set(DB_KEYS.ortak,[...ortaklar,ortak]);
-    } else if(ortak.sifre!==sifre) return{hata:'Şifre hatalı'};
-    set('tsx_oturum_ortak',{...ortak,giris:Date.now()}); return{ok:true,kullanici:ortak};
-  },
-  oturum(){
-    const o=get('tsx_oturum')||get('tsx_oturum_ortak');
-    if(!o) return null;
-    if(Date.now()-o.giris>30*24*60*60*1000){this.cikis();return null;}
-    return o;
-  },
-  cikis(){ localStorage.removeItem('tsx_oturum'); localStorage.removeItem('tsx_oturum_ortak'); },
+  oturum(){ try{ return JSON.parse(localStorage.getItem('tsx_oturum')); }catch(e){return null;} },
+  rol(){ return this.oturum()?.rol || null; },
+  adminMi(){ return this.rol() === 'admin'; },
+  cikis(){ localStorage.removeItem('tsx_oturum'); },
 };
 
 export const urunlerDB = {

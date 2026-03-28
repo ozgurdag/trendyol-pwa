@@ -13,7 +13,7 @@
   <div class="topbar">
     <div class="topbar-title">📦 Stok Durumu</div>
     <div class="topbar-action" onclick="excelIndir()">⬇</div>
-    <div class="topbar-action" onclick="urunEkleModalAc()" title="Ürün Ekle">＋</div>
+    <div class="topbar-action" id="btn-urun-ekle" onclick="urunEkleModalAc()" title="Ürün Ekle">＋</div>
   </div>
 
   <div class="page-content">
@@ -317,6 +317,7 @@ window.stokDegistir = (delta) => {
 };
 
 window.stokKaydet = () => {
+  if(!auth.adminMi()){toast('Bu işlem için admin yetkisi gerekli','error');return;}
   if (!aktifId) return;
   const k1=document.getElementById('sm-k1').value;
   const k2=document.getElementById('sm-k2').value;
@@ -414,6 +415,7 @@ window.urunEkleModalAc = () => {
 };
 
 window.stokUrunEkle = () => {
+  if(!auth.adminMi()){toast('Bu işlem için admin yetkisi gerekli','error');return;}
   const ad = document.getElementById('ne-ad').value.trim();
   const alis = +document.getElementById('ne-alis').value || 0;
   const stok = +document.getElementById('ne-stok').value || 0;
@@ -501,6 +503,7 @@ window.smK3Deg=()=>{
 
 
 window.stokUrunSil = () => {
+  if(!auth.adminMi()){toast('Bu işlem için admin yetkisi gerekli','error');return;}
   if (!aktifId) return;
   const u = urunlerDB.bul(aktifId);
   if (!confirm('"' + (u?.ad||'Ürün') + '" silinecek. Emin misiniz?')) return;
@@ -526,6 +529,7 @@ window.excelSablon = async () => {
 };
 
 window.excelImportAc = () => {
+  if(!auth.adminMi()){toast('Bu işlem için admin yetkisi gerekli','error');return;}
   document.getElementById('import-modal').classList.add('open');
   document.getElementById('import-onizleme').style.display = 'none';
   document.getElementById('import-btn').style.display = 'none';
@@ -568,7 +572,7 @@ window.excelKaydet = () => {
     ad: u.ad, alisFiyati: u.alisFiyati, stok: u.stok, desi: u.desi,
     kategori1: u.kategori1||undefined, kategori2: u.kategori2||undefined,
     urunGrubu: u.urunGrubu||undefined, tip: 'stok',
-    komisyon: u.urunGrubu ? 0.04 : 0.04, // Ürün grubundan hesaplanabilir
+    komisyon: u.urunGrubu ? komisyonOrani(u.urunGrubu, ayarlarDB.oku().saticiTipiKey||'KadinGir') : 0.04,
   }));
   document.getElementById('import-modal').classList.remove('open');
   render();
@@ -577,6 +581,12 @@ window.excelKaydet = () => {
 };
 
 render();
+// Ortak kullanıcı - ekleme butonlarını gizle
+if(!auth.adminMi()){
+  const ekleBtn = document.getElementById('btn-urun-ekle');
+  if(ekleBtn) ekleBtn.style.display='none';
+  document.querySelectorAll('[onclick*="ModalAc"],[onclick*="stokUrunEkle"]').forEach(el=>el.style.display='none');
+}
 </script>
 </body>
 </html>

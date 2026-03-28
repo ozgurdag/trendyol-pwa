@@ -219,12 +219,4 @@ export function demoYukle(){ /* demo data kaldırıldı */ }
 
 export const sync={bagliMi:false,async baslat(){},async uyarla(){}};
 
-import('./supabase.js').then(({sb})=>{
-  const _uE=urunlerDB.ekle.bind(urunlerDB),_uG=urunlerDB.guncelle.bind(urunlerDB),_uS=urunlerDB.sil.bind(urunlerDB);
-  const _sE=satislarDB.ekle.bind(satislarDB),_sS=satislarDB.sil.bind(satislarDB);
-  urunlerDB.ekle=(u)=>{const y=_uE(u);sb.urunEkle(y);return y;};
-  urunlerDB.guncelle=(id,d)=>{_uG(id,d);sb.urunGuncelle(id,d);};
-  urunlerDB.sil=(id)=>{_uS(id);sb.urunSil(id);};
-  satislarDB.ekle=(ks)=>{const y=_sE(ks);sb.satisEkle(y);return y;};
-  satislarDB.sil=(id)=>{_sS(id);sb.satisSil(id);};
-}).catch(()=>{console.log('Offline mod');});
+// Supabase sync devre dışı - localStorage mod

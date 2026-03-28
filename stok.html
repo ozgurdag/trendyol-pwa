@@ -77,7 +77,8 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
       <span class="nav-label">Stok</span>
     </a>
-    <a class="nav-item" href="ayarlar.html">
+        <a class="nav-item" href="./rapor.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-label">Rapor</span></a>
+<a class="nav-item" href="ayarlar.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       <span class="nav-label">Ayarlar</span>
     </a>
@@ -192,6 +193,30 @@
   </div>
 </div>
 
+
+<!-- EXCEL IMPORT MODAL -->
+<div class="modal-overlay" id="import-modal" onclick="document.getElementById('import-modal').classList.remove('open')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Excel'den Stok Yükle</div>
+    <div style="background:var(--bg3);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3);line-height:1.6">
+      📋 Önce şablonu indirin, doldurun ve buraya yükleyin.<br>
+      Zorunlu sütunlar: <b>Ürün Adı</b>, <b>Alış Fiyatı</b><br>
+      Opsiyonel: Stok, Desi, Kategori1, Kategori2, Ürün Grubu
+    </div>
+    <div style="border:2px dashed var(--border2);border-radius:var(--r-md);padding:20px;text-align:center;margin-bottom:12px;cursor:pointer" onclick="document.getElementById('excel-file').click()">
+      <div style="font-size:28px;margin-bottom:8px">📂</div>
+      <div style="font-size:13px;color:var(--t2)">Excel dosyası seç (.xlsx)</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:4px" id="import-fname">Dosya seçilmedi</div>
+    </div>
+    <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none" onchange="excelOku(this)">
+    <div id="import-onizleme" style="display:none;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:6px" id="import-say"></div>
+      <div id="import-liste" style="max-height:200px;overflow-y:auto"></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="import-btn" onclick="excelKaydet()" style="display:none">✓ Stoka Ekle</button>
+  </div>
+</div>
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
@@ -483,6 +508,72 @@ window.stokUrunSil = () => {
   document.getElementById('stok-modal').classList.remove('open');
   render();
   toast('Ürün silindi', 'info');
+};
+
+// ── EXCEL ŞABLON & IMPORT ─────────────────────────────────────
+window.excelSablon = async () => {
+  const {utils, writeFile} = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+  const ws = utils.aoa_to_sheet([
+    ['Ürün Adı','Alış Fiyatı (₺)','Stok Adedi','Desi','Kategori1','Kategori2','Ürün Grubu'],
+    ['Örnek Ürün 1', 50, 10, 1, 'Süpermarket', 'Bebek Bakım', 'Bebek Şampuanı'],
+    ['Örnek Ürün 2', 120, 5, 2, 'Kozmetik', 'Cilt Bakım', 'Nemlendirici Krem'],
+  ]);
+  ws['!cols'] = [{wch:30},{wch:16},{wch:12},{wch:8},{wch:18},{wch:18},{wch:20}];
+  const wb = utils.book_new();
+  utils.book_append_sheet(wb, ws, 'Stok');
+  writeFile(wb, 'stok_sablonu.xlsx');
+  toast('Şablon indirildi','success');
+};
+
+window.excelImportAc = () => {
+  document.getElementById('import-modal').classList.add('open');
+  document.getElementById('import-onizleme').style.display = 'none';
+  document.getElementById('import-btn').style.display = 'none';
+  document.getElementById('import-fname').textContent = 'Dosya seçilmedi';
+};
+
+let importData = [];
+
+window.excelOku = async (input) => {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('import-fname').textContent = file.name;
+  const {read, utils} = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+  const buf = await file.arrayBuffer();
+  const wb = read(buf);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = utils.sheet_to_json(ws, {defval:''});
+  importData = rows.map(r => ({
+    ad: r['Ürün Adı'] || r['urun_adi'] || r['ad'] || '',
+    alisFiyati: +r['Alış Fiyatı (₺)'] || +r['Alış Fiyatı'] || +r['alis_fiyati'] || 0,
+    stok: +r['Stok Adedi'] || +r['stok'] || 0,
+    desi: +r['Desi'] || +r['desi'] || 1,
+    kategori1: r['Kategori1'] || r['kategori1'] || '',
+    kategori2: r['Kategori2'] || r['kategori2'] || '',
+    urunGrubu: r['Ürün Grubu'] || r['urun_grubu'] || '',
+  })).filter(r => r.ad && r.alisFiyati > 0);
+
+  document.getElementById('import-say').textContent = `${importData.length} ürün bulundu`;
+  document.getElementById('import-liste').innerHTML = importData.slice(0,5).map(r =>
+    `<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);color:var(--t2)">
+      ${r.ad} — ${r.alisFiyati}₺ · ${r.stok} adet
+    </div>`).join('') + (importData.length>5?`<div style="font-size:11px;color:var(--t3);padding:6px 0">...ve ${importData.length-5} ürün daha</div>`:'');
+  document.getElementById('import-onizleme').style.display = '';
+  document.getElementById('import-btn').style.display = importData.length ? '' : 'none';
+};
+
+window.excelKaydet = () => {
+  if (!importData.length) return;
+  importData.forEach(u => urunlerDB.ekle({
+    ad: u.ad, alisFiyati: u.alisFiyati, stok: u.stok, desi: u.desi,
+    kategori1: u.kategori1||undefined, kategori2: u.kategori2||undefined,
+    urunGrubu: u.urunGrubu||undefined, tip: 'stok',
+    komisyon: u.urunGrubu ? 0.04 : 0.04, // Ürün grubundan hesaplanabilir
+  }));
+  document.getElementById('import-modal').classList.remove('open');
+  render();
+  toast(`${importData.length} ürün stoka eklendi`, 'success');
+  importData = [];
 };
 
 render();

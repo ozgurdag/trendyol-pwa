@@ -54,6 +54,18 @@
     <!-- STOK UYARILARI -->
     <div id="stok-uyari-wrap"></div>
 
+
+    <!-- SON 7 GÜN GRAFİKLERİ -->
+    <div class="section-title mt-8">Son 7 Gün</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:var(--t3)">Satış Adedi</span>
+        <span style="font-size:12px;color:var(--t3)">Net Kar (₺)</span>
+      </div>
+      <div style="display:flex;gap:3px;align-items:flex-end;height:80px" id="dash-bar-adet"></div>
+      <div style="display:flex;gap:3px;align-items:flex-end;height:60px;margin-top:8px" id="dash-bar-kar"></div>
+    </div>
+
     <!-- HIZLI İŞLEMLER -->
     <div class="section-title">Hızlı İşlem</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
@@ -255,6 +267,48 @@ function render() {
 }
 
 render();
+renderDashGrafik();
+
+function renderDashGrafik(){
+  const bugun=new Date();
+  const gunler=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  const adetData=[], karData=[];
+  let maxAdet=1, maxKar=1;
+
+  for(let i=6;i>=0;i--){
+    const d=new Date(bugun);d.setDate(d.getDate()-i);
+    const tarih=d.toISOString().slice(0,10);
+    const gSatis=satislarDB.guneBGore(tarih);
+    let adet=0, kar=0;
+    gSatis.forEach(s=>{
+      const hId=s.hedefId||s.urunId;
+      const obj=s.tip==='set'?setlerDB.bul(hId):urunlerDB.bul(hId);
+      if(!obj)return;
+      adet+=s.adet;
+      const alisTop=s.tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati*(obj.paketAdet||1));
+      const urunB=s.tip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:obj;
+      const kFU=kargoUcreti(ayarlar.kargoFirma||'Aras',obj.desi||(s.tip==='set'?2:1));
+      const f=hesapla.satisFiyati(urunB,ayarlar,s.tip==='set'?1:(obj.paketAdet||1),kFU);
+      if(f){const gf=s.gercekFiyat||f.yuvarlak;kar+=hesapla.gercekKar(alisTop,gf,obj.komisyon||0.04,f.platform,f.kargo).net;}
+    });
+    const lbl=gunler[d.getDay()===0?6:d.getDay()-1];
+    adetData.push({lbl,v:adet});
+    karData.push({lbl,v:Math.round(kar)});
+    if(adet>maxAdet) maxAdet=adet;
+    if(Math.abs(kar)>maxKar) maxKar=Math.abs(kar);
+  }
+
+  const mkBar=(el,data,max,renk)=>{
+    el.innerHTML=data.map(d=>`
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+        ${d.v>0?`<div style="font-size:8px;color:var(--t3)">${d.v}</div>`:'<div style="font-size:8px"></div>'}
+        <div style="width:100%;border-radius:3px 3px 0 0;background:${d.v>=0?renk:'var(--red)'};height:${Math.round((Math.abs(d.v)/max)*100)}%;min-height:${d.v?2:0}px"></div>
+        <div style="font-size:9px;color:var(--t3)">${d.lbl}</div>
+      </div>`).join('');
+  };
+  mkBar(document.getElementById('dash-bar-adet'),adetData,maxAdet,'var(--accent)');
+  mkBar(document.getElementById('dash-bar-kar'),karData,maxKar,'var(--green)');
+}
 </script>
 </body>
 </html>

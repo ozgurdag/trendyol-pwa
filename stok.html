@@ -662,10 +662,25 @@ window.csvOku = async (input) => {
     const satirlar = text.replace(/\r/g,'').split('\n').filter(s=>s.trim());
     if(!satirlar.length){ toast('Dosya boş','error'); return; }
     
-    // Ayırıcı tespit et (virgül veya noktalı virgül)
-    const ayirici = satirlar[0].includes(';') ? ';' : ',';
+    // Ayırıcı otomatik tespit: tab > noktalı virgül > virgül
+    const ilkSatir = satirlar[0];
+    const ayirici = ilkSatir.includes('\t') ? '\t' :
+                    ilkSatir.includes(';')  ? ';'  : ',';
+
     const basliklar = satirlar[0].split(ayirici).map(b=>b.trim().replace(/^"|"$/g,''));
-    
+
+    // Sayı parse: hem "77,5" hem "77.5" formatını destekle
+    const parseNum = s => {
+      if(!s) return 0;
+      // Binlik ayırıcı nokta, ondalık virgül: "1.234,56" → "1234.56"
+      // Ya da sadece virgüllü ondalık: "77,5" → "77.5"
+      const temiz = String(s).trim().replace(/[^0-9,.-]/g,'');
+      if(temiz.includes(',') && temiz.includes('.')) {
+        return parseFloat(temiz.replace(/\./g,'').replace(',','.'));
+      }
+      return parseFloat(temiz.replace(',','.')) || 0;
+    };
+
     csvData = satirlar.slice(1)
       .filter(s=>s.trim())
       .map(satir=>{
@@ -674,9 +689,9 @@ window.csvOku = async (input) => {
         basliklar.forEach((b,i)=>{ obj[b] = degerler[i]||''; });
         return {
           ad:        obj['Ürün Adı']    || obj['urun_adi'] || obj['Urun Adi'] || '',
-          alisFiyati:+obj['Alış Fiyatı (₺)'] || +obj['Alış Fiyatı'] || +obj['alis_fiyati'] || 0,
-          stok:      +obj['Stok Adedi'] || +obj['stok'] || 0,
-          desi:      +obj['Desi']       || +obj['desi'] || 1,
+          alisFiyati:parseNum(obj['Alış Fiyatı (₺)'] || obj['Alış Fiyatı'] || obj['alis_fiyati']),
+          stok:      parseInt(obj['Stok Adedi'] || obj['stok']) || 0,
+          desi:      parseInt(obj['Desi']       || obj['desi']) || 1,
           kategori1: obj['Kategori1']   || obj['kategori1'] || '',
           kategori2: obj['Kategori2']   || obj['kategori2'] || '',
           urunGrubu: obj['Ürün Grubu']  || obj['urun_grubu'] || '',

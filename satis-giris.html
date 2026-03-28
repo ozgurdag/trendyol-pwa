@@ -76,13 +76,14 @@
     <a class="nav-item" href="./fiyatlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="nav-label">Ürün/Set</span></a>
     <a class="nav-item active" href="./satis-giris.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg><span class="nav-label">Satış</span></a>
     <a class="nav-item" href="./stok.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><span class="nav-label">Stok</span></a>
+    <a class="nav-item" href="./alis-hesap.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg><span class="nav-label">Max Alış</span></a>
     <a class="nav-item" href="./rapor.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-label">Rapor</span></a>
     <a class="nav-item" href="./ayarlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="nav-label">Ayarlar</span></a>
   </nav>
 </div>
 <div class="toast-container" id="toastCont"></div>
 <script type="module">
-import{auth,urunlerDB,setlerDB,satislarDB,ayarlarDB,hesapla}from'./state.js';
+import{auth,stokDB,listingDB,setlerDB,satislarDB,ayarlarDB,hesapla}from'./state.js';
 import{kargoUcreti}from'./kargo.js';
 if(!auth.oturum()?.token) window.location.href='./index.html';
 const ayarlar=ayarlarDB.oku();
@@ -105,13 +106,13 @@ window.tipSec=t=>{
 function doldurDropdown(){
   const sel=document.getElementById('satis-hedef');
   if(aktifTip==='urun'){
-    const liste=urunlerDB.onaylananlar();
+    const liste=listingDB.onaylananlar();
     if(!liste.length){sel.innerHTML='<option value="">— Önce Listing sayfasından onaylayın —</option>';return;}
     const stokOzeti=id=>{
-      const u=urunlerDB.bul(id);
+      const u=listingDB.bul(id);
       const bilesenler=u?.stokBilesenleri||[];
       if(!bilesenler.length) return '?';
-      return Math.min(...bilesenler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
+      return Math.min(...bilesenler.map(b=>{const s=listingDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
     };
     sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>{
       const maxAdet=stokOzeti(x.id);
@@ -131,7 +132,7 @@ window.hedefSecildi=()=>{
   const id=document.getElementById('satis-hedef').value;
   const adet=+document.getElementById('satis-adet').value||1;
   if(!id){document.getElementById('satis-onizleme').style.display='none';return;}
-  const obj=aktifTip==='set'?setlerDB.bul(id):urunlerDB.bul(id);
+  const obj=aktifTip==='set'?setlerDB.bul(id):listingDB.bul(id);
   if(!obj) return;
   // Varsayılan fiyatı doldur
   const alisTop=aktifTip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
@@ -146,7 +147,7 @@ window.hedefSecildi=()=>{
   if(aktifTip==='urun'){
     const bilesenler=obj.stokBilesenleri||[];
     if(bilesenler.length){
-      const maxAdet=Math.min(...bilesenler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
+      const maxAdet=Math.min(...bilesenler.map(b=>{const s=listingDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
       document.getElementById('on-stok').textContent=maxAdet+' adet yapılabilir';
     } else {
       document.getElementById('on-stok').textContent='Bileşen yok';
@@ -162,7 +163,7 @@ window.karOniziGoster=()=>{
   const id=document.getElementById('satis-hedef').value;
   const fiyat=+document.getElementById('satis-fiyat').value||0;
   if(!id||!fiyat){document.getElementById('on-kar').textContent='—';document.getElementById('on-kar').style.color='var(--t3)';return;}
-  const obj=aktifTip==='set'?setlerDB.bul(id):urunlerDB.bul(id);if(!obj) return;
+  const obj=aktifTip==='set'?setlerDB.bul(id):listingDB.bul(id);if(!obj) return;
   const alisTop=aktifTip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
   const urunB=aktifTip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
   const desiH=obj.desi||(aktifTip==='set'?2:1);
@@ -177,7 +178,7 @@ window.satisEkle=()=>{
   const hedefId=document.getElementById('satis-hedef').value,adet=+document.getElementById('satis-adet').value,tarih=document.getElementById('satis-tarih').value,fiyat=+document.getElementById('satis-fiyat').value||0;
   if(!hedefId){toast('Ürün veya set seçin','error');return;}
   if(!adet||adet<1){toast('Geçerli adet girin','error');return;}
-  const obj=aktifTip==='set'?setlerDB.bul(hedefId):urunlerDB.bul(hedefId);
+  const obj=aktifTip==='set'?setlerDB.bul(hedefId):listingDB.bul(hedefId);
   // Stok kontrolü: listing için bileşenlerden, set için icindekilerden hesapla
   if(aktifTip==='set'){
     const max=setlerDB.maxAdet(hedefId);
@@ -185,7 +186,7 @@ window.satisEkle=()=>{
   } else {
     const bilesenler=obj.stokBilesenleri||[];
     const maxAdet=bilesenler.length
-      ? Math.min(...bilesenler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}))
+      ? Math.min(...bilesenler.map(b=>{const s=listingDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}))
       : (obj.stok||0);
     if(maxAdet<adet&&!confirm(`Stok yetersiz (max ${maxAdet} adet yapılabilir). Yine de kaydet?`)) return;
   }
@@ -200,7 +201,7 @@ function renderOzet(){
   const satislar=satislarDB.guneBGore(bugunStr);let adet=0,kar=0;
   satislar.forEach(s=>{
     adet+=s.adet;
-    const obj=s.tip==='urun'?urunlerDB.bul(s.hedefId):setlerDB.bul(s.hedefId);if(!obj) return;
+    const obj=s.tip==='urun'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);if(!obj) return;
     const alisTop=s.tip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
     const urunB=s.tip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
     const f=hesapla.satisFiyati(urunB,ayarlar,s.tip==='urun'?(obj.paketAdet||1):1);if(!f) return;
@@ -218,7 +219,7 @@ function renderBugun(){
   const el=document.getElementById('bugun-satis-listesi');
   if(!satislar.length){el.innerHTML='<div class="empty-state" style="padding:20px"><div class="empty-icon">🛒</div><div class="empty-title">Henüz satış yok</div></div>';return;}
   el.innerHTML=satislar.map(s=>{
-    const obj=s.tip==='urun'?urunlerDB.bul(s.hedefId):setlerDB.bul(s.hedefId);if(!obj) return'';
+    const obj=s.tip==='urun'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);if(!obj) return'';
     const alisTop=s.tip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
     const urunB=s.tip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
     const f=hesapla.satisFiyati(urunB,ayarlar,s.tip==='urun'?(obj.paketAdet||1):1);
@@ -232,7 +233,7 @@ window.satisSil=id=>{if(!confirm('Bu satışı silmek ve stoğu geri yüklemek i
 window.satisIptal=id=>{
   const k=satislarDB.hepsini().find(s=>s.id===id);
   if(!k) return;
-  const obj=k.tip==='set'?setlerDB.bul(k.hedefId):urunlerDB.bul(k.hedefId||k.urunId);
+  const obj=k.tip==='set'?setlerDB.bul(k.hedefId):listingDB.bul(k.hedefId||k.urunId);
   const ad=obj?obj.ad:'Satış';
   if(!confirm('"'+ad+'" satışını iptal etmek istiyor musunuz? Stoklar geri yüklenecek.')) return;
   satislarDB.sil(id);
@@ -243,7 +244,7 @@ window.satisIptal=id=>{
 window.excelIndir=async()=>{
   const{utils,writeFile}=await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
   const data=satislarDB.hepsini().map(s=>{
-    const obj=s.tip==='urun'?urunlerDB.bul(s.hedefId):setlerDB.bul(s.hedefId);
+    const obj=s.tip==='urun'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);
     const alisTop=obj?(s.tip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0):0;
     const urunB=obj?(s.tip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}):null;
     const f=urunB?hesapla.satisFiyati(urunB,ayarlar,s.tip==='urun'?(obj.paketAdet||1):1):null;

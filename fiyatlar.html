@@ -365,8 +365,11 @@ window.sdToggle=id=>{
   const p=document.getElementById(id+'-panel');
   p.classList.toggle('open');
   if(p.classList.contains('open')){
+    // Açılınca listeyi taze doldur
+    if(id==='u-sd') uSdDoldur();
+    else if(id==='s-sd') sSdDoldur();
     const inp=document.querySelector('#'+id+'-panel .sd-search input');
-    if(inp) inp.focus();
+    if(inp){ inp.value=''; inp.focus(); }
   }
 };
 document.addEventListener('click',e=>{

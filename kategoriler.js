@@ -21,7 +21,11 @@ export const SATICI_TIPI_KEY = {
 };
 
 export function komisyonOrani(urunGrubu, saticiTipi) {
-  const key = SATICI_TIPI_KEY[saticiTipi] || 'KadinGir';
+  // Hem kısa key ('KatKom') hem tam isim ('Kategori Komisyon...') destekle
+  const KISALAR = ['KatKom','Sv5','Sv4','Sv3','Ozl','KadinGir'];
+  const key = KISALAR.includes(saticiTipi)
+    ? saticiTipi
+    : (SATICI_TIPI_KEY[saticiTipi] || 'KadinGir');
   const grup = GRUP_KOMISYON[urunGrubu];
   if (!grup) return 0.04;
   return grup[key] || 0.04;

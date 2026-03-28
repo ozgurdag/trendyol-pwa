@@ -280,6 +280,12 @@ export const sb = {
     const localMap = Object.fromEntries(localUrunler.map(u=>[u.id,u]));
     const sbIds = new Set((sbUrunler||[]).map(u=>u.id));
 
+    // Supabase boşsa localStorage'a dokunma
+    if(sbIds.size === 0 && localUrunler.length > 0){
+      console.log('Supabase boş, localStorage korunuyor');
+      // Sadece satışları güncelle
+    } else {
+
     const merged = (sbUrunler||[]).map(u=>({
       id:u.id, ad:u.ad,
       alisFiyati:    u.alis_fiyati,
@@ -302,6 +308,7 @@ export const sb = {
     const sadeceLokalde = localUrunler.filter(u => !sbIds.has(u.id));
     const final = [...new Map([...merged,...sadeceLokalde].map(u=>[u.id,u])).values()];
     localStorage.setItem('tsx_urunler', JSON.stringify(final));
+    } // end if sbIds.size > 0
 
     const localSatislar = JSON.parse(localStorage.getItem('tsx_satislar')||'[]');
     const localSatisMap = Object.fromEntries(localSatislar.map(s=>[s.id,s]));

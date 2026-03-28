@@ -216,7 +216,7 @@ export const sb = {
       syncTimer = setTimeout(async () => {
         await this.tamSenkronize();
         window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
-      }, 1000); // 1 saniye bekle - kendi işlemlerimiz tamamlansın
+      }, 2000); // 2 saniye bekle - stok düşümleri tamamlansın
     });
     realtimeDinle('satislar', async () => {
       clearTimeout(syncTimer);
@@ -274,7 +274,9 @@ export const sb = {
     const sbVeri = satislar.map(s => ({
       id:           s.id,
       sirket_id:    this.sirketId,
-      urun_id:      s.hedefId || s.urunId,
+      // urun_id sadece tip:'urun' için - set için null (foreign key hatası önle)
+      urun_id:      (s.tip==='set') ? null : (s.hedefId || s.urunId || null),
+      hedef_id:     s.hedefId || s.urunId || null,
       tip:          s.tip || 'urun',
       adet:         s.adet,
       gercek_fiyat: s.gercekFiyat || null,

@@ -371,7 +371,8 @@ window.neK2Deg=()=>{
 window.neK3Deg=()=>{
   const k3=document.getElementById('ne-k3').value;
   if(!k3){document.getElementById('ne-kom-auto').style.display='none';return;}
-  const sKey='KadinGir';
+  // Global satıcı tipini ayarlardan oku
+  const sKey=JSON.parse(localStorage.getItem('tsx_ayarlar')||'{}').saticiTipiKey||'KadinGir';
   const kom=komisyonOrani(k3,sKey);
   const el=document.getElementById('ne-kom-inp');
   if(el) el.value=(kom*100).toFixed(1);
@@ -464,7 +465,8 @@ window.smK2Deg=(setK3=null)=>{
 window.smK3Deg=()=>{
   const k3=document.getElementById('sm-k3').value;
   if(!k3){document.getElementById('sm-kom-auto').style.display='none';return;}
-  const kom=komisyonOrani(k3,'KadinGir');
+  const sKey=JSON.parse(localStorage.getItem('tsx_ayarlar')||'{}').saticiTipiKey||'KadinGir';
+  const kom=komisyonOrani(k3,sKey);
   document.getElementById('sm-kom-g').textContent='%'+(kom*100).toFixed(1);
   document.getElementById('sm-kom-auto').style.display='flex';
 };

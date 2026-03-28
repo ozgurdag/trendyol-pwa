@@ -8,7 +8,13 @@ const DB_KEYS = {
 
 const get  = k=>{try{return JSON.parse(localStorage.getItem(k))??null;}catch{return null;}};
 const set  = (k,v)=>localStorage.setItem(k,JSON.stringify(v));
-const uid  = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const uid = () => {
+  // RFC 4122 UUID v4 - Supabase uuid tipiyle uyumlu
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+};
 const today= ()=>new Date().toISOString().slice(0,10);
 
 export const auth = {

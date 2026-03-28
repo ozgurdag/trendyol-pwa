@@ -75,24 +75,13 @@
     </div>
 
     <!-- SUPABASE -->
-    <div class="section-title">Supabase Senkronizasyonu</div>
+    <div class="section-title">Senkronizasyon</div>
     <div class="card mb-16">
-      <div id="sb-durum" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        <div style="width:8px;height:8px;border-radius:50%;background:var(--yellow)"></div>
-        <span style="font-size:13px;color:var(--t3)">Henüz bağlı değil — yerel modda çalışıyor</span>
+      <div id="sb-durum" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div id="sb-led" style="width:8px;height:8px;border-radius:50%;background:var(--yellow);flex-shrink:0"></div>
+        <span id="sb-durum-text" style="font-size:13px;color:var(--t3)">Bağlanıyor…</span>
       </div>
-      <div class="form-group">
-        <label class="form-label">Supabase URL</label>
-        <input class="form-input" id="sb-url" placeholder="https://xxx.supabase.co" type="url">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Anon Key</label>
-        <input class="form-input" id="sb-key" placeholder="eyJ..." type="password">
-      </div>
-      <button class="btn btn-secondary btn-full" onclick="supabaseBaglan()">Bağlan & Senkronize Et</button>
-      <div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">
-        Supabase kurulumu için → supabase.com → New Project
-      </div>
+      <button class="btn btn-secondary btn-full" onclick="sbYenidenBaglan()">🔄 Yeniden Bağlan</button>
     </div>
 
     <!-- VERİ -->

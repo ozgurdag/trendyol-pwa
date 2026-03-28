@@ -12,6 +12,8 @@
 
   <div class="topbar">
     <div class="topbar-title">📦 Stok Durumu</div>
+    <div class="topbar-action" onclick="csvSablonIndir()" title="CSV Şablon İndir">📋</div>
+    <div class="topbar-action" onclick="csvImportAc()" title="CSV Yükle">📥</div>
     <div class="topbar-action" onclick="excelIndir()">⬇</div>
     <div class="topbar-action" id="btn-urun-ekle" onclick="urunEkleModalAc()" title="Ürün Ekle">＋</div>
   </div>
@@ -201,20 +203,44 @@
     <div class="modal-title">Excel'den Stok Yükle</div>
     <div style="background:var(--bg3);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3);line-height:1.6">
       📋 Önce şablonu indirin, doldurun ve buraya yükleyin.<br>
-      Zorunlu sütunlar: <b>Ürün Adı</b>, <b>Alış Fiyatı</b><br>
-      Opsiyonel: Stok, Desi, Kategori1, Kategori2, Ürün Grubu
+      <b>CSV veya Excel</b> (.csv, .xlsx) desteklenir<br>
+      Zorunlu: <b>Ürün Adı</b>, <b>Alış Fiyatı</b> · Opsiyonel: Stok, Desi, Kategori1, Kategori2, Ürün Grubu
     </div>
     <div style="border:2px dashed var(--border2);border-radius:var(--r-md);padding:20px;text-align:center;margin-bottom:12px;cursor:pointer" onclick="document.getElementById('excel-file').click()">
       <div style="font-size:28px;margin-bottom:8px">📂</div>
       <div style="font-size:13px;color:var(--t2)">Excel dosyası seç (.xlsx)</div>
       <div style="font-size:11px;color:var(--t3);margin-top:4px" id="import-fname">Dosya seçilmedi</div>
     </div>
-    <input type="file" id="excel-file" accept=".xlsx,.xls" style="display:none" onchange="excelOku(this)">
+    <input type="file" id="excel-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="excelOku(this)">
     <div id="import-onizleme" style="display:none;margin-bottom:12px">
       <div style="font-size:12px;color:var(--t3);margin-bottom:6px" id="import-say"></div>
       <div id="import-liste" style="max-height:200px;overflow-y:auto"></div>
     </div>
     <button class="btn btn-primary btn-full" id="import-btn" onclick="excelKaydet()" style="display:none">✓ Stoka Ekle</button>
+  </div>
+</div>
+
+<!-- CSV IMPORT MODAL -->
+<div class="modal-overlay" id="csv-import-modal" onclick="document.getElementById('csv-import-modal').classList.remove('open')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Stok Yükle (CSV)</div>
+    <div style="background:var(--bg3);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3);line-height:1.6">
+      📋 Şablonu indirip doldurun, CSV olarak kaydedin.<br>
+      <b>Zorunlu:</b> Ürün Adı, Alış Fiyatı<br>
+      <b>Opsiyonel:</b> Stok, Desi, Kategori1, Kategori2, Ürün Grubu
+    </div>
+    <div style="border:2px dashed var(--border2);border-radius:var(--r-md);padding:20px;text-align:center;margin-bottom:12px;cursor:pointer" onclick="document.getElementById('csv-dosya-input').click()">
+      <div style="font-size:28px;margin-bottom:8px">📂</div>
+      <div style="font-size:13px;color:var(--t2)">CSV dosyası seç</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:4px" id="csv-fname">Dosya seçilmedi</div>
+    </div>
+    <input type="file" id="csv-dosya-input" accept=".csv,text/csv" style="display:none" onchange="csvOku(this)">
+    <div id="csv-onizleme" style="display:none;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:6px" id="csv-say"></div>
+      <div id="csv-liste" style="max-height:200px;overflow-y:auto"></div>
+    </div>
+    <button class="btn btn-primary btn-full" id="csv-kaydet-btn" onclick="csvKaydet()" style="display:none">✓ Stoka Ekle</button>
   </div>
 </div>
 <div class="toast-container" id="toastCont"></div>
@@ -542,11 +568,35 @@ window.excelOku = async (input) => {
   const file = input.files[0];
   if (!file) return;
   document.getElementById('import-fname').textContent = file.name;
-  const {read, utils} = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
-  const buf = await file.arrayBuffer();
-  const wb = read(buf);
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = utils.sheet_to_json(ws, {defval:''});
+
+  let rows = [];
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if(ext === 'csv'){
+    // CSV okuma - kütüphane gerekmez
+    const text = await file.text();
+    const satirlar = text.split('\n').filter(s=>s.trim());
+    if(!satirlar.length){ alert('Dosya boş'); return; }
+    const basliklar = satirlar[0].split(/[,;\t]/).map(b=>b.trim().replace(/"/g,''));
+    rows = satirlar.slice(1).map(satir=>{
+      const degerler = satir.split(/[,;\t]/).map(d=>d.trim().replace(/"/g,''));
+      const obj = {};
+      basliklar.forEach((b,i)=>{ obj[b] = degerler[i]||''; });
+      return obj;
+    });
+  } else {
+    // xlsx - SheetJS CDN dene
+    try {
+      const {read, utils} = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
+      const buf = await file.arrayBuffer();
+      const wb = read(buf);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      rows = utils.sheet_to_json(ws, {defval:''});
+    } catch(e){
+      alert('Excel yüklenemedi. Lütfen dosyayı CSV olarak kaydedin:\nExcel → Farklı Kaydet → CSV (UTF-8)');
+      return;
+    }
+  };
   importData = rows.map(r => ({
     ad: r['Ürün Adı'] || r['urun_adi'] || r['ad'] || '',
     alisFiyati: +r['Alış Fiyatı (₺)'] || +r['Alış Fiyatı'] || +r['alis_fiyati'] || 0,
@@ -578,6 +628,93 @@ window.excelKaydet = () => {
   render();
   toast(`${importData.length} ürün stoka eklendi`, 'success');
   importData = [];
+};
+
+window.csvSablonIndir = () => {
+  const icerik = 'Ürün Adı,Alış Fiyatı (₺),Stok Adedi,Desi,Kategori1,Kategori2,Ürün Grubu\n' +
+    'Örnek Ürün 1,50,10,1,Süpermarket,Bebek Bakım,Bebek Şampuanı\n' +
+    'Örnek Ürün 2,120,5,2,Kozmetik,Cilt Bakım,Nemlendirici Krem\n';
+  const blob = new Blob([new Uint8Array([0xEF,0xBB,0xBF]), icerik], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'stok_sablonu.csv';
+  a.click();
+  toast('CSV şablon indirildi','success');
+};
+
+window.csvImportAc = () => {
+  if(!auth.adminMi()){toast('Admin yetkisi gerekli','error');return;}
+  document.getElementById('csv-import-modal').classList.add('open');
+  document.getElementById('csv-onizleme').style.display='none';
+  document.getElementById('csv-kaydet-btn').style.display='none';
+  document.getElementById('csv-fname').textContent='Dosya seçilmedi';
+};
+
+let csvData = [];
+
+window.csvOku = async (input) => {
+  const file = input.files[0];
+  if(!file) return;
+  document.getElementById('csv-fname').textContent = file.name;
+  
+  try {
+    const text = await file.text();
+    const satirlar = text.replace(/\r/g,'').split('\n').filter(s=>s.trim());
+    if(!satirlar.length){ toast('Dosya boş','error'); return; }
+    
+    // Ayırıcı tespit et (virgül veya noktalı virgül)
+    const ayirici = satirlar[0].includes(';') ? ';' : ',';
+    const basliklar = satirlar[0].split(ayirici).map(b=>b.trim().replace(/^"|"$/g,''));
+    
+    csvData = satirlar.slice(1)
+      .filter(s=>s.trim())
+      .map(satir=>{
+        const degerler = satir.split(ayirici).map(d=>d.trim().replace(/^"|"$/g,''));
+        const obj = {};
+        basliklar.forEach((b,i)=>{ obj[b] = degerler[i]||''; });
+        return {
+          ad:        obj['Ürün Adı']    || obj['urun_adi'] || obj['Urun Adi'] || '',
+          alisFiyati:+obj['Alış Fiyatı (₺)'] || +obj['Alış Fiyatı'] || +obj['alis_fiyati'] || 0,
+          stok:      +obj['Stok Adedi'] || +obj['stok'] || 0,
+          desi:      +obj['Desi']       || +obj['desi'] || 1,
+          kategori1: obj['Kategori1']   || obj['kategori1'] || '',
+          kategori2: obj['Kategori2']   || obj['kategori2'] || '',
+          urunGrubu: obj['Ürün Grubu']  || obj['urun_grubu'] || '',
+        };
+      })
+      .filter(r=>r.ad && r.alisFiyati > 0);
+    
+    if(!csvData.length){ toast('Geçerli ürün bulunamadı. Ürün Adı ve Alış Fiyatı zorunlu.','error'); return; }
+    
+    document.getElementById('csv-say').textContent = csvData.length + ' ürün hazır';
+    document.getElementById('csv-liste').innerHTML = csvData.slice(0,5).map(r=>
+      `<div style="font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);color:var(--t2)">
+        ${r.ad} — ${r.alisFiyati}₺ · ${r.stok} adet
+      </div>`
+    ).join('') + (csvData.length>5?`<div style="font-size:11px;color:var(--t3);padding:5px 0">...ve ${csvData.length-5} ürün daha</div>`:'');
+    document.getElementById('csv-onizleme').style.display='';
+    document.getElementById('csv-kaydet-btn').style.display='';
+  } catch(e) {
+    toast('Dosya okunamadı: ' + e.message, 'error');
+  }
+};
+
+window.csvKaydet = () => {
+  if(!csvData.length) return;
+  const sKey = ayarlarDB.oku().saticiTipiKey||'KadinGir';
+  csvData.forEach(u=>{
+    const kom = u.urunGrubu ? komisyonOrani(u.urunGrubu, sKey) : 0.04;
+    urunlerDB.ekle({
+      ad:u.ad, alisFiyati:u.alisFiyati, stok:u.stok||0, desi:u.desi||1,
+      komisyon:kom,
+      kategori1:u.kategori1||undefined, kategori2:u.kategori2||undefined,
+      urunGrubu:u.urunGrubu||undefined, tip:'stok',
+    });
+  });
+  document.getElementById('csv-import-modal').classList.remove('open');
+  render();
+  toast(csvData.length + ' ürün stoka eklendi','success');
+  csvData=[];
 };
 
 render();

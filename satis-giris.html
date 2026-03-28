@@ -131,7 +131,7 @@ window.hedefSecildi=()=>{
   const id=document.getElementById('satis-hedef').value;
   const adet=+document.getElementById('satis-adet').value||1;
   if(!id){document.getElementById('satis-onizleme').style.display='none';return;}
-  const obj=aktifTip==='urun'?urunlerDB.bul(id):setlerDB.bul(id);
+  const obj=aktifTip==='set'?setlerDB.bul(id):urunlerDB.bul(id);
   if(!obj) return;
   // Varsayılan fiyatı doldur
   const alisTop=aktifTip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
@@ -162,7 +162,7 @@ window.karOniziGoster=()=>{
   const id=document.getElementById('satis-hedef').value;
   const fiyat=+document.getElementById('satis-fiyat').value||0;
   if(!id||!fiyat){document.getElementById('on-kar').textContent='—';document.getElementById('on-kar').style.color='var(--t3)';return;}
-  const obj=aktifTip==='urun'?urunlerDB.bul(id):setlerDB.bul(id);if(!obj) return;
+  const obj=aktifTip==='set'?setlerDB.bul(id):urunlerDB.bul(id);if(!obj) return;
   const alisTop=aktifTip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
   const urunB=aktifTip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
   const desiH=obj.desi||(aktifTip==='set'?2:1);
@@ -177,13 +177,17 @@ window.satisEkle=()=>{
   const hedefId=document.getElementById('satis-hedef').value,adet=+document.getElementById('satis-adet').value,tarih=document.getElementById('satis-tarih').value,fiyat=+document.getElementById('satis-fiyat').value||0;
   if(!hedefId){toast('Ürün veya set seçin','error');return;}
   if(!adet||adet<1){toast('Geçerli adet girin','error');return;}
-  const obj=aktifTip==='urun'?urunlerDB.bul(hedefId):setlerDB.bul(hedefId);
-  // Set için maxAdet kontrolü, ürün için stok kontrolü
+  const obj=aktifTip==='set'?setlerDB.bul(hedefId):urunlerDB.bul(hedefId);
+  // Stok kontrolü: listing için bileşenlerden, set için icindekilerden hesapla
   if(aktifTip==='set'){
     const max=setlerDB.maxAdet(hedefId);
     if(max<adet&&!confirm(`Stok yetersiz (max ${max} set yapılabilir). Yine de kaydet?`)) return;
   } else {
-    if((obj.stok||0)<adet&&!confirm(`Stok yetersiz (${obj.stok||0} adet). Yine de kaydet?`)) return;
+    const bilesenler=obj.stokBilesenleri||[];
+    const maxAdet=bilesenler.length
+      ? Math.min(...bilesenler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}))
+      : (obj.stok||0);
+    if(maxAdet<adet&&!confirm(`Stok yetersiz (max ${maxAdet} adet yapılabilir). Yine de kaydet?`)) return;
   }
   satislarDB.ekle([{tip:aktifTip==='urun'?'listing':aktifTip,hedefId,adet,gercekFiyat:fiyat,tarih}]);
   document.getElementById('satis-hedef').value='';document.getElementById('satis-adet').value='1';document.getElementById('satis-fiyat').value='';

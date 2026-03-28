@@ -148,8 +148,8 @@ export const sb = {
       localStorage.setItem('tsx_sirket_id', sirket.id);
       this.bagliMi = true;
 
-      // Tüm veriyi Supabase'den çek ve localStorage'a yaz
-      await this.tamSenkronize();
+      // NOT: İlk açılışta sync yapmıyoruz - localStorage zaten güncel
+      // Sync sadece ortak sinyali geldiğinde yapılır
 
       // Realtime dinle
       this._realtimeBaglant();
@@ -229,22 +229,11 @@ export const sb = {
 
   /* Realtime bağlantı */
   _realtimeBaglant() {
-    // Realtime değişikliklerinde kısa gecikme ile sync yap
-    // (kendi yazdığımız değişiklikler localStorage'da zaten var)
-    let syncTimer = null;
-    realtimeDinle('urunler', async () => {
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(async () => {
-        await this.tamSenkronize();
-        window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
-      }, 2000); // 2 saniye bekle - stok düşümleri tamamlansın
-    });
-    realtimeDinle('satislar', async () => {
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(async () => {
-        await this.tamSenkronize();
-        window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
-      }, 1000);
+    // Broadcast: sadece ortaktan gelen sinyale tepki ver
+    // kendi değişikliklerimiz self:false ile bize gelmez
+    realtimeDinle('satis-yonetim', async () => {
+      await this.tamSenkronize();
+      window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
     });
   },
 
@@ -318,10 +307,10 @@ const oturum = JSON.parse(localStorage.getItem('tsx_oturum') || localStorage.get
 if (oturum) {
   sb.baslat(oturum).then(sonuc => {
     if (sonuc.ok) {
-      // Bağlandı badge güncelle
       const badge = document.getElementById('topbar-senkron');
       if (badge) { badge.textContent = '⬤ Canlı'; badge.className = 'badge badge-green'; }
-      window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
+      // İlk açılışta sadece ortaktan gelen değişiklikleri dinle
+      // kendi verilerimizi Supabase'den tekrar çekme
     }
   });
 }

@@ -208,13 +208,22 @@ export const sb = {
 
   /* Realtime bağlantı */
   _realtimeBaglant() {
+    // Realtime değişikliklerinde kısa gecikme ile sync yap
+    // (kendi yazdığımız değişiklikler localStorage'da zaten var)
+    let syncTimer = null;
     realtimeDinle('urunler', async () => {
-      await this.tamSenkronize();
-      window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(async () => {
+        await this.tamSenkronize();
+        window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
+      }, 1000); // 1 saniye bekle - kendi işlemlerimiz tamamlansın
     });
     realtimeDinle('satislar', async () => {
-      await this.tamSenkronize();
-      window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(async () => {
+        await this.tamSenkronize();
+        window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
+      }, 1000);
     });
   },
 

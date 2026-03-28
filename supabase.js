@@ -51,35 +51,56 @@ async function sbDelete(tablo, id) {
 let realtimeWs = null;
 const listeners = {};
 
-export function realtimeDinle(tablo, callback) {
-  listeners[tablo] = callback;
-  if (realtimeWs?.readyState === WebSocket.OPEN) return;
+export // Broadcast tabanlı realtime - kendi değişikliklerimizi tetiklemez
+let broadcastWs = null;
+let benimDeğişikliğim = false; // kendi yazdığımız değişiklikleri işaretler
 
-  const wsUrl = SB_URL.replace('https', 'wss') + '/realtime/v1/websocket?apikey=' + SB_KEY + '&vsn=1.0.0';
-  realtimeWs = new WebSocket(wsUrl);
+function realtimeDinle(kanal, callback) {
+  if (broadcastWs?.readyState === WebSocket.OPEN) return;
+  const wsUrl = SB_URL.replace('https','wss') + '/realtime/v1/websocket?apikey=' + SB_KEY + '&vsn=1.0.0';
+  broadcastWs = new WebSocket(wsUrl);
 
-  realtimeWs.onopen = () => {
-    // readyState OPEN olduğundan emin ol
-    if (realtimeWs.readyState !== WebSocket.OPEN) return;
+  broadcastWs.onopen = () => {
+    if (broadcastWs.readyState !== WebSocket.OPEN) return;
     try {
-      realtimeWs.send(JSON.stringify({
-        topic: 'realtime:public',
+      // Broadcast kanalına abone ol (postgres değil)
+      broadcastWs.send(JSON.stringify({
+        topic: 'realtime:satis-yonetim',
         event: 'phx_join',
-        payload: { config: { broadcast: { self: false }, presence: { key: '' } } },
+        payload: { config: { broadcast: { self: false } } }, // self:false = kendi mesajlarımı alma
         ref: '1'
       }));
-    } catch(e) { console.warn('Realtime bağlantı gecikmesi, yeniden deneniyor...'); }
+    } catch(e) {}
   };
 
-  realtimeWs.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    if (msg.event === 'postgres_changes') {
-      const { table } = msg.payload;
-      if (listeners[table]) listeners[table](msg.payload);
-    }
+  broadcastWs.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      // Ortak tarafından gelen broadcast - veriyi senkronize et
+      if (msg.event === 'broadcast' && msg.payload?.event === 'veri_guncellendi') {
+        if (!benimDeğişikliğim) callback();
+      }
+    } catch(e) {}
   };
 
-  realtimeWs.onerror = () => { realtimeWs = null; };
+  broadcastWs.onerror = () => { broadcastWs = null; };
+  broadcastWs.onclose = () => {
+    // 5 saniye sonra yeniden bağlan
+    setTimeout(() => realtimeDinle(kanal, callback), 5000);
+  };
+}
+
+// Ortağa "veri değişti" sinyali gönder
+async function broadcastGonder() {
+  if (broadcastWs?.readyState !== WebSocket.OPEN) return;
+  try {
+    broadcastWs.send(JSON.stringify({
+      topic: 'realtime:satis-yonetim',
+      event: 'broadcast',
+      payload: { event: 'veri_guncellendi', ts: Date.now() },
+      ref: '2'
+    }));
+  } catch(e) {}
 }
 
 /* ── KULLANICI / ŞİRKET ──────────────────────────────────────── */
@@ -249,7 +270,7 @@ export const sb = {
       urun_grubu:          urun.urunGrubu || null,
       satis_fiyati_gercek: urun.satisFiyatiGercek || null,
     };
-    return sbInsert('urunler', sbVeri).catch(console.error);
+    return sbInsert('urunler', sbVeri).then(r => { broadcastGonder(); return r; }).catch(console.error);
   },
 
   async urunGuncelle(id, degisiklik) {
@@ -260,12 +281,12 @@ export const sb = {
     if (degisiklik.desi       !== undefined) sbVeri.desi        = degisiklik.desi;
     if (degisiklik.ad         !== undefined) sbVeri.ad          = degisiklik.ad;
     if (degisiklik.komisyon   !== undefined) sbVeri.komisyon    = degisiklik.komisyon;
-    return sbUpdate('urunler', id, sbVeri).catch(console.error);
+    return sbUpdate('urunler', id, sbVeri).then(r => { broadcastGonder(); return r; }).catch(console.error);
   },
 
   async urunSil(id) {
     if (!this.bagliMi) return;
-    return sbDelete('urunler', id).catch(console.error);
+    return sbDelete('urunler', id).then(r => { broadcastGonder(); return r; }).catch(console.error);
   },
 
   /* ── SATIŞ İŞLEMLERİ ─────────────────────────────────────── */
@@ -282,12 +303,12 @@ export const sb = {
       gercek_fiyat: s.gercekFiyat || null,
       tarih:        s.tarih,
     }));
-    return sbInsert('satislar', sbVeri).catch(console.error);
+    return sbInsert('satislar', sbVeri).then(r => { broadcastGonder(); return r; }).catch(console.error);
   },
 
   async satisSil(id) {
     if (!this.bagliMi) return;
-    return sbDelete('satislar', id).catch(console.error);
+    return sbDelete('satislar', id).then(r => { broadcastGonder(); return r; }).catch(console.error);
   },
 };
 

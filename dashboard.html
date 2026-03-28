@@ -144,6 +144,7 @@
 
 <script type="module">
 import { auth, urunlerDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
+import { kargoUcreti } from './kargo.js';
 
 const o = auth.oturum();
 if (!o) { window.location.href = 'index.html'; }
@@ -174,7 +175,9 @@ function render() {
     bugunAdet += s.adet;
     const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati*(obj.paketAdet||1));
     const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : obj;
-    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1));
+    const desiD=obj.desi||(s.tip==='set'?2:1);
+    const kargoFUD=kargoUcreti(ayarlar.kargoFirma||'Aras',desiD);
+    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1), kargoFUD);
     if (fiyat) {
       const gercekFiyat = s.gercekFiyat || fiyat.yuvarlak;
       const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo);
@@ -209,7 +212,9 @@ function render() {
     ayAdet += s.adet; ayUrunler.add(hedefId);
     const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati*(obj.paketAdet||1));
     const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : obj;
-    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1));
+    const desiD=obj.desi||(s.tip==='set'?2:1);
+    const kargoFUD=kargoUcreti(ayarlar.kargoFirma||'Aras',desiD);
+    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1), kargoFUD);
     if (fiyat) {
       const gercekFiyat = s.gercekFiyat || fiyat.yuvarlak;
       const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo);
@@ -230,7 +235,9 @@ function render() {
     if (!obj) return '';
     const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati*(obj.paketAdet||1));
     const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : obj;
-    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1));
+    const desiD=obj.desi||(s.tip==='set'?2:1);
+    const kargoFUD=kargoUcreti(ayarlar.kargoFirma||'Aras',desiD);
+    const fiyat = hesapla.satisFiyati(urunB, ayarlar, s.tip==='set'?1:(obj.paketAdet||1), kargoFUD);
     const gercekFiyat = s.gercekFiyat || fiyat?.yuvarlak || 0;
     const kar = fiyat ? hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo) : null;
     return `<div class="urun-row">

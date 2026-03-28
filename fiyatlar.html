@@ -319,9 +319,10 @@
 <script type="module">
 import{auth,urunlerDB,setlerDB,ayarlarDB,hesapla}from'./state.js';
 import{KATEGORILER,ALT_KATEGORILER,URUN_GRUPLARI,komisyonOrani}from'./kategoriler.js';
+import{kargoUcreti}from'./kargo.js';
 if(!auth.oturum()) window.location.href='./index.html';
 
-let ay=ayarlarDB.oku(), edId=null, edTip=null, sIc=[], uSecId=null;
+let ay=ayarlarDB.oku(), edId=null, edTip=null, sIc=[], uSecId=null, uSecKom=0.04;
 const p=n=>(+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
 const toTL=n=>+n||0;
 
@@ -330,7 +331,10 @@ document.getElementById('g-firma').value=ay.kargoFirma||'Aras';
 document.getElementById('g-satici').value=ay.saticiTipiKey||'KadinGir';
 window.gKaydet=()=>{
   ayarlarDB.kaydet({kargoFirma:document.getElementById('g-firma').value,saticiTipiKey:document.getElementById('g-satici').value});
-  ay=ayarlarDB.oku(); renderKartlar();
+  ay=ayarlarDB.oku();
+  // Seçili ürün varsa komisyonu güncelle
+  if(uSecId){const u=urunlerDB.bul(uSecId);if(u&&u.urunGrubu){uSecKom=komisyonOrani(u.urunGrubu,ay.saticiTipiKey||'KadinGir');document.getElementById('u-kom-g').textContent='%'+(uSecKom*100).toFixed(1)+(u.urunGrubu?' ('+u.urunGrubu.slice(0,25)+'…)':'');uOneri();}}
+  renderKartlar();
 };
 
 /* ── SEKME ── */
@@ -384,7 +388,13 @@ window.uSec=id=>{
   document.getElementById('u-desi').value=u.desi||1;
   // Komisyon: ürünün kayıtlı komisyonu (ürün grubundan hesaplanmış)
   const komPct=((u.komisyon||0.04)*100).toFixed(1);
-  document.getElementById('u-kom-g').textContent='%'+komPct+(u.urunGrubu?' ('+u.urunGrubu.slice(0,25)+'…)':'');
+  // Satıcı tipine göre komisyonu yeniden hesapla
+  const sKey=ay.saticiTipiKey||'KadinGir';
+  const komHesap=u.urunGrubu?komisyonOrani(u.urunGrubu,sKey):(u.komisyon||0.04);
+  // Komisyonu güncelle (satıcı tipine göre)
+  if(u.urunGrubu) uSecKom=komHesap;
+  else uSecKom=u.komisyon||0.04;
+  document.getElementById('u-kom-g').textContent='%'+(uSecKom*100).toFixed(1)+(u.urunGrubu?' ('+u.urunGrubu.slice(0,25)+'…)':'');
   // Seçilen bilgi
   document.getElementById('u-sd-lbl').textContent=u.ad;
   document.getElementById('u-sd-lbl').style.color='var(--t1)';
@@ -401,12 +411,12 @@ window.uOneri=()=>{
   const desi=+document.getElementById('u-desi').value||1;
   const aynigun=document.getElementById('u-aynigun').value==='1';
   const roi=toTL(document.getElementById('u-roi').value)/100;
-  // Seçili ürünün komisyonu
-  const u=uSecId?urunlerDB.bul(uSecId):null;
-  const kom=u?u.komisyon||0.04:0.04;
+  // Seçili ürünün komisyonu (satıcı tipine göre hesaplanmış)
+  const kom=uSecKom||0.04;
   const el=document.getElementById('u-oneri');
   if(!alis){el.style.display='none';return;}
-  const f=hesapla.satisFiyati({alisFiyati:alis,desi,komisyon:kom,ayniGunKargo:aynigun,hedefKar:roi},{...ay},adet);
+  const kargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
+  const f=hesapla.satisFiyati({alisFiyati:alis,desi,komisyon:kom,ayniGunKargo:aynigun,hedefKar:roi},{...ay},adet,kargoFU);
   if(!f){el.style.display='none';return;}
   el.style.display='';
   document.getElementById('u-oneri-f').textContent=p(f.yuvarlak);
@@ -426,9 +436,9 @@ window.uKZ=()=>{
   const satis=toTL(document.getElementById('u-satis').value);
   const el=document.getElementById('u-kz');
   if(!satis||!alis){el.style.display='none';return;}
-  const u=uSecId?urunlerDB.bul(uSecId):null;
-  const kom=u?u.komisyon||0.04:0.04;
-  const f=hesapla.satisFiyati({alisFiyati:alis,desi,komisyon:kom,ayniGunKargo:aynigun,hedefKar:roi},{...ay},adet);
+  const kom=uSecKom||0.04;
+  const kargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
+  const f=hesapla.satisFiyati({alisFiyati:alis,desi,komisyon:kom,ayniGunKargo:aynigun,hedefKar:roi},{...ay},adet,kargoFU);
   if(!f){el.style.display='none';return;}
   const kar=hesapla.gercekKar(alis*adet,satis,kom,f.platform,f.kargo);
   _kzGoster(el,kar,document.getElementById('u-kz-d'),document.getElementById('u-kz-n'),document.getElementById('u-kz-r'));
@@ -440,6 +450,8 @@ window.uOlustur=()=>{
   if(!alis){showToast('Alış fiyatı girilmedi','error');return;}
   const u=urunlerDB.bul(uSecId);
   const adet=+document.getElementById('u-adet').value||1;
+  const sKeyU=ay.saticiTipiKey||'KadinGir';
+  const komU=u.urunGrubu?komisyonOrani(u.urunGrubu,sKeyU):(u.komisyon||0.04);
   const desi=+document.getElementById('u-desi').value||1;
   const aynigun=document.getElementById('u-aynigun').value==='1';
   const roi=toTL(document.getElementById('u-roi').value)/100;
@@ -449,6 +461,7 @@ window.uOlustur=()=>{
     ad:u.ad, alisFiyati:alis, stok:u.stok||0,
     desi, komisyon:u.komisyon||0.04,
     kategori1:u.kategori1, kategori2:u.kategori2, urunGrubu:u.urunGrubu,
+    komisyon:komU,
     ayniGunKargo:aynigun, hedefKar:roi,
     satisFiyatiGercek:satisF||undefined,
     paketAdet:adet>1?adet:undefined,
@@ -517,7 +530,8 @@ function sHesap(){
   const desi=+document.getElementById('s-desi').value||2;
   const aynigun=document.getElementById('s-aynigun').value==='1';
   const roi=toTL(document.getElementById('s-roi').value)/100;
-  const f=toplam?hesapla.satisFiyati({alisFiyati:toplam,desi,komisyon:maxKom,ayniGunKargo:aynigun,hedefKar:roi},{...ay},1):null;
+  const sKargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
+  const f=toplam?hesapla.satisFiyati({alisFiyati:toplam,desi,komisyon:maxKom,ayniGunKargo:aynigun,hedefKar:roi},{...ay},1,sKargoFU):null;
   return{toplam,maxKom,desi,aynigun,roi,f,ic};
 }
 
@@ -570,10 +584,13 @@ function objHesap(obj,tip){
   const adet=obj.paketAdet||1;
   const ayObj={...ay,ayniGunKargo:obj.ayniGunKargo||false};
   const alisTop=tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati*adet);
+  const desi=obj.desi||(tip==='set'?2:1);
+  const firma=ay.kargoFirma||'Aras';
+  const kargoFU=kargoUcreti(firma,desi);
   const urunB=tip==='set'
-    ?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04,hedefKar:obj.hedefKar,ayniGunKargo:obj.ayniGunKargo}
+    ?{alisFiyati:obj.alisMaliyeti||0,desi,komisyon:obj.komisyon||0.04,hedefKar:obj.hedefKar,ayniGunKargo:obj.ayniGunKargo}
     :{...obj,alisFiyati:obj.alisFiyati,hedefKar:obj.hedefKar};
-  const f=hesapla.satisFiyati(urunB,ayObj,tip==='set'?1:adet);
+  const f=hesapla.satisFiyati(urunB,ayObj,tip==='set'?1:adet,kargoFU);
   return{adet,alisTop,f};
 }
 
@@ -665,7 +682,8 @@ window.edYenilenOneri=()=>{
   const roi=toTL(document.getElementById('ed-roi-i').value)/100;
   const alisI=toTL(document.getElementById('ed-alis-i').value);
   const alisTop=edTip==='set'?(alisI):alisI*adet;
-  const f=hesapla.satisFiyati({alisFiyati:alisI,desi,komisyon:obj.komisyon||0.04,ayniGunKargo:aynigun,hedefKar:roi},{...ay},edTip==='set'?1:adet);
+  const edKargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
+  const f=hesapla.satisFiyati({alisFiyati:alisI,desi,komisyon:obj.komisyon||0.04,ayniGunKargo:aynigun,hedefKar:roi},{...ay},edTip==='set'?1:adet,edKargoFU);
   if(f){
     document.getElementById('ed-onerilen').textContent=p(f.yuvarlak);
     document.getElementById('ed-basabas').textContent='Başabaş: '+p(f.basabas);

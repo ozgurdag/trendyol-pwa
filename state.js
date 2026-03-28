@@ -136,36 +136,36 @@ export const ayarlarDB = {
 
 /* ── HESAPLAMA MOTORU ────────────────────────────────────────── */
 export const hesapla = {
-  // Self-consistent barem (döngüsüz) — satış fiyatına göre barem seçer
-  satisFiyati(urun, ayarlar, adet=1){
+  // Self-consistent barem (döngüsüz)
+  // kargoFU = desi tablosundan gelen gerçek kargo ücreti (kargo.js'den)
+  satisFiyati(urun, ayarlar, adet=1, kargoFU=null){
     const{kargoBaremEsik1:e1,kargoBaremUcret1:k1,
           kargoBaremEsik2:e2,kargoBaremUcret2:k2,
           platformAyniGun,platformNormal}=ayarlar;
-    // Ürünün kendi ayniGunKargo'su varsa onu kullan
     const aynigun = urun.ayniGunKargo!=null ? urun.ayniGunKargo : (ayarlar.ayniGunKargo||false);
     const platform = aynigun ? platformAyniGun : platformNormal;
     const kom    = urun.komisyon || 0.04;
-    // Ürünün kendi hedefKar'ı varsa onu kullan, yoksa global
     const hedef  = urun.hedefKar!=null ? urun.hedefKar : (ayarlar.hedefKarROI||0.30);
     const desi   = urun.desi || 1;
     const alis   = (urun.alisFiyati||0) * adet;
     const reklam = urun.reklam || 0;
     const payda  = 1 - kom - hedef;
-    // Desi tablosu kargo (Aras örnek, 100.716₺ = 83.93*1.2)
-    const kargoFU = 100.716;
+    // Gerçek kargo firması ücreti (parametre olarak gelir, yoksa varsayılan)
+    const kargoFirmaUcret = kargoFU || 100.716;
     if(payda<=0) return null;
 
     let kargo;
     if(desi>10){
-      kargo=kargoFU;
+      // Desi>10: her zaman desi tablosu
+      kargo=kargoFirmaUcret;
     } else {
-      // Kargosuz toplam maliyet ile self-consistent seçim
+      // Self-consistent barem seçimi
       const mal=alis+platform+reklam;
       const sAlt=(mal+k1)/payda;
       const sUst=(mal+k2)/payda;
       if(sAlt<e1)      kargo=k1;
       else if(sUst<e2) kargo=k2;
-      else             kargo=kargoFU;
+      else             kargo=kargoFirmaUcret;
     }
 
     const onerilen=(alis+platform+kargo+reklam)/payda;

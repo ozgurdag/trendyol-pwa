@@ -90,6 +90,7 @@
   <div class="modal-sheet" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-title" id="stok-modal-ad">Stok Güncelle</div>
+    <div id="stok-modal-kategori" style="font-size:11px;color:var(--t3);margin-bottom:12px;line-height:1.5"></div>
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
       <button class="btn btn-secondary" style="font-size:20px;width:48px;height:48px;padding:0" onclick="stokDegistir(-1)">−</button>
       <div style="flex:1;text-align:center">
@@ -108,6 +109,30 @@
         <input class="form-input" type="number" id="stok-alis-input" step="0.01">
       </div>
     </div>
+    <!-- Kategori bilgisi (opsiyonel düzenleme) -->
+    <div id="stok-modal-kat-wrap" style="display:none">
+      <div class="divider"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">Kategori Bilgisi</div>
+      <div class="form-group">
+        <label class="form-label">1. Kategori</label>
+        <select class="form-select" id="sm-k1" onchange="smK1Deg()"><option value="">—</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">2. Alt Kategori</label>
+        <select class="form-select" id="sm-k2" onchange="smK2Deg()" disabled><option value="">—</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">3. Ürün Grubu</label>
+        <select class="form-select" id="sm-k3" onchange="smK3Deg()" disabled><option value="">—</option></select>
+      </div>
+      <div id="sm-kom-auto" style="display:none;background:var(--bg3);border-radius:var(--r-md);padding:8px 12px;margin-bottom:8px;font-size:12px;justify-content:space-between">
+        <span style="color:var(--t3)">Komisyon (otomatik)</span>
+        <span id="sm-kom-g" style="font-weight:700;color:var(--accent)">—</span>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-sm mb-8" onclick="stokModalKatToggle()" id="sm-kat-btn" style="width:100%">
+      ✏️ Kategori Bilgisini Düzenle
+    </button>
     <button class="btn btn-primary btn-full" onclick="stokKaydet()">Kaydet</button>
   </div>
 </div>
@@ -244,6 +269,17 @@ window.stokModalAc = (id) => {
   document.getElementById('stok-modal-sayi').textContent = u.stok || 0;
   document.getElementById('stok-input').value  = u.stok || 0;
   document.getElementById('stok-alis-input').value = u.alisFiyati || 0;
+  // Kategori bilgisi göster
+  const katEl = document.getElementById('stok-modal-kategori');
+  if(u.kategori1||u.kategori2||u.urunGrubu){
+    katEl.textContent = [u.kategori1,u.kategori2,u.urunGrubu].filter(Boolean).join(' › ');
+  } else {
+    katEl.textContent = 'Kategori bilgisi yok — düzenle butonundan ekleyebilirsiniz';
+  }
+  // Kategori formu sıfırla
+  document.getElementById('stok-modal-kat-wrap').style.display='none';
+  document.getElementById('sm-kat-btn').textContent='✏️ Kategori Bilgisini Düzenle';
+  smKatDoldur(u);
   document.getElementById('stok-modal').classList.add('open');
 };
 
@@ -256,13 +292,23 @@ window.stokDegistir = (delta) => {
 
 window.stokKaydet = () => {
   if (!aktifId) return;
-  urunlerDB.guncelle(aktifId, {
+  const k1=document.getElementById('sm-k1').value;
+  const k2=document.getElementById('sm-k2').value;
+  const k3=document.getElementById('sm-k3').value;
+  const komG=document.getElementById('sm-kom-g').textContent;
+  const komV=komG&&komG!=='—'?parseFloat(komG.replace('%',''))/100:null;
+  const guncelleme = {
     stok:       +document.getElementById('stok-input').value,
     alisFiyati: +document.getElementById('stok-alis-input').value,
-  });
+  };
+  if(k1) guncelleme.kategori1=k1;
+  if(k2) guncelleme.kategori2=k2;
+  if(k3) guncelleme.urunGrubu=k3;
+  if(komV) guncelleme.komisyon=komV;
+  urunlerDB.guncelle(aktifId, guncelleme);
   document.getElementById('stok-modal').classList.remove('open');
   render();
-  toast('Stok güncellendi','success');
+  toast('Güncellendi','success');
 };
 
 window.excelIndir = async () => {
@@ -317,6 +363,63 @@ window.stokUrunEkle = () => {
   render();
   toast('"' + ad + '" stoka eklendi', 'success');
 };
+
+function smKatDoldur(u){
+  const k1El=document.getElementById('sm-k1');
+  k1El.innerHTML='<option value="">— Seçin —</option>';
+  KATEGORILER.forEach(k=>k1El.add(new Option(k,k)));
+  if(u&&u.kategori1){
+    k1El.value=u.kategori1;
+    smK1Deg(u.kategori2,u.urunGrubu);
+  }
+}
+
+window.stokModalKatToggle=()=>{
+  const wrap=document.getElementById('stok-modal-kat-wrap');
+  const btn=document.getElementById('sm-kat-btn');
+  const acik=wrap.style.display!=='none';
+  wrap.style.display=acik?'none':'';
+  btn.textContent=acik?'✏️ Kategori Bilgisini Düzenle':'▲ Kapat';
+};
+
+window.smK1Deg=(setK2=null,setK3=null)=>{
+  const v=document.getElementById('sm-k1').value;
+  const k2=document.getElementById('sm-k2');
+  k2.innerHTML='<option value="">—</option>';
+  document.getElementById('sm-k3').innerHTML='<option value="">—</option>';
+  document.getElementById('sm-k3').disabled=true;
+  document.getElementById('sm-kom-auto').style.display='none';
+  if(!v){k2.disabled=true;return;}
+  (ALT_KATEGORILER[v]||[]).forEach(a=>k2.add(new Option(a,a)));
+  k2.disabled=false;
+  if(setK2){k2.value=setK2;smK2Deg(setK3);}
+};
+
+window.smK2Deg=(setK3=null)=>{
+  const k1=document.getElementById('sm-k1').value,k2=document.getElementById('sm-k2').value;
+  const k3=document.getElementById('sm-k3');
+  k3.innerHTML='<option value="">—</option>';
+  document.getElementById('sm-kom-auto').style.display='none';
+  if(!k2){k3.disabled=true;return;}
+  let gruplar=[];
+  for(const[key,vals] of Object.entries(URUN_GRUPLARI)){
+    const n=key.replace('UG_','').replace(/_/g,' ').toLowerCase();
+    if(n.includes(k1.toLowerCase().slice(0,8))&&n.includes(k2.toLowerCase().slice(0,8))){gruplar=vals;break;}
+  }
+  if(!gruplar.length){for(const[key,vals] of Object.entries(URUN_GRUPLARI)){if(key.toLowerCase().includes(k2.toLowerCase().slice(0,10).replace(/\s+/g,'_'))){gruplar=vals;break;}}}
+  gruplar.forEach(g=>k3.add(new Option(g,g)));
+  k3.disabled=false;
+  if(setK3){k3.value=setK3;smK3Deg();}
+};
+
+window.smK3Deg=()=>{
+  const k3=document.getElementById('sm-k3').value;
+  if(!k3){document.getElementById('sm-kom-auto').style.display='none';return;}
+  const kom=komisyonOrani(k3,'KadinGir');
+  document.getElementById('sm-kom-g').textContent='%'+(kom*100).toFixed(1);
+  document.getElementById('sm-kom-auto').style.display='flex';
+};
+
 
 render();
 </script>

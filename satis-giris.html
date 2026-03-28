@@ -82,6 +82,7 @@
 <div class="toast-container" id="toastCont"></div>
 <script type="module">
 import{auth,urunlerDB,setlerDB,satislarDB,ayarlarDB,hesapla}from'./state.js';
+import{kargoUcreti}from'./kargo.js';
 if(!auth.oturum()) window.location.href='./index.html';
 const ayarlar=ayarlarDB.oku();
 const bugunStr=new Date().toISOString().slice(0,10);
@@ -102,14 +103,15 @@ window.tipSec=t=>{
 
 function doldurDropdown(){
   const sel=document.getElementById('satis-hedef');
-  // Sadece satisFiyatiGercek girilmiş olanları göster (fiyatlar sayfasında oluşturulmuşlar)
-  // Eğer yoksa hepsini göster
-  const tumurunler=urunlerDB.hepsini();
-  const tumsetler=setlerDB.hepsini();
+  // Sadece fiyatlar sayfasından oluşturulanlar (tip:'urun') ve setler
   const liste=aktifTip==='urun'
-    ? (tumurunler.filter(u=>u.satisFiyatiGercek).length ? tumurunler.filter(u=>u.satisFiyatiGercek) : tumurunler)
-    : (tumsetler.filter(s=>s.satisFiyatiGercek).length ? tumsetler.filter(s=>s.satisFiyatiGercek) : tumsetler);
-  sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>`<option value="${x.id}">${x.ad} (Stok: ${x.stok||0})</option>`).join('');
+    ? urunlerDB.olusturulanlar()
+    : setlerDB.hepsini();
+  if(!liste.length){
+    sel.innerHTML='<option value="">— Önce Ürün/Set Oluştur sayfasından ekleyin —</option>';
+    return;
+  }
+  sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>`<option value="${x.id}">${x.ad}${x.paketAdet>1?' ('+x.paketAdet+"'li)":''}  |  Stok: ${x.stok||0}</option>`).join('');
 }
 
 window.hedefSecildi=()=>{
@@ -121,7 +123,9 @@ window.hedefSecildi=()=>{
   // Varsayılan fiyatı doldur
   const alisTop=aktifTip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
   const urunB=aktifTip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
-  const f=hesapla.satisFiyati(urunB,ayarlar,aktifTip==='urun'?(obj.paketAdet||1):1);
+  const desiH=obj.desi||(aktifTip==='set'?2:1);
+  const kargoFUH=kargoUcreti(ayarlar.kargoFirma||'Aras',desiH);
+  const f=hesapla.satisFiyati(urunB,ayarlar,aktifTip==='urun'?(obj.paketAdet||1):1,kargoFUH);
   const varsayilanFiyat=obj.satisFiyatiGercek||f?.yuvarlak||0;
   document.getElementById('satis-fiyat').value=varsayilanFiyat||'';
   document.getElementById('satis-onizleme').style.display='';
@@ -137,7 +141,9 @@ window.karOniziGoster=()=>{
   const obj=aktifTip==='urun'?urunlerDB.bul(id):setlerDB.bul(id);if(!obj) return;
   const alisTop=aktifTip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
   const urunB=aktifTip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
-  const f=hesapla.satisFiyati(urunB,ayarlar,aktifTip==='urun'?(obj.paketAdet||1):1);if(!f) return;
+  const desiH=obj.desi||(aktifTip==='set'?2:1);
+  const kargoFUH=kargoUcreti(ayarlar.kargoFirma||'Aras',desiH);
+  const f=hesapla.satisFiyati(urunB,ayarlar,aktifTip==='urun'?(obj.paketAdet||1):1,kargoFUH);if(!f) return;
   const kar=hesapla.gercekKar(alisTop,fiyat,obj.komisyon||0.04,f.platform,f.kargo);
   document.getElementById('on-kar').textContent=(kar.kararli?'✅ ':' ❌ ')+p(kar.net)+' (ROI: %'+Math.round(kar.roi*100)+')';
   document.getElementById('on-kar').style.color=kar.kararli?'var(--green)':'var(--red)';

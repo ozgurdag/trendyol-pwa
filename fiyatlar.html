@@ -401,13 +401,12 @@ window.uSec=id=>{
   document.getElementById('u-desi').value=u.desi||1;
   // Komisyon: ürünün kayıtlı komisyonu (ürün grubundan hesaplanmış)
   const komPct=((u.komisyon||0.04)*100).toFixed(1);
-  // Satıcı tipine göre komisyonu yeniden hesapla
-  const sKey=ay.saticiTipiKey||'KadinGir';
+  // Satıcı tipini her seferinde güncel oku
+  const sKey=ayarlarDB.oku().saticiTipiKey||'KadinGir';
   const komHesap=u.urunGrubu?komisyonOrani(u.urunGrubu,sKey):(u.komisyon||0.04);
-  // Komisyonu güncelle (satıcı tipine göre)
   if(u.urunGrubu) uSecKom=komHesap;
   else uSecKom=u.komisyon||0.04;
-  document.getElementById('u-kom-g').textContent='%'+(uSecKom*100).toFixed(1)+(u.urunGrubu?' ('+u.urunGrubu.slice(0,25)+'…)':'');
+  document.getElementById('u-kom-g').textContent='%'+(uSecKom*100).toFixed(1)+(u.urunGrubu?' · '+u.urunGrubu.slice(0,30):'');
   // Seçilen bilgi
   document.getElementById('u-sd-lbl').textContent=u.ad;
   document.getElementById('u-sd-lbl').style.color='var(--t1)';
@@ -419,12 +418,15 @@ window.uSec=id=>{
 };
 
 window.uOneri=()=>{
+  ay=ayarlarDB.oku(); // her hesapta taze oku
   const alis=toTL(document.getElementById('u-alis').value);
   const adet=+document.getElementById('u-adet').value||1;
   const desi=+document.getElementById('u-desi').value||1;
   const aynigun=document.getElementById('u-aynigun').value==='1';
   const roi=toTL(document.getElementById('u-roi').value)/100;
-  // Seçili ürünün komisyonu (satıcı tipine göre hesaplanmış)
+  // Seçili ürünün komisyonu — satıcı tipine göre
+  const sKeyNow=ay.saticiTipiKey||'KadinGir';
+  if(uSecId){const uNow=urunlerDB.bul(uSecId);if(uNow&&uNow.urunGrubu)uSecKom=komisyonOrani(uNow.urunGrubu,sKeyNow);}
   const kom=uSecKom||0.04;
   const el=document.getElementById('u-oneri');
   if(!alis){el.style.display='none';return;}

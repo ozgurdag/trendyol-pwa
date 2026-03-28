@@ -192,7 +192,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, urunlerDB } from './state.js';
+import { auth, urunlerDB, ayarlarDB } from './state.js';
 import { KATEGORILER, ALT_KATEGORILER, URUN_GRUPLARI, komisyonOrani } from './kategoriler.js';
 import { kargoUcreti } from './kargo.js';
 if (!auth.oturum()) window.location.href='index.html';
@@ -372,7 +372,7 @@ window.neK3Deg=()=>{
   const k3=document.getElementById('ne-k3').value;
   if(!k3){document.getElementById('ne-kom-auto').style.display='none';return;}
   // Global satıcı tipini ayarlardan oku
-  const sKey=JSON.parse(localStorage.getItem('tsx_ayarlar')||'{}').saticiTipiKey||'KadinGir';
+  const sKey=ayarlarDB.oku().saticiTipiKey||'KadinGir';
   const kom=komisyonOrani(k3,sKey);
   const el=document.getElementById('ne-kom-inp');
   if(el) el.value=(kom*100).toFixed(1);
@@ -465,7 +465,7 @@ window.smK2Deg=(setK3=null)=>{
 window.smK3Deg=()=>{
   const k3=document.getElementById('sm-k3').value;
   if(!k3){document.getElementById('sm-kom-auto').style.display='none';return;}
-  const sKey=JSON.parse(localStorage.getItem('tsx_ayarlar')||'{}').saticiTipiKey||'KadinGir';
+  const sKey=ayarlarDB.oku().saticiTipiKey||'KadinGir';
   const kom=komisyonOrani(k3,sKey);
   document.getElementById('sm-kom-g').textContent='%'+(kom*100).toFixed(1);
   document.getElementById('sm-kom-auto').style.display='flex';

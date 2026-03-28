@@ -109,10 +109,7 @@
             <label class="form-label">Alış Fiyatı (₺) <span style="font-size:10px;color:var(--t3)">(otomatik)</span></label>
             <input class="form-input" type="number" id="u-alis" placeholder="0.00" step="0.01" oninput="uOneri()">
           </div>
-          <div class="form-group">
-            <label class="form-label">Satış Adedi</label>
-            <input class="form-input" type="number" id="u-adet" value="1" min="1" max="20" oninput="uOneri()">
-          </div>
+          
         </div>
 
         <!-- Komisyon (stoktan seçince otomatik, değiştirilebilir) -->
@@ -423,7 +420,7 @@ window.uSec=id=>{
 window.uOneri=()=>{
   ay=ayarlarDB.oku(); // her hesapta taze oku
   const alis=toTL(document.getElementById('u-alis').value);
-  const adet=+document.getElementById('u-adet').value||1;
+  const adet=1; // Tekil ürün, çoklu için Set oluşturun
   const desi=+document.getElementById('u-desi').value||1;
   const aynigun=document.getElementById('u-aynigun').value==='1';
   const roi=toTL(document.getElementById('u-roi').value)/100;
@@ -447,7 +444,7 @@ window.uOneri=()=>{
 
 window.uKZ=()=>{
   const alis=toTL(document.getElementById('u-alis').value);
-  const adet=+document.getElementById('u-adet').value||1;
+  const adet=1; // Tekil ürün, çoklu için Set oluşturun
   const desi=+document.getElementById('u-desi').value||1;
   const aynigun=document.getElementById('u-aynigun').value==='1';
   const roi=toTL(document.getElementById('u-roi').value)/100;
@@ -467,7 +464,7 @@ window.uOlustur=()=>{
   const alis=toTL(document.getElementById('u-alis').value);
   if(!alis){showToast('Alış fiyatı girilmedi','error');return;}
   const u=urunlerDB.bul(uSecId);
-  const adet=+document.getElementById('u-adet').value||1;
+  const adet=1; // Tekil ürün, çoklu için Set oluşturun
   const sKeyU=ay.saticiTipiKey||'KadinGir';
   const komU=u.urunGrubu?komisyonOrani(u.urunGrubu,sKeyU):(u.komisyon||0.04);
   const desi=+document.getElementById('u-desi').value||1;
@@ -482,7 +479,6 @@ window.uOlustur=()=>{
     komisyon:komU,
     ayniGunKargo:aynigun, hedefKar:roi,
     satisFiyatiGercek:satisF||undefined,
-    paketAdet:adet>1?adet:undefined,
     tip:'urun', stokUrunId:uSecId // hangi stok ürününden oluşturuldu
   });
   // Formu sıfırla

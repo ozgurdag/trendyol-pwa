@@ -103,15 +103,19 @@ window.tipSec=t=>{
 
 function doldurDropdown(){
   const sel=document.getElementById('satis-hedef');
-  // Sadece fiyatlar sayfasından oluşturulanlar (tip:'urun') ve setler
-  const liste=aktifTip==='urun'
-    ? urunlerDB.olusturulanlar()
-    : setlerDB.hepsini();
-  if(!liste.length){
-    sel.innerHTML='<option value="">— Önce Ürün/Set Oluştur sayfasından ekleyin —</option>';
-    return;
+  if(aktifTip==='urun'){
+    const liste=urunlerDB.olusturulanlar();
+    if(!liste.length){sel.innerHTML='<option value="">— Önce Ürün/Set Oluştur sayfasından ekleyin —</option>';return;}
+    sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>
+      `<option value="${x.id}">${x.ad} | Stok: ${x.stok||0}</option>`).join('');
+  } else {
+    const liste=setlerDB.hepsini();
+    if(!liste.length){sel.innerHTML='<option value="">— Önce Set Oluştur sayfasından ekleyin —</option>';return;}
+    sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>{
+      const max=setlerDB.maxAdet(x.id);
+      return `<option value="${x.id}"${max===0?' disabled':''}">${x.ad} | Max: ${max} set</option>`;
+    }).join('');
   }
-  sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>`<option value="${x.id}">${x.ad}${x.paketAdet>1?' ('+x.paketAdet+"'li)":''}  |  Stok: ${x.stok||0}</option>`).join('');
 }
 
 window.hedefSecildi=()=>{
@@ -154,7 +158,13 @@ window.satisEkle=()=>{
   if(!hedefId){toast('Ürün veya set seçin','error');return;}
   if(!adet||adet<1){toast('Geçerli adet girin','error');return;}
   const obj=aktifTip==='urun'?urunlerDB.bul(hedefId):setlerDB.bul(hedefId);
-  if((obj.stok||0)<adet&&!confirm(`Stok yetersiz (${obj.stok||0}). Yine de kaydet?`)) return;
+  // Set için maxAdet kontrolü, ürün için stok kontrolü
+  if(aktifTip==='set'){
+    const max=setlerDB.maxAdet(hedefId);
+    if(max<adet&&!confirm(`Stok yetersiz (max ${max} set yapılabilir). Yine de kaydet?`)) return;
+  } else {
+    if((obj.stok||0)<adet&&!confirm(`Stok yetersiz (${obj.stok||0} adet). Yine de kaydet?`)) return;
+  }
   satislarDB.ekle([{tip:aktifTip,hedefId,adet,gercekFiyat:fiyat,tarih}]);
   document.getElementById('satis-hedef').value='';document.getElementById('satis-adet').value='1';document.getElementById('satis-fiyat').value='';
   document.getElementById('satis-onizleme').style.display='none';
@@ -190,11 +200,21 @@ function renderBugun(){
     const f=hesapla.satisFiyati(urunB,ayarlar,s.tip==='urun'?(obj.paketAdet||1):1);
     const fiyat=s.gercekFiyat||f?.yuvarlak||0;
     const kar=f?hesapla.gercekKar(alisTop,fiyat,obj.komisyon||0.04,f.platform,f.kargo):null;
-    return`<div class="urun-row"><div class="urun-avatar">${s.tip==='set'?'📦':'🛍️'}</div><div class="urun-info"><div class="urun-ad">${obj.ad}</div><div class="urun-meta">${s.adet} adet · ${fiyat.toLocaleString('tr-TR')}₺ · ${s.tarih}</div></div><div class="urun-fiyat"><div class="urun-fiyat-ana" style="color:${kar?.kararli?'var(--green)':'var(--red)'}">${kar?p(kar.net):'—'}</div><button onclick="satisSil('${s.id}')" style="font-size:10px;color:var(--t3);background:transparent;margin-top:4px">✕ sil</button></div></div>`;
+    return`<div class="urun-row"><div class="urun-avatar">${s.tip==='set'?'📦':'🛍️'}</div><div class="urun-info"><div class="urun-ad">${obj.ad}</div><div class="urun-meta">${s.adet} adet · ${fiyat.toLocaleString('tr-TR')}₺ · ${s.tarih}</div></div><div class="urun-fiyat"><div class="urun-fiyat-ana" style="color:${kar?.kararli?'var(--green)':'var(--red)'}">${kar?p(kar.net):'—'}</div><button onclick="satisIptal('${s.id}')" style="font-size:11px;color:var(--red);background:var(--red-l);border:none;border-radius:6px;padding:3px 8px;margin-top:4px;cursor:pointer">✕ İptal</button></div></div>`;
   }).join('');
 }
 
 window.satisSil=id=>{if(!confirm('Bu satışı silmek ve stoğu geri yüklemek ister misiniz?'))return;satislarDB.sil(id);doldurDropdown();renderBugun();renderOzet();toast('Silindi','info');};
+window.satisIptal=id=>{
+  const k=satislarDB.hepsini().find(s=>s.id===id);
+  if(!k) return;
+  const obj=k.tip==='set'?setlerDB.bul(k.hedefId):urunlerDB.bul(k.hedefId||k.urunId);
+  const ad=obj?obj.ad:'Satış';
+  if(!confirm('"'+ad+'" satışını iptal etmek istiyor musunuz? Stoklar geri yüklenecek.')) return;
+  satislarDB.sil(id);
+  doldurDropdown();renderBugun();renderOzet();
+  toast('Satış iptal edildi, stoklar güncellendi','success');
+};
 
 window.excelIndir=async()=>{
   const{utils,writeFile}=await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');

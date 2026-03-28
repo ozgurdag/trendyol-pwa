@@ -81,6 +81,15 @@ export const setlerDB = {
       const u=urunlerDB.bul(ic.urunId); return t+(u?u.alisFiyati*ic.adet:0);
     },0);
   },
+  // Set için max kaç adet yapılabilir (içindeki ürünlerin stokuna göre)
+  maxAdet(id){
+    const s=this.bul(id); if(!s||!(s.icindekiler||[]).length) return 0;
+    return Math.min(...(s.icindekiler||[]).map(ic=>{
+      const u=urunlerDB.bul(ic.urunId);
+      if(!u||!ic.adet) return 0;
+      return Math.floor((u.stok||0)/ic.adet);
+    }));
+  },
 };
 
 export const satislarDB = {
@@ -105,24 +114,14 @@ export const satislarDB = {
           if(su) urunlerDB.guncelle(u.stokUrunId,{stok:Math.max(0,(su.stok||0)-adet)});
         }
       } else {
-        // Set satışı: içindeki stok ürünlerinden düş
+        // Set satışı: içindeki her ürünün stoğundan düş
         const s=setlerDB.bul(k.hedefId);
         if(s){
           (s.icindekiler||[]).forEach(ic=>{
-            // ic.urunId = oluşturulan ürün veya stok ürünü olabilir
             const u=urunlerDB.bul(ic.urunId);
             if(u){
               const dusAdet=ic.adet*k.adet;
               urunlerDB.guncelle(ic.urunId,{stok:Math.max(0,(u.stok||0)-dusAdet)});
-              // stok kaynağından da düş
-              if(u.stokUrunId){
-                const su=urunlerDB.bul(u.stokUrunId);
-                if(su) urunlerDB.guncelle(u.stokUrunId,{stok:Math.max(0,(su.stok||0)-dusAdet)});
-              }
-            } else {
-              // ic.urunId direkt stok ürünü ise
-              const su=urunlerDB.bul(ic.urunId);
-              if(su) urunlerDB.guncelle(ic.urunId,{stok:Math.max(0,(su.stok||0)-ic.adet*k.adet)});
             }
           });
         }
@@ -142,6 +141,7 @@ export const satislarDB = {
           const u=urunlerDB.bul(ic.urunId);
           if(u) urunlerDB.guncelle(ic.urunId,{stok:(u.stok||0)+(ic.adet*k.adet)});
         });
+        // Set stok iadesi yapıldı
       }
       set(DB_KEYS.satislar,this.hepsini().filter(s=>s.id!==id));
     }

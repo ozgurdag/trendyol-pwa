@@ -31,8 +31,16 @@ export const urunlerDB = {
   bul(id){ return this.hepsini().find(u=>u.id===id); },
   // tip: 'stok' = sadece stokta, 'urun' = fiyatlar sayfasında oluşturulmuş
   ekle(urun){
+    // Aynı ad + alış fiyatı varsa tekrar ekleme (çift kayıt önlemi)
+    const mevcut = this.hepsini();
+    const var_mi = mevcut.find(u=>
+      u.ad === urun.ad &&
+      u.alisFiyati === urun.alisFiyati &&
+      u.tip === (urun.tip||'stok')
+    );
+    if(var_mi) return var_mi; // Varsa mevcut kaydı döndür
     const yeni={id:uid(),...urun,stok:urun.stok??0,tarih:today()};
-    set(DB_KEYS.urunler,[...this.hepsini(),yeni]); return yeni;
+    set(DB_KEYS.urunler,[...mevcut,yeni]); return yeni;
   },
   guncelle(id,d){ set(DB_KEYS.urunler,this.hepsini().map(u=>u.id===id?{...u,...d}:u)); },
   sil(id){ set(DB_KEYS.urunler,this.hepsini().filter(u=>u.id!==id)); },

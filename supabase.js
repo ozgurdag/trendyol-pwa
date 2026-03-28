@@ -250,6 +250,17 @@ export const sb = {
         window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
       };
       realtimeBaglant(kullanici.token);
+
+      // İlk açılışta Supabase'den veriyi çek
+      // (localStorage boşsa veya son syncten 5 dk geçtiyse)
+      const sonSync = parseInt(localStorage.getItem('tsx_son_sync')||'0');
+      const localUrunSayisi = JSON.parse(localStorage.getItem('tsx_urunler')||'[]').length;
+      if(localUrunSayisi === 0 || Date.now() - sonSync > 5 * 60 * 1000){
+        await this.tamSenkronize();
+        localStorage.setItem('tsx_son_sync', Date.now().toString());
+        window.dispatchEvent(new CustomEvent('tsx_veri_guncellendi'));
+      }
+
       return { ok: true };
     } catch(e){
       console.warn('Supabase offline:', e.message);

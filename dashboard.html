@@ -193,7 +193,7 @@ function render() {
     if (fiyat) {
       const gercekFiyat = s.gercekFiyat || fiyat.yuvarlak;
       const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo);
-      bugunGelir += kar.net;
+      bugunGelir += kar.net * s.adet;
     }
   });
 
@@ -230,7 +230,7 @@ function render() {
     if (fiyat) {
       const gercekFiyat = s.gercekFiyat || fiyat.yuvarlak;
       const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo);
-      ayGelir += kar.net;
+      ayGelir += kar.net * s.adet;
     }
   });
   document.getElementById('ay-satis').textContent = ayAdet;
@@ -295,7 +295,7 @@ function renderDashGrafik(){
       const urunB=s.tip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:obj;
       const kFU=kargoUcreti(ayarlar.kargoFirma||'Aras',obj.desi||(s.tip==='set'?2:1));
       const f=hesapla.satisFiyati(urunB,ayarlar,s.tip==='set'?1:(obj.paketAdet||1),kFU);
-      if(f){const gf=s.gercekFiyat||f.yuvarlak;kar+=hesapla.gercekKar(alisTop,gf,obj.komisyon||0.04,f.platform,f.kargo).net;}
+      if(f){const gf=s.gercekFiyat||f.yuvarlak;kar+=hesapla.gercekKar(alisTop,gf,obj.komisyon||0.04,f.platform,f.kargo).net * s.adet;}
     });
     const lbl=gunler[d.getDay()===0?6:d.getDay()-1];
     adetData.push({lbl,v:adet});

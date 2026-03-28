@@ -328,12 +328,56 @@ window.toast = (msg,tip='info') => {
   cont.appendChild(el); setTimeout(()=>el.remove(),3000);
 };
 
-function neKatDoldur(){
+window.neKatDoldur=function neKatDoldur(){
   const k1=document.getElementById('ne-k1');
   if(!k1) return;
-  if(k1.options.length > 1) return; // zaten dolu
+  if(k1.options.length > 1) return;
   KATEGORILER.forEach(k=>k1.add(new Option(k,k)));
 }
+
+window.neK1Deg=()=>{
+  const v=document.getElementById('ne-k1').value;
+  const k2=document.getElementById('ne-k2');
+  k2.innerHTML='<option value="">— Alt kategori seçin —</option>';
+  document.getElementById('ne-k3').innerHTML='<option value="">— Önce alt kategori —</option>';
+  document.getElementById('ne-k3').disabled=true;
+  document.getElementById('ne-kom-auto').style.display='none';
+  if(!v){k2.disabled=true;return;}
+  (ALT_KATEGORILER[v]||[]).forEach(a=>k2.add(new Option(a,a)));
+  k2.disabled=false;
+};
+
+window.neK2Deg=()=>{
+  const k1=document.getElementById('ne-k1').value;
+  const k2=document.getElementById('ne-k2').value;
+  const k3=document.getElementById('ne-k3');
+  k3.innerHTML='<option value="">— Ürün grubu seçin —</option>';
+  document.getElementById('ne-kom-auto').style.display='none';
+  if(!k2){k3.disabled=true;return;}
+  let gruplar=[];
+  for(const[key,vals] of Object.entries(URUN_GRUPLARI)){
+    const n=key.replace('UG_','').replace(/_/g,' ').toLowerCase();
+    if(n.includes(k1.toLowerCase().slice(0,8))&&n.includes(k2.toLowerCase().slice(0,8))){gruplar=vals;break;}
+  }
+  if(!gruplar.length){
+    for(const[key,vals] of Object.entries(URUN_GRUPLARI)){
+      if(key.toLowerCase().includes(k2.toLowerCase().slice(0,10).replace(/\s+/g,'_'))){gruplar=vals;break;}
+    }
+  }
+  gruplar.forEach(g=>k3.add(new Option(g,g)));
+  k3.disabled=false;
+};
+
+window.neK3Deg=()=>{
+  const k3=document.getElementById('ne-k3').value;
+  if(!k3){document.getElementById('ne-kom-auto').style.display='none';return;}
+  const sKey='KadinGir';
+  const kom=komisyonOrani(k3,sKey);
+  const el=document.getElementById('ne-kom-inp');
+  if(el) el.value=(kom*100).toFixed(1);
+  document.getElementById('ne-kom-goster').textContent='%'+(kom*100).toFixed(1);
+  document.getElementById('ne-kom-auto').style.display='flex';
+};
 
 window.urunEkleModalAc = () => {
   neKatDoldur();

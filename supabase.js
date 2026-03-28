@@ -99,10 +99,10 @@ export const sb = {
   /* İlk bağlantı + şirket kaydı */
   async baslat(kullanici) {
     try {
-      // Şirket yoksa oluştur, varsa bul
+      // Önce Supabase'in erişilebilir olup olmadığını kontrol et
       let sirket = null;
       if (kullanici.rol === 'sahip') {
-        const existing = await sbGet('sirketler', `ortak_kod=eq.${kullanici.ortakKod}`);
+        const existing = await sbGet('sirketler', `ortak_kod=eq.${kullanici.ortakKod}`).catch(()=>[]);
         if (existing.length) {
           sirket = existing[0];
         } else {
@@ -132,7 +132,10 @@ export const sb = {
       console.log('✅ Supabase bağlantısı kuruldu, sirket:', sirket.id);
       return { ok: true };
     } catch (e) {
-      console.error('Supabase başlatma hatası:', e);
+      // Supabase tabloları henüz oluşturulmamış olabilir
+      // supabase-tablolar.sql dosyasını Supabase SQL Editor'da çalıştırın
+      console.warn('Supabase bağlanamadı, offline modda devam ediliyor. SQL tabloları oluşturuldu mu?');
+      this.bagliMi = false;
       return { hata: e.message };
     }
   },

@@ -446,9 +446,9 @@ export const satislarDB = {
       if(k.tip==='listing'){
         const u=urunlerDB.bul(k.hedefId); if(!u) return;
         // Doğrudan stokBilesenleri üzerinden düş
-        const bilesенler = u.stokBilesenleri||[];
-        if(bilesенler.length){
-          bilesенler.forEach(b=>{
+        const bilesenler = u.stokBilesenleri||[];
+        if(bilesenler.length){
+          bilesenler.forEach(b=>{
             const bu=urunlerDB.bul(b.urunId);
             if(bu) urunlerDB.guncelle(b.urunId,{stok:Math.max(0,(bu.stok||0)-b.adet*k.adet)});
           });

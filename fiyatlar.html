@@ -51,6 +51,7 @@
   <div class="topbar">
     <div class="topbar-title">🏷️ Listingler</div>
     <div class="topbar-action" onclick="tyImportAc()" title="Trendyol'dan İçe Aktar">🛍️</div>
+    <div class="topbar-action" onclick="manuelEkleAc()" title="Manuel Ekle">＋</div>
     <div class="topbar-action" onclick="excelIndir()">⬇</div>
   </div>
   <div class="page-content">
@@ -76,6 +77,42 @@
         <div class="stat-label">Set</div>
         <div class="stat-value" id="oz-set">0</div>
         <div class="stat-sub">set ürün</div>
+      </div>
+    </div>
+
+    <!-- MANUEL EKLE -->
+    <div class="card mb-12" id="manuel-ekle-kart" style="display:none">
+      <div class="card-title mb-12">Manuel Listing Ekle</div>
+      <div class="form-group">
+        <label class="form-label">Listing Adı</label>
+        <input class="form-input" id="ml-ad" placeholder="Trendyol'daki ürün adı">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Satış Fiyatı (₺)</label>
+          <input class="form-input" type="number" id="ml-fiyat" placeholder="0.00" step="0.01">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Komisyon (%)</label>
+          <input class="form-input" type="number" id="ml-kom" value="4" step="0.1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Desi</label>
+          <input class="form-input" type="number" id="ml-desi" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sevkiyat</label>
+          <select class="form-select" id="ml-kargo">
+            <option value="0">Normal 🚚</option>
+            <option value="1">Bugün Kargoda ⚡</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('manuel-ekle-kart').style.display='none'">İptal</button>
+        <button class="btn btn-primary" style="flex:1" onclick="manuelEkle()">✓ Ekle</button>
       </div>
     </div>
 
@@ -368,8 +405,8 @@ window.onayToggle=(id,tip)=>{
   if(!obj)return;
   // Onay için bileşen zorunlu
   if(!obj.onaylandi){
-    const bilesенler=tip==='set'?(obj.icindekiler||[]):(obj.stokBilesenleri||[]);
-    if(!bilesенler.length){
+    const bilesenler=tip==='set'?(obj.icindekiler||[]):(obj.stokBilesenleri||[]);
+    if(!bilesenler.length){
       showToast('Önce stok bileşeni bağlayın','error');return;
     }
   }
@@ -451,8 +488,8 @@ window.renderKartlar=()=>{
     const kar=g&&f&&alisTop>0?hesapla.gercekKar(alisTop,g,obj.komisyon||0.04,f.platform,f.kargo):null;
 
     // Bileşen satırları
-    const bilesenHtml=bilesенler.length
-      ?bilesенler.map(b=>{
+    const bilesenHtml=bilesenler.length
+      ?bilesenler.map(b=>{
           const u=urunlerDB.bul(b.urunId);if(!u)return'';
           const stokRenk=(u.stok||0)===0?'var(--red)':(u.stok||0)<5?'#f59e0b':'var(--green)';
           return`<div class="lk-bilesen-satir">
@@ -465,7 +502,7 @@ window.renderKartlar=()=>{
     // Onay butonu
     const onayBtn=obj.onaylandi
       ?`<button class="onay-btn iptal" onclick="onayToggle('${obj.id}','${tip}')">⛔ Satıştan Kaldır</button>`
-      :(bilesенler.length
+      :(bilesenler.length
           ?`<button class="onay-btn aktif" onclick="onayToggle('${obj.id}','${tip}')">✅ Satışa Aç</button>`
           :`<button class="onay-btn pasif" disabled>⚠️ Önce stok bileşeni bağla</button>`);
 
@@ -520,6 +557,33 @@ window.excelIndir=async()=>{
 
 window.showToast=(msg,tip='info')=>{
   const c=document.getElementById('toast');const el=document.createElement('div');el.className='toast '+tip;el.textContent=msg;c.appendChild(el);setTimeout(()=>el.remove(),3000);
+};
+
+window.manuelEkleAc=()=>{
+  document.getElementById('manuel-ekle-kart').style.display='';
+  document.getElementById('ml-ad').focus();
+};
+window.manuelEkle=()=>{
+  const ad=document.getElementById('ml-ad').value.trim();
+  const fiyat=+document.getElementById('ml-fiyat').value||0;
+  if(!ad){showToast('Listing adı zorunlu','error');return;}
+  if(!fiyat){showToast('Satış fiyatı zorunlu','error');return;}
+  urunlerDB.ekle({
+    ad, satisFiyatiGercek:fiyat,
+    komisyon:(+document.getElementById('ml-kom').value||4)/100,
+    desi:+document.getElementById('ml-desi').value||1,
+    ayniGunKargo:document.getElementById('ml-kargo').value==='1',
+    alisFiyati:0,stok:0,stokBilesenleri:[],
+    tip:'listing',onaylandi:false,
+  });
+  document.getElementById('ml-ad').value='';
+  document.getElementById('ml-fiyat').value='';
+  document.getElementById('ml-kom').value='4';
+  document.getElementById('ml-desi').value='1';
+  document.getElementById('ml-kargo').value='0';
+  document.getElementById('manuel-ekle-kart').style.display='none';
+  renderKartlar();
+  showToast('"'+ad+'" eklendi','success');
 };
 
 window.addEventListener('tsx_render',()=>renderKartlar());

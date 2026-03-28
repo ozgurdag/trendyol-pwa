@@ -109,9 +109,9 @@ function doldurDropdown(){
     if(!liste.length){sel.innerHTML='<option value="">— Önce Listing sayfasından onaylayın —</option>';return;}
     const stokOzeti=id=>{
       const u=urunlerDB.bul(id);
-      const bilesенler=u?.stokBilesenleri||[];
-      if(!bilesенler.length) return '?';
-      return Math.min(...bilesенler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
+      const bilesenler=u?.stokBilesenleri||[];
+      if(!bilesenler.length) return '?';
+      return Math.min(...bilesenler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
     };
     sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>{
       const maxAdet=stokOzeti(x.id);
@@ -144,9 +144,9 @@ window.hedefSecildi=()=>{
   document.getElementById('satis-onizleme').style.display='';
   // Listing için stok: bileşenlerden hesapla
   if(aktifTip==='urun'){
-    const bilesенler=obj.stokBilesenleri||[];
-    if(bilesенler.length){
-      const maxAdet=Math.min(...bilesенler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
+    const bilesenler=obj.stokBilesenleri||[];
+    if(bilesenler.length){
+      const maxAdet=Math.min(...bilesenler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
       document.getElementById('on-stok').textContent=maxAdet+' adet yapılabilir';
     } else {
       document.getElementById('on-stok').textContent='Bileşen yok';

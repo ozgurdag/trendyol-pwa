@@ -215,21 +215,7 @@ export const hesapla = {
   },
 };
 
-export function demoYukle(){
-  if(get(DB_KEYS.urunler)?.length) return;
-  [
-    {ad:"Dalin Bebe Sabunu Avokado (100 gr)",     alisFiyati:37,    stok:48,desi:1,komisyon:0.04},
-    {ad:"Johnson's Baby Bebek Losyonu (300 ml)",   alisFiyati:141.9, stok:24,desi:1,komisyon:0.04},
-    {ad:"Sudocrem Pişik Kremi (60 gr)",            alisFiyati:58.5,  stok:36,desi:1,komisyon:0.04},
-    {ad:"Dalin Şampuan Normal (700 ml)",           alisFiyati:77.5,  stok:30,desi:2,komisyon:0.04},
-    {ad:"Bepanthol Baby Merhem (50 gr)",           alisFiyati:72.9,  stok:18,desi:1,komisyon:0.04},
-    {ad:"Sebamed Bebek Güneş Spreyi (200 ml)",    alisFiyati:168.5, stok:12,desi:1,komisyon:0.04},
-    {ad:"Dalin Islak Mendil 56'lı",               alisFiyati:28.9,  stok:60,desi:1,komisyon:0.028},
-    {ad:"Nivea Baby Pişik Kremi (100 ml)",         alisFiyati:49.9,  stok:22,desi:1,komisyon:0.04},
-    {ad:"Uni Baby Kolay Tarama Şampuanı (700 ml)", alisFiyati:89.5,  stok:15,desi:2,komisyon:0.04},
-    {ad:"Dalin Bebek Kolonyası (150 ml)",          alisFiyati:77.5,  stok:40,desi:1,komisyon:0.038},
-  ].forEach(u=>urunlerDB.ekle({...u,tip:'stok'}));
-}
+export function demoYukle(){ /* demo data kaldırıldı */ }
 
 export const sync={bagliMi:false,async baslat(){},async uyarla(){}};
 

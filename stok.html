@@ -133,7 +133,10 @@
     <button class="btn btn-ghost btn-sm mb-8" onclick="stokModalKatToggle()" id="sm-kat-btn" style="width:100%">
       ✏️ Kategori Bilgisini Düzenle
     </button>
-    <button class="btn btn-primary btn-full" onclick="stokKaydet()">Kaydet</button>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="btn btn-primary" style="flex:1" onclick="stokKaydet()">Kaydet</button>
+      <button class="btn btn-danger" style="width:44px;height:44px;padding:0;border-radius:var(--r-md)" onclick="stokUrunSil()" title="Ürünü Sil">🗑</button>
+    </div>
   </div>
 </div>
 
@@ -471,6 +474,16 @@ window.smK3Deg=()=>{
   document.getElementById('sm-kom-auto').style.display='flex';
 };
 
+
+window.stokUrunSil = () => {
+  if (!aktifId) return;
+  const u = urunlerDB.bul(aktifId);
+  if (!confirm('"' + (u?.ad||'Ürün') + '" silinecek. Emin misiniz?')) return;
+  urunlerDB.sil(aktifId);
+  document.getElementById('stok-modal').classList.remove('open');
+  render();
+  toast('Ürün silindi', 'info');
+};
 
 render();
 </script>

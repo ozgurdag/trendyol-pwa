@@ -138,7 +138,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">Komisyon (%)</label>
-        <input class="form-input" type="number" id="ne-kom" value="4" step="0.1" id="ne-kom-inp">
+        <input class="form-input" type="number" id="ne-kom-inp" value="4" step="0.1">
       </div>
     </div>
     <!-- Kategori seçimi -->
@@ -160,7 +160,7 @@
         <option value="">— Önce alt kategori seçin —</option>
       </select>
     </div>
-    <div id="ne-kom-auto" style="display:none;background:var(--bg3);border-radius:var(--r-md);padding:8px 12px;margin-bottom:12px;font-size:12px;display:flex;justify-content:space-between">
+    <div id="ne-kom-auto" style="display:none;background:var(--bg3);border-radius:var(--r-md);padding:8px 12px;margin-bottom:12px;font-size:12px;justify-content:space-between">
       <span style="color:var(--t3)">Komisyon (otomatik)</span>
       <span id="ne-kom-goster" style="font-weight:700;color:var(--accent)">—</span>
     </div>
@@ -294,7 +294,7 @@ window.stokUrunEkle = () => {
   const alis = +document.getElementById('ne-alis').value || 0;
   const stok = +document.getElementById('ne-stok').value || 0;
   const desi = +document.getElementById('ne-desi').value || 1;
-  const komEl = document.getElementById('ne-kom-inp') || document.getElementById('ne-kom');
+  const komEl = document.getElementById('ne-kom-inp');
   const kom = (+(komEl?.value||4)) / 100;
   const k1 = document.getElementById('ne-k1').value;
   const k2 = document.getElementById('ne-k2').value;

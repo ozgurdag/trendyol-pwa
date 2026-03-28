@@ -89,13 +89,35 @@ export const satislarDB = {
     yeniler.forEach(k=>{
       if(k.tip==='urun'||k.tip==='stok'){
         const u=urunlerDB.bul(k.hedefId);
-        if(u) urunlerDB.guncelle(k.hedefId,{stok:Math.max(0,(u.stok||0)-k.adet)});
+        if(!u) return;
+        const adet=k.adet*(u.paketAdet||1); // paket ise her birimi düş
+        // Önce oluşturulan ürünün stokunu düş
+        urunlerDB.guncelle(k.hedefId,{stok:Math.max(0,(u.stok||0)-k.adet)});
+        // Eğer stokUrunId varsa (stok kaynağı) oradan da düş
+        if(u.stokUrunId){
+          const su=urunlerDB.bul(u.stokUrunId);
+          if(su) urunlerDB.guncelle(u.stokUrunId,{stok:Math.max(0,(su.stok||0)-adet)});
+        }
       } else {
+        // Set satışı: içindeki stok ürünlerinden düş
         const s=setlerDB.bul(k.hedefId);
         if(s){
           (s.icindekiler||[]).forEach(ic=>{
+            // ic.urunId = oluşturulan ürün veya stok ürünü olabilir
             const u=urunlerDB.bul(ic.urunId);
-            if(u) urunlerDB.guncelle(ic.urunId,{stok:Math.max(0,(u.stok||0)-(ic.adet*k.adet))});
+            if(u){
+              const dusAdet=ic.adet*k.adet;
+              urunlerDB.guncelle(ic.urunId,{stok:Math.max(0,(u.stok||0)-dusAdet)});
+              // stok kaynağından da düş
+              if(u.stokUrunId){
+                const su=urunlerDB.bul(u.stokUrunId);
+                if(su) urunlerDB.guncelle(u.stokUrunId,{stok:Math.max(0,(su.stok||0)-dusAdet)});
+              }
+            } else {
+              // ic.urunId direkt stok ürünü ise
+              const su=urunlerDB.bul(ic.urunId);
+              if(su) urunlerDB.guncelle(ic.urunId,{stok:Math.max(0,(su.stok||0)-ic.adet*k.adet)});
+            }
           });
         }
       }

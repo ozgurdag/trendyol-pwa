@@ -330,10 +330,23 @@ const toTL=n=>+n||0;
 document.getElementById('g-firma').value=ay.kargoFirma||'Aras';
 document.getElementById('g-satici').value=ay.saticiTipiKey||'KadinGir';
 window.gKaydet=()=>{
-  ayarlarDB.kaydet({kargoFirma:document.getElementById('g-firma').value,saticiTipiKey:document.getElementById('g-satici').value});
+  ayarlarDB.kaydet({
+    kargoFirma:document.getElementById('g-firma').value,
+    saticiTipiKey:document.getElementById('g-satici').value
+  });
   ay=ayarlarDB.oku();
-  // Seçili ürün varsa komisyonu güncelle
-  if(uSecId){const u=urunlerDB.bul(uSecId);if(u&&u.urunGrubu){uSecKom=komisyonOrani(u.urunGrubu,ay.saticiTipiKey||'KadinGir');document.getElementById('u-kom-g').textContent='%'+(uSecKom*100).toFixed(1)+(u.urunGrubu?' ('+u.urunGrubu.slice(0,25)+'…)':'');uOneri();}}
+  // Seçili ürün varsa komisyonu satıcı tipine göre yenile
+  if(uSecId){
+    const u=urunlerDB.bul(uSecId);
+    if(u){
+      const sKey=ay.saticiTipiKey||'KadinGir';
+      uSecKom=u.urunGrubu?komisyonOrani(u.urunGrubu,sKey):(u.komisyon||0.04);
+      document.getElementById('u-kom-g').textContent='%'+(uSecKom*100).toFixed(1)+(u.urunGrubu?' · '+u.urunGrubu.slice(0,25):'');
+      uOneri(); // kargo firması veya satıcı tipi değişince fiyatı yenile
+    }
+  }
+  // Set sekmesi açıksa seti de yenile
+  sOneri();
   renderKartlar();
 };
 

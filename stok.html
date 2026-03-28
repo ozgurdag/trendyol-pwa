@@ -66,7 +66,7 @@
       <span class="nav-label">Panel</span>
     </a>
     <a class="nav-item" href="fiyatlar.html">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
       <span class="nav-label">Ürün/Set</span>
     </a>
     <a class="nav-item" href="satis-giris.html">
@@ -156,16 +156,12 @@
         <input class="form-input" type="number" id="ne-stok" value="0" min="0">
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
+    <div class="form-group">
         <label class="form-label">Desi</label>
         <input class="form-input" type="number" id="ne-desi" value="1" min="1">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Komisyon (%)</label>
-        <input class="form-input" type="number" id="ne-kom-inp" value="4" step="0.1">
-      </div>
     </div>
+    <!-- komisyon kategoriden otomatik gelir -->
+    <input type="hidden" id="ne-kom-inp" value="4">
     <!-- Kategori seçimi -->
     <div class="form-group">
       <label class="form-label">1. Kategori</label>
@@ -185,7 +181,7 @@
         <option value="">— Önce alt kategori seçin —</option>
       </select>
     </div>
-    <div id="ne-kom-auto" style="display:none;background:var(--bg3);border-radius:var(--r-md);padding:8px 12px;margin-bottom:12px;font-size:12px;justify-content:space-between">
+    <div id="ne-kom-auto" style="display:none;background:var(--accent-l);border:1px solid var(--accent);border-radius:var(--r-md);padding:8px 12px;margin-bottom:12px;font-size:12px;justify-content:space-between">
       <span style="color:var(--t3)">Komisyon (otomatik)</span>
       <span id="ne-kom-goster" style="font-weight:700;color:var(--accent)">—</span>
     </div>

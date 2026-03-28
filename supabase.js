@@ -59,12 +59,16 @@ export function realtimeDinle(tablo, callback) {
   realtimeWs = new WebSocket(wsUrl);
 
   realtimeWs.onopen = () => {
-    realtimeWs.send(JSON.stringify({
-      topic: 'realtime:public',
-      event: 'phx_join',
-      payload: { config: { broadcast: { self: false }, presence: { key: '' } } },
-      ref: '1'
-    }));
+    // readyState OPEN olduğundan emin ol
+    if (realtimeWs.readyState !== WebSocket.OPEN) return;
+    try {
+      realtimeWs.send(JSON.stringify({
+        topic: 'realtime:public',
+        event: 'phx_join',
+        payload: { config: { broadcast: { self: false }, presence: { key: '' } } },
+        ref: '1'
+      }));
+    } catch(e) { console.warn('Realtime bağlantı gecikmesi, yeniden deneniyor...'); }
   };
 
   realtimeWs.onmessage = (e) => {

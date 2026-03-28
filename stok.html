@@ -264,7 +264,7 @@ window.filtreSec = (f) => {
 };
 
 window.render = () => {
-  const urunler = urunlerDB.hepsini();
+  const urunler = urunlerDB.stokUrunler();
   const ara = document.getElementById('arama')?.value?.toLowerCase() || '';
 
   let liste = urunler.filter(u => u.ad.toLowerCase().includes(ara));
@@ -452,7 +452,7 @@ window.stokUrunEkle = () => {
   const k2 = document.getElementById('ne-k2').value;
   const k3 = document.getElementById('ne-k3').value;
   if (!ad || !alis) { toast('Ad ve alış fiyatı zorunlu', 'error'); return; }
-  urunlerDB.ekle({ ad, alisFiyati: alis, stok, desi, komisyon: kom,
+  urunlerDB.ekle({ ad, alisFiyati: alis, stok, desi, komisyon: kom, tip:'stok',
                    kategori1: k1||undefined, kategori2: k2||undefined, urunGrubu: k3||undefined,
                    tip: 'stok' });
   ['ne-ad','ne-alis'].forEach(id => document.getElementById(id).value = '');

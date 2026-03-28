@@ -24,7 +24,7 @@
     <div class="card mb-16">
       <div class="card-title mb-12">Satış Ekle</div>
       <div class="tabs mb-12">
-        <div class="tab active" id="tip-tab-urun" onclick="tipSec('urun')">Ürün</div>
+        <div class="tab active" id="tip-tab-urun" onclick="tipSec('urun')">Listing</div>
         <div class="tab" id="tip-tab-set" onclick="tipSec('set')">Set</div>
       </div>
       <div class="form-group">
@@ -105,16 +105,24 @@ window.tipSec=t=>{
 function doldurDropdown(){
   const sel=document.getElementById('satis-hedef');
   if(aktifTip==='urun'){
-    const liste=urunlerDB.olusturulanlar();
-    if(!liste.length){sel.innerHTML='<option value="">— Önce Ürün/Set Oluştur sayfasından ekleyin —</option>';return;}
-    sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>
-      `<option value="${x.id}">${x.ad} | Stok: ${x.stok||0}</option>`).join('');
+    const liste=urunlerDB.onaylananlar();
+    if(!liste.length){sel.innerHTML='<option value="">— Önce Listing sayfasından onaylayın —</option>';return;}
+    const stokOzeti=id=>{
+      const u=urunlerDB.bul(id);
+      const bilesенler=u?.stokBilesenleri||[];
+      if(!bilesенler.length) return '?';
+      return Math.min(...bilesенler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
+    };
+    sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>{
+      const maxAdet=stokOzeti(x.id);
+      return `<option value="${x.id}"${maxAdet===0?' disabled':''}>${x.ad} | Max: ${maxAdet}</option>`;
+    }).join('');
   } else {
-    const liste=setlerDB.hepsini();
-    if(!liste.length){sel.innerHTML='<option value="">— Önce Set Oluştur sayfasından ekleyin —</option>';return;}
+    const liste=setlerDB.onaylananlar();
+    if(!liste.length){sel.innerHTML='<option value="">— Önce Listing sayfasından set onaylayın —</option>';return;}
     sel.innerHTML='<option value="">— Seçin —</option>'+liste.map(x=>{
       const max=setlerDB.maxAdet(x.id);
-      return `<option value="${x.id}"${max===0?' disabled':''}">${x.ad} | Max: ${max} set</option>`;
+      return `<option value="${x.id}"${max===0?' disabled':''}>${x.ad} | Max: ${max} set</option>`;
     }).join('');
   }
 }
@@ -134,7 +142,18 @@ window.hedefSecildi=()=>{
   const varsayilanFiyat=obj.satisFiyatiGercek||f?.yuvarlak||0;
   document.getElementById('satis-fiyat').value=varsayilanFiyat||'';
   document.getElementById('satis-onizleme').style.display='';
-  document.getElementById('on-stok').textContent=(obj.stok||0)+' adet';
+  // Listing için stok: bileşenlerden hesapla
+  if(aktifTip==='urun'){
+    const bilesенler=obj.stokBilesenleri||[];
+    if(bilesенler.length){
+      const maxAdet=Math.min(...bilesенler.map(b=>{const s=urunlerDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
+      document.getElementById('on-stok').textContent=maxAdet+' adet yapılabilir';
+    } else {
+      document.getElementById('on-stok').textContent='Bileşen yok';
+    }
+  } else {
+    document.getElementById('on-stok').textContent=(setlerDB.maxAdet(id)||0)+' set';
+  }
   document.getElementById('on-onerilen').textContent=f?p(f.yuvarlak):'—';
   karOniziGoster();
 };
@@ -166,7 +185,7 @@ window.satisEkle=()=>{
   } else {
     if((obj.stok||0)<adet&&!confirm(`Stok yetersiz (${obj.stok||0} adet). Yine de kaydet?`)) return;
   }
-  satislarDB.ekle([{tip:aktifTip,hedefId,adet,gercekFiyat:fiyat,tarih}]);
+  satislarDB.ekle([{tip:aktifTip==='urun'?'listing':aktifTip,hedefId,adet,gercekFiyat:fiyat,tarih}]);
   document.getElementById('satis-hedef').value='';document.getElementById('satis-adet').value='1';document.getElementById('satis-fiyat').value='';
   document.getElementById('satis-onizleme').style.display='none';
   doldurDropdown();renderBugun();renderOzet();

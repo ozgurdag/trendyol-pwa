@@ -594,16 +594,18 @@ window.tyOku=async(input)=>{
     const rows=utils.sheet_to_json(wb.Sheets[sheetName],{defval:''});
     if(!rows.length){showToast('Dosyada veri yok','error');return;}
     tyData=rows.map(r=>({
-      ad:       String(r['Ürün Adı']||'').trim(),
+      ad:          String(r['Ürün Adı']||'').trim(),
       satisFiyati: parseFloat(String(r["Trendyol'da Satılacak Fiyat (KDV Dahil)"]||r['Trendyol da Satılacak Fiyat (KDV Dahil)']||0).replace(',','.'))||0,
-      komisyon: parseFloat(r['Komisyon Oranı']||0)/100,
-      kategori1:String(r['Kategori İsmi']||'').trim(),
+      komisyon:    parseFloat(r['Komisyon Oranı']||0)/100,
+      kategori1:   String(r['Kategori İsmi']||'').trim(),
+      ayniGunKargo: String(r['Sevkiyat Tipi']||'').trim() === 'Bugün Kargoda',
     })).filter(r=>r.ad&&r.satisFiyati>0);
     if(!tyData.length){showToast('Geçerli ürün bulunamadı','error');return;}
     document.getElementById('ty-say').textContent=`${tyData.length} ürün bulundu`;
     document.getElementById('ty-liste').innerHTML=tyData.map(r=>`
       <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border);font-size:12px">
         <span style="flex:1;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px">${r.ad}</span>
+        <span style="color:var(--t3);flex-shrink:0;margin-right:6px">${r.ayniGunKargo?'⚡':'🚚'}</span>
         <span style="color:var(--accent);font-weight:700;flex-shrink:0;margin-right:8px">${r.satisFiyati.toLocaleString('tr-TR')}₺</span>
         <span style="color:var(--t3);flex-shrink:0">%${(r.komisyon*100).toFixed(1)}</span>
       </div>`).join('');
@@ -623,8 +625,9 @@ window.tyAktar=()=>{
       satisFiyatiGercek:r.satisFiyati,
       komisyon:r.komisyon,
       kategori1:r.kategori1||undefined,
+      ayniGunKargo:r.ayniGunKargo||false,
       alisFiyati:0,stok:0,desi:1,
-      stokBilesenleri:[],   // boş — kullanıcı sonradan ekler
+      stokBilesenleri:[],
       tip:'urun',
     });
     eklendi++;
@@ -881,6 +884,7 @@ window.showToast=(msg,tip='info')=>{
 };
 
 uSdDoldur();renderKartlar();
+window.addEventListener('tsx_render',()=>{uSdDoldur();renderKartlar();});
 </script>
 </body>
 </html>

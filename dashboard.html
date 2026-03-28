@@ -170,6 +170,18 @@ document.getElementById('tarih-label').textContent =
 
 window.cikisYap = () => { auth.cikis(); window.location.href='index.html'; };
 
+// Supabase bağlantı durumu göster
+(async()=>{
+  const badge = document.getElementById('topbar-senkron');
+  const {supabasedenYukle} = await import('./state.js').catch(()=>({}));
+  const sonSync = parseInt(localStorage.getItem('tsx_son_sync')||'0');
+  if(sonSync > 0){
+    badge.textContent='⬤ Canlı';
+    badge.className='badge badge-green';
+    badge.style.fontSize='10px';
+  }
+})();
+
 function para(n) { return n.toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:0})+'₺'; }
 
 function render() {
@@ -268,6 +280,7 @@ function render() {
 
 render();
 renderDashGrafik();
+window.addEventListener('tsx_render',()=>{render();renderDashGrafik();});
 // Ortak kullanıcı - admin butonlarını gizle
 if(!auth.adminMi()){
   const b=document.getElementById('btn-urun-set-ekle');

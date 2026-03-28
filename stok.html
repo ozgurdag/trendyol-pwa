@@ -733,6 +733,7 @@ window.csvKaydet = () => {
 };
 
 render();
+window.addEventListener('tsx_render',()=>render());
 // Ortak kullanıcı - ekleme butonlarını gizle
 if(!auth.adminMi()){
   const ekleBtn = document.getElementById('btn-urun-ekle');

@@ -50,6 +50,8 @@ async function oturumSonlandir(kullaniciId){
   );
 }
 
+const ORTAK_KOD = 'TSX2026'; // Şirket kodu - sabit
+
 const ROLLER = {
   'admin@trendyol-satis.com':  'admin',
   'ortak@trendyol-satis.com':  'ortak',
@@ -75,6 +77,7 @@ export const sbAuth = {
       if (!r.ok) return { hata: data.error_description || data.msg || 'Giriş başarısız' };
 
       const rol = ROLLER[email] || 'ortak';
+      const ortakKod = ORTAK_KOD;
       const oturum = {
         id: data.user.id,
         email: data.user.email,
@@ -83,7 +86,7 @@ export const sbAuth = {
         token: data.access_token,
         refresh: data.refresh_token,
         bitis: Date.now() + (data.expires_in * 1000),
-        ortakKod: 'TSX2026',
+        ortakKod: ORTAK_KOD,
       };
       localStorage.setItem('tsx_oturum', JSON.stringify(oturum));
       // Bu cihazı aktif oturum olarak kaydet (diğer cihazları devre dışı bırakır)
@@ -231,10 +234,10 @@ export const sb = {
     try {
       let sirket = null;
       if(kullanici.rol === 'admin'){
-        const list = await sbGet('sirketler', `ortak_kod=eq.${kullanici.ortakKod}`).catch(()=>[]);
+        const list = await sbGet('sirketler', `ortak_kod=eq.${kullanici.ortakKod||ORTAK_KOD}`).catch(()=>[]);
         if(list?.length) sirket = list[0];
         else {
-          const yeni = await sbInsert('sirketler', { ad:'Satış Yönetim', ortak_kod: kullanici.ortakKod });
+          const yeni = await sbInsert('sirketler', { ad:'Satış Yönetim', ortak_kod: kullanici.ortakKod||ORTAK_KOD });
           sirket = Array.isArray(yeni) ? yeni[0] : yeni;
         }
       } else {
@@ -329,7 +332,10 @@ export const sb = {
   },
 
   async urunEkle(u){
-    if(!this.bagliMi||!this.sirketId) return;
+    if(!this.bagliMi||!this.sirketId){
+      console.warn('Supabase bağlı değil, sadece localStorage:', this.bagliMi, this.sirketId);
+      return;
+    }
     await sbInsert('urunler',{
       id:u.id, sirket_id:this.sirketId, ad:u.ad,
       alis_fiyati:u.alisFiyati, stok:u.stok||0, desi:u.desi||1,

@@ -853,7 +853,7 @@ window.kartKaydet=(id,tip,val)=>{
 
 /* ── DÜZENLE MODAL ── */
 window.mAc=(id,tip)=>{
-  const obj=tip==='set'?setlerDB.bul(id):(tip==='listing'?stokDB.bul(id):stokDB.bul(id));if(!obj)return;
+  const obj=tip==='set'?setlerDB.bul(id):listingDB.bul(id);if(!obj)return;
   edId=id;edTip=tip;
   const alisTop=tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
   const desi=obj.desi||(tip==='set'?2:1);
@@ -878,7 +878,7 @@ window.mAc=(id,tip)=>{
   document.getElementById('ed-modal').classList.add('open');
 };
 window.edYenilenOneri=()=>{
-  const obj=edTip==='set'?setlerDB.bul(edId):stokDB.bul(edId);if(!obj)return;
+  const obj=edTip==='set'?setlerDB.bul(edId):listingDB.bul(edId);if(!obj)return;
   const desi=+document.getElementById('ed-desi-i').value||1;
   const aynigun=document.getElementById('ed-aynigun').value==='1';
   const roi=toTL(document.getElementById('ed-roi-i').value)/100;
@@ -896,7 +896,7 @@ window.edYenilenOneri=()=>{
   edKar();
 };
 window.edKar=()=>{
-  const obj=edTip==='set'?setlerDB.bul(edId):stokDB.bul(edId);if(!obj)return;
+  const obj=edTip==='set'?setlerDB.bul(edId):listingDB.bul(edId);if(!obj)return;
   const desi=+document.getElementById('ed-desi-i').value||obj.desi||1;
   const aynigun=document.getElementById('ed-aynigun').value==='1';
   const roi=toTL(document.getElementById('ed-roi-i').value)/100;

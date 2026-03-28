@@ -760,7 +760,7 @@ function _kzGoster(el,kar,dEl,nEl,rEl){
 }
 
 window.excelIndir=async()=>{
-  const{utils,writeFile}=await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+  const{utils,writeFile}=await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
   const rows=[
     ...urunlerDB.olusturulanlar().map(u=>{
       const a=u.paketAdet||1,f=hesapla.satisFiyati(u,{...ay,ayniGunKargo:u.ayniGunKargo||false},a);

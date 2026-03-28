@@ -515,7 +515,7 @@ window.stokUrunSil = () => {
 
 // ── EXCEL ŞABLON & IMPORT ─────────────────────────────────────
 window.excelSablon = async () => {
-  const {utils, writeFile} = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+  const {utils, writeFile} = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
   const ws = utils.aoa_to_sheet([
     ['Ürün Adı','Alış Fiyatı (₺)','Stok Adedi','Desi','Kategori1','Kategori2','Ürün Grubu'],
     ['Örnek Ürün 1', 50, 10, 1, 'Süpermarket', 'Bebek Bakım', 'Bebek Şampuanı'],
@@ -542,7 +542,7 @@ window.excelOku = async (input) => {
   const file = input.files[0];
   if (!file) return;
   document.getElementById('import-fname').textContent = file.name;
-  const {read, utils} = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+  const {read, utils} = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
   const buf = await file.arrayBuffer();
   const wb = read(buf);
   const ws = wb.Sheets[wb.SheetNames[0]];

@@ -280,7 +280,7 @@ window.window.sekme=s=>{
 
 /* ── EXCEL ── */
 window.excelIndir=async()=>{
-  const{utils,writeFile}=await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
+  const{utils,writeFile}=await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
   const aylar=ayListesi();
   const wb=utils.book_new();
   aylar.forEach(ay=>{

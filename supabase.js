@@ -152,7 +152,12 @@ export const sb = {
       sbGet('satislar', `sirket_id=eq.${this.sirketId}`)
     ]);
     // localStorage formatına uyarla
+    // Mevcut localStorage verisiyle merge et - tip, hedefKar vb. alanları koru
+    const mevcutUrunler = JSON.parse(localStorage.getItem('tsx_urunler') || '[]');
+    const mevcutMap = Object.fromEntries(mevcutUrunler.map(u => [u.id, u]));
+
     const urunlerLocal = urunler.map(u => ({
+      // Supabase'den gelen alanlar
       id:         u.id,
       ad:         u.ad,
       alisFiyati: u.alis_fiyati,
@@ -161,6 +166,16 @@ export const sb = {
       komisyon:   u.komisyon,
       kategori:   u.kategori,
       tarih:      u.created_at?.slice(0,10),
+      // Hem Supabase'deki hem localStorage'daki ek alanları al
+      tip:               u.tip || mevcutMap[u.id]?.tip || 'stok',
+      hedefKar:          u.hedef_kar || mevcutMap[u.id]?.hedefKar || 0.30,
+      ayniGunKargo:      u.ayni_gun_kargo ?? mevcutMap[u.id]?.ayniGunKargo ?? false,
+      paketAdet:         u.paket_adet || mevcutMap[u.id]?.paketAdet || 1,
+      stokUrunId:        u.stok_urun_id || mevcutMap[u.id]?.stokUrunId || null,
+      kategori1:         u.kategori1 || mevcutMap[u.id]?.kategori1 || null,
+      kategori2:         u.kategori2 || mevcutMap[u.id]?.kategori2 || null,
+      urunGrubu:         u.urun_grubu || mevcutMap[u.id]?.urunGrubu || null,
+      satisFiyatiGercek: u.satis_fiyati_gercek || mevcutMap[u.id]?.satisFiyatiGercek || null,
     }));
     const satislarLocal = satislar.map(s => ({
       id:        s.id,
@@ -189,14 +204,23 @@ export const sb = {
   async urunEkle(urun) {
     if (!this.bagliMi || !this.sirketId) return null;
     const sbVeri = {
-      id:          urun.id,
-      sirket_id:   this.sirketId,
-      ad:          urun.ad,
-      alis_fiyati: urun.alisFiyati,
-      stok:        urun.stok || 0,
-      desi:        urun.desi || 1,
-      komisyon:    urun.komisyon || 0.04,
-      kategori:    urun.kategori || '',
+      id:                  urun.id,
+      sirket_id:           this.sirketId,
+      ad:                  urun.ad,
+      alis_fiyati:         urun.alisFiyati,
+      stok:                urun.stok || 0,
+      desi:                urun.desi || 1,
+      komisyon:            urun.komisyon || 0.04,
+      kategori:            urun.kategori || '',
+      tip:                 urun.tip || 'stok',
+      hedef_kar:           urun.hedefKar || 0.30,
+      ayni_gun_kargo:      urun.ayniGunKargo || false,
+      paket_adet:          urun.paketAdet || 1,
+      stok_urun_id:        urun.stokUrunId || null,
+      kategori1:           urun.kategori1 || null,
+      kategori2:           urun.kategori2 || null,
+      urun_grubu:          urun.urunGrubu || null,
+      satis_fiyati_gercek: urun.satisFiyatiGercek || null,
     };
     return sbInsert('urunler', sbVeri).catch(console.error);
   },

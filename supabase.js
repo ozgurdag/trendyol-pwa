@@ -177,15 +177,33 @@ export const sb = {
       urunGrubu:         u.urun_grubu || mevcutMap[u.id]?.urunGrubu || null,
       satisFiyatiGercek: u.satis_fiyati_gercek || mevcutMap[u.id]?.satisFiyatiGercek || null,
     }));
+    // Mevcut localStorage satışlarıyla merge için map
+    const mevcutSatislar = JSON.parse(localStorage.getItem('tsx_satislar')||'[]');
+    const mevcutSatisMap = Object.fromEntries(mevcutSatislar.map(s=>[s.id,s]));
+
     const satislarLocal = satislar.map(s => ({
-      id:        s.id,
-      urunId:    s.urun_id,
-      adet:      s.adet,
-      tarih:     s.tarih,
-      kayitTarih: new Date(s.created_at).getTime(),
+      id:          s.id,
+      // Yeni format: hedefId + tip
+      hedefId:     s.urun_id || s.hedef_id,
+      tip:         s.tip || mevcutSatisMap[s.id]?.tip || 'urun',
+      adet:        s.adet,
+      gercekFiyat: s.gercek_fiyat || mevcutSatisMap[s.id]?.gercekFiyat,
+      tarih:       s.tarih,
+      kayitTarih:  new Date(s.created_at).getTime(),
+      // Geriye dönük uyumluluk
+      urunId:      s.urun_id,
     }));
-    localStorage.setItem('tsx_urunler',  JSON.stringify(urunlerLocal));
-    localStorage.setItem('tsx_satislar', JSON.stringify(satislarLocal));
+    // Çift kayıt önle: Sadece Supabase'den gelen ID'leri güncelle
+    // localStorage'da olup Supabase'de olmayan kayıtları koru (yeni eklenenler)
+    const sbIds = new Set(urunlerLocal.map(u => u.id));
+    const sadeceLocal = (JSON.parse(localStorage.getItem('tsx_urunler')||'[]'))
+      .filter(u => !sbIds.has(u.id)); // Supabase'de henüz olmayan yeni kayıtlar
+    localStorage.setItem('tsx_urunler', JSON.stringify([...urunlerLocal, ...sadeceLocal]));
+
+    const sbSatisIds = new Set(satislarLocal.map(s => s.id));
+    const sadeceSatis = (JSON.parse(localStorage.getItem('tsx_satislar')||'[]'))
+      .filter(s => !sbSatisIds.has(s.id));
+    localStorage.setItem('tsx_satislar', JSON.stringify([...satislarLocal, ...sadeceSatis]));
   },
 
   /* Realtime bağlantı */
@@ -245,11 +263,13 @@ export const sb = {
   async satisEkle(satislar) {
     if (!this.bagliMi || !this.sirketId) return;
     const sbVeri = satislar.map(s => ({
-      id:        s.id,
-      sirket_id: this.sirketId,
-      urun_id:   s.urunId,
-      adet:      s.adet,
-      tarih:     s.tarih,
+      id:           s.id,
+      sirket_id:    this.sirketId,
+      urun_id:      s.hedefId || s.urunId,
+      tip:          s.tip || 'urun',
+      adet:         s.adet,
+      gercek_fiyat: s.gercekFiyat || null,
+      tarih:        s.tarih,
     }));
     return sbInsert('satislar', sbVeri).catch(console.error);
   },

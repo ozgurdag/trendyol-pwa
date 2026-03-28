@@ -67,7 +67,7 @@
     </a>
     <a class="nav-item" href="fiyatlar.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-      <span class="nav-label">Fiyatlar</span>
+      <span class="nav-label">Ürün/Set</span>
     </a>
     <a class="nav-item" href="satis-giris.html">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg>
@@ -197,6 +197,8 @@
 
 <script type="module">
 import { auth, urunlerDB } from './state.js';
+import { KATEGORILER, ALT_KATEGORILER, URUN_GRUPLARI, komisyonOrani } from './kategoriler.js';
+import { kargoUcreti } from './kargo.js';
 if (!auth.oturum()) window.location.href='index.html';
 
 let aktifId = null;
@@ -330,6 +332,13 @@ window.toast = (msg,tip='info') => {
   cont.appendChild(el); setTimeout(()=>el.remove(),3000);
 };
 
+function neKatDoldur(){
+  const k1=document.getElementById('ne-k1');
+  if(!k1) return;
+  if(k1.options.length > 1) return; // zaten dolu
+  KATEGORILER.forEach(k=>k1.add(new Option(k,k)));
+}
+
 window.urunEkleModalAc = () => {
   neKatDoldur();
   document.getElementById('urun-ekle-modal').classList.add('open');
@@ -364,7 +373,7 @@ window.stokUrunEkle = () => {
   toast('"' + ad + '" stoka eklendi', 'success');
 };
 
-function smKatDoldur(u){
+window.smKatDoldur = function(u){
   const k1El=document.getElementById('sm-k1');
   k1El.innerHTML='<option value="">— Seçin —</option>';
   KATEGORILER.forEach(k=>k1El.add(new Option(k,k)));

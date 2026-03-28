@@ -112,6 +112,21 @@
         <input class="form-input" type="number" id="stok-alis-input" step="0.01">
       </div>
     </div>
+    <!-- KRİTİK EŞİK AYARLARI -->
+    <div style="background:var(--bg3);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Stok Uyarı Eşiği</div>
+      <div id="stok-esik-otomatik" style="font-size:12px;color:var(--t3);margin-bottom:8px"></div>
+      <div class="form-row" style="margin-bottom:0">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Tedarik Süresi (gün)</label>
+          <input class="form-input" type="number" id="stok-tedarik" value="5" min="1" max="30" oninput="esikGuncelle()">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Manuel Eşik <span style="font-size:10px;color:var(--t3)">(opsiyonel)</span></label>
+          <input class="form-input" type="number" id="stok-esik-manuel" placeholder="Boş = otomatik" min="0" oninput="esikGuncelle()">
+        </div>
+      </div>
+    </div>
     <!-- Kategori bilgisi (opsiyonel düzenleme) -->
     <div id="stok-modal-kat-wrap" style="display:none">
       <div class="divider"></div>
@@ -246,7 +261,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, urunlerDB, ayarlarDB } from './state.js';
+import { auth, urunlerDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
 import { KATEGORILER, ALT_KATEGORILER, URUN_GRUPLARI, komisyonOrani } from './kategoriler.js';
 import { kargoUcreti } from './kargo.js';
 if (!auth.oturum()) window.location.href='index.html';
@@ -263,18 +278,72 @@ window.filtreSec = (f) => {
   render();
 };
 
+// Son 14 günlük satışları cache'le
+let _satislar14Cache = null;
+let _satislar14Tarih = 0;
+function satislar14Al(){
+  const simdi = Date.now();
+  if(_satislar14Cache && simdi - _satislar14Tarih < 60000) return _satislar14Cache;
+  const bugun = new Date();
+  const bitis = bugun.toISOString().slice(0,10);
+  const baslangic = new Date(bugun.setDate(bugun.getDate()-14)).toISOString().slice(0,10);
+  _satislar14Cache = satislarDB.aralik(baslangic, bitis);
+  _satislar14Tarih = simdi;
+  return _satislar14Cache;
+}
+
+// Stok kalemi için efektif kritik eşiği hesapla
+function efektifEsik(u){
+  if(u.kritikEsikManuel) return { esik: u.kritikEsikManuel, kaynak: 'manuel' };
+  const satislar14 = satislar14Al();
+  const tedarik = u.tedarikSuresi || 5;
+  const sonuc = hesapla.kritikEsik(u.id, satislar14, urunlerDB, setlerDB, tedarik, 14);
+  if(sonuc.hesaplanan && sonuc.hesaplanan > 0){
+    return { esik: Math.max(sonuc.hesaplanan, 5), kaynak: 'otomatik', gunluk: sonuc.gunlukTuketim };
+  }
+  return { esik: 5, kaynak: 'varsayilan' };
+}
+
+window.esikGuncelle = () => {
+  if(!aktifId) return;
+  const u = urunlerDB.bul(aktifId);
+  if(!u) return;
+  const manuelVal = document.getElementById('stok-esik-manuel').value;
+  const tedarik = +document.getElementById('stok-tedarik').value || 5;
+  const el = document.getElementById('stok-esik-otomatik');
+  if(manuelVal){
+    el.innerHTML = `<span style="color:var(--accent)">Manuel eşik: <b>${manuelVal} adet</b></span>`;
+    return;
+  }
+  const satislar14 = satislar14Al();
+  const sonuc = hesapla.kritikEsik(u.id, satislar14, urunlerDB, setlerDB, tedarik, 14);
+  if(sonuc.hesaplanan && sonuc.hesaplanan > 0){
+    el.innerHTML = `<span style="color:var(--t2)">Otomatik: <b>${Math.max(sonuc.hesaplanan,5)} adet</b></span> <span style="color:var(--t3);font-size:10px">(${sonuc.gunlukTuketim.toFixed(1)}/gün × ${tedarik+14} gün)</span>`;
+  } else {
+    el.innerHTML = `<span style="color:var(--t3)">Satış verisi yok — varsayılan: <b>5 adet</b></span>`;
+  }
+};
+
 window.render = () => {
   const urunler = urunlerDB.stokUrunler();
   const ara = document.getElementById('arama')?.value?.toLowerCase() || '';
 
   let liste = urunler.filter(u => u.ad.toLowerCase().includes(ara));
-  if (aktifFiltre === 'kritik') liste = liste.filter(u => (u.stok||0) > 0 && (u.stok||0) < 5);
+  if (aktifFiltre === 'kritik') liste = liste.filter(u => {
+    if((u.stok||0) === 0) return false; // bitti ayrı kategori
+    const {esik} = efektifEsik(u);
+    return (u.stok||0) < esik;
+  });
   if (aktifFiltre === 'bitti')  liste = liste.filter(u => (u.stok||0) === 0);
 
   // Özetler
   const toplam = urunler.reduce((s,u)=>s+(u.stok||0),0);
   const deger  = urunler.reduce((s,u)=>s+(u.stok||0)*(u.alisFiyati||0),0);
-  const kritik = urunler.filter(u=>(u.stok||0)>0&&(u.stok||0)<5).length;
+  const kritik = urunler.filter(u => {
+    if((u.stok||0) === 0) return false;
+    const {esik} = efektifEsik(u);
+    return (u.stok||0) < esik;
+  }).length;
   const bitti  = urunler.filter(u=>(u.stok||0)===0).length;
   document.getElementById('st-toplam').textContent = toplam;
   document.getElementById('st-deger').textContent  = para(deger);
@@ -294,16 +363,19 @@ window.render = () => {
       const max  = Math.max(stok, 50);
       const pct  = Math.round((stok/max)*100);
       const sinif = stok===0?'stok-bitti':stok<5?'stok-az':'stok-ok';
+      const {esik: kritikEsikVal, kaynak: esikKaynak} = efektifEsik(u);
       const badge = stok===0
         ? `<span class="badge badge-red">Tükendi</span>`
-        : stok<5
-          ? `<span class="badge badge-yellow">${stok} adet</span>`
-          : `<span class="badge badge-green">${stok} adet</span>`;
+        : stok < 5
+          ? `<span class="badge badge-red">${stok} adet ⚠️</span>`
+          : stok < kritikEsikVal
+            ? `<span class="badge badge-yellow">${stok} adet</span>`
+            : `<span class="badge badge-green">${stok} adet</span>`;
       return `<div class="urun-row" onclick="stokModalAc('${u.id}')">
         <div class="urun-avatar">📦</div>
         <div class="urun-info" style="flex:1">
           <div class="urun-ad">${u.ad}</div>
-          <div class="urun-meta">${(u.alisFiyati||0).toLocaleString('tr-TR',{minimumFractionDigits:2})}₺ alış</div>
+          <div class="urun-meta">${(u.alisFiyati||0).toLocaleString('tr-TR',{minimumFractionDigits:2})}₺ alış${kritikEsikVal>5?' · Eşik: '+kritikEsikVal+(esikKaynak==='otomatik'?' (oto)':esikKaynak==='manuel'?' (manuel)':''):''}</div>
           <div class="${sinif}">
             <div class="stok-bar"><div class="stok-bar-fill" style="width:${pct}%"></div></div>
           </div>
@@ -332,6 +404,10 @@ window.stokModalAc = (id) => {
   document.getElementById('stok-modal-kat-wrap').style.display='none';
   document.getElementById('sm-kat-btn').textContent='✏️ Kategori Bilgisini Düzenle';
   smKatDoldur(u);
+  // Tedarik süresi ve manuel eşik
+  document.getElementById('stok-tedarik').value = u.tedarikSuresi || 5;
+  document.getElementById('stok-esik-manuel').value = u.kritikEsikManuel || '';
+  esikGuncelle();
   document.getElementById('stok-modal').classList.add('open');
 };
 
@@ -350,9 +426,12 @@ window.stokKaydet = () => {
   const k3=document.getElementById('sm-k3').value;
   const komG=document.getElementById('sm-kom-g').textContent;
   const komV=komG&&komG!=='—'?parseFloat(komG.replace('%',''))/100:null;
+  const manuelEsik = document.getElementById('stok-esik-manuel').value;
   const guncelleme = {
-    stok:       +document.getElementById('stok-input').value,
-    alisFiyati: +document.getElementById('stok-alis-input').value,
+    stok:            +document.getElementById('stok-input').value,
+    alisFiyati:      +document.getElementById('stok-alis-input').value,
+    tedarikSuresi:   +document.getElementById('stok-tedarik').value || 5,
+    kritikEsikManuel: manuelEsik ? +manuelEsik : null,
   };
   if(k1) guncelleme.kategori1=k1;
   if(k2) guncelleme.kategori2=k2;

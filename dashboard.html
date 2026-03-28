@@ -213,16 +213,32 @@ function render() {
   document.getElementById('bugun-gelir').textContent = para(bugunGelir);
   document.getElementById('toplam-urun').textContent = urunler.length;
 
-  // Düşük stok (stok < 10)
-  const dusuk = urunler.filter(u => (u.stok||0) < 10);
+  // Kritik stok: her ürün için dinamik eşik
+  const bugun2 = new Date();
+  const bitis2 = bugun2.toISOString().slice(0,10);
+  const bas2 = new Date(new Date().setDate(new Date().getDate()-14)).toISOString().slice(0,10);
+  const satislar14d = satislarDB.aralik(bas2, bitis2);
+  const dusuk = urunler.filter(u => {
+    if((u.stok||0) === 0) return true; // tükenenler de uyarı
+    if(u.kritikEsikManuel) return (u.stok||0) < u.kritikEsikManuel;
+    const tedarik = u.tedarikSuresi || 5;
+    const sonuc = hesapla.kritikEsik(u.id, satislar14d, urunlerDB, setlerDB, tedarik, 14);
+    const esik = sonuc.hesaplanan ? Math.max(sonuc.hesaplanan, 5) : 5;
+    return (u.stok||0) < esik;
+  });
   document.getElementById('dusuk-stok').textContent = dusuk.length;
 
   // Uyarılar
   const uyariWrap = document.getElementById('stok-uyari-wrap');
   if (dusuk.length) {
-    uyariWrap.innerHTML = `<div class="uyari-banner mb-16">
-      ⚠️ <span><b>${dusuk.length} ürün</b> kritik stok seviyesinde</span>
-    </div>`;
+    const tukenen = dusuk.filter(u=>(u.stok||0)===0).length;
+    const kritik5 = dusuk.filter(u=>(u.stok||0)>0&&(u.stok||0)<5).length;
+    const siparisVer = dusuk.length - tukenen - kritik5;
+    let mesaj = '';
+    if(tukenen) mesaj += `<b>${tukenen} ürün tükendi</b> · `;
+    if(kritik5) mesaj += `<b>${kritik5} ürün kritik (<5)</b> · `;
+    if(siparisVer) mesaj += `<b>${siparisVer} ürün sipariş eşiğinde</b>`;
+    uyariWrap.innerHTML = `<div class="uyari-banner mb-16">⚠️ <span>${mesaj.replace(/ · $/,'')}</span></div>`;
   }
 
   // Bu ay

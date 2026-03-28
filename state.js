@@ -193,6 +193,8 @@ export async function supabasedenYukle(){
           kategori1:u.kategori1||null, kategori2:u.kategori2||null,
           urunGrubu:u.urun_grubu||null, satisFiyatiGercek:u.satis_fiyati_gercek||null,
           stokBilesenleri:u.stok_bilesenleri||[],
+          tedarikSuresi:u.tedarik_suresi||5,
+          kritikEsikManuel:u.kritik_esik_manuel||null,
         })));
       }
     }
@@ -254,6 +256,8 @@ export async function localdenSupabaseYukle(){
           urun_grubu:u.urunGrubu||null,
           satis_fiyati_gercek:u.satisFiyatiGercek||null,
           stok_bilesenleri:u.stokBilesenleri||[],
+          tedarik_suresi:u.tedarikSuresi||5,
+          kritik_esik_manuel:u.kritikEsikManuel||null,
         })
       });
       yuklenen++;
@@ -353,6 +357,8 @@ export const urunlerDB = {
       urun_grubu:yeni.urunGrubu||null,
       satis_fiyati_gercek:yeni.satisFiyatiGercek||null,
       stok_bilesenleri:yeni.stokBilesenleri||[],
+      tedarik_suresi:yeni.tedarikSuresi||5,
+      kritik_esik_manuel:yeni.kritikEsikManuel||null,
     }).then(()=>broadcastGonder());
     return yeni;
   },
@@ -373,6 +379,8 @@ export const urunlerDB = {
     if(d.kategori2!==undefined)         v.kategori2=d.kategori2;
     if(d.urunGrubu!==undefined)         v.urun_grubu=d.urunGrubu;
     if(d.stokBilesenleri!==undefined)   v.stok_bilesenleri=d.stokBilesenleri;
+    if(d.tedarikSuresi!==undefined)     v.tedarik_suresi=d.tedarikSuresi;
+    if(d.kritikEsikManuel!==undefined)  v.kritik_esik_manuel=d.kritikEsikManuel;
     if(Object.keys(v).length) sbPatch('urunler',id,v).then(()=>broadcastGonder());
   },
 
@@ -564,6 +572,43 @@ export const hesapla = {
   },
   maxAlis(satisFiyati,komisyon,platform,kargo,roi,reklam=0){
     return(satisFiyati*(1-komisyon)-platform-kargo-reklam)/(1+roi);
+  },
+
+  // Stok kalemi için dinamik kritik eşik hesabı
+  // gun14: son 14 günlük satışları dışarıdan ver (satislarDB.aralik ile)
+  kritikEsik(stokKalemId, satislar14, urunlerDB, setlerDB, tedarikSuresi=5, hedefGun=14){
+    // Bu stok kalemini kullanan tüm listing ve setleri bul
+    const listingler = urunlerDB.listingler();
+    const setler = setlerDB.hepsini();
+
+    // Her listing/set için günlük tüketim hesapla
+    let toplamGunlukTuketim = 0;
+
+    listingler.forEach(listing => {
+      const bilesenler = listing.stokBilesenleri || [];
+      const bilesen = bilesenler.find(b => b.urunId === stokKalemId);
+      if(!bilesen) return;
+      // Bu listing'in son 14 gündeki satış adedi
+      const satisSayisi = satislar14
+        .filter(s => s.hedefId === listing.id && s.tip === 'listing')
+        .reduce((t, s) => t + s.adet, 0);
+      toplamGunlukTuketim += (satisSayisi / 14) * bilesen.adet;
+    });
+
+    setler.forEach(set => {
+      const icerik = set.icindekiler || [];
+      const bilesen = icerik.find(b => b.urunId === stokKalemId);
+      if(!bilesen) return;
+      const satisSayisi = satislar14
+        .filter(s => s.hedefId === set.id && s.tip === 'set')
+        .reduce((t, s) => t + s.adet, 0);
+      toplamGunlukTuketim += (satisSayisi / 14) * bilesen.adet;
+    });
+
+    // Eşik = (günlük tüketim × tedarik süresi) + (günlük tüketim × hedef gün)
+    const hesaplanan = Math.ceil(toplamGunlukTuketim * (tedarikSuresi + hedefGun));
+    // Minimum 5, satış verisi yoksa null döner (manuel ayar kullanılır)
+    return { hesaplanan: hesaplanan || null, gunlukTuketim: toplamGunlukTuketim };
   },
 };
 

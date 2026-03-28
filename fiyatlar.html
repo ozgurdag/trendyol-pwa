@@ -631,7 +631,7 @@ window.tyAktar=()=>{
   });
   document.getElementById('ty-modal').classList.remove('open');
   renderKartlar();
-  showToast(`${eklendi} ürün aktarıldı${tyData.length-eklendi>0?' · '+(tyData.length-eklendi)+' zaten vardı':''}','success');
+  showToast(`${eklendi} ürün aktarıldı${tyData.length-eklendi>0?' · '+(tyData.length-eklendi)+' zaten vardı':''}`, 'success');
   tyData=[];
 };
 

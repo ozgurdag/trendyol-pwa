@@ -12,7 +12,6 @@
 
   <div class="topbar">
     <div class="topbar-title">📦 Stok Durumu</div>
-    <div class="topbar-action" onclick="trendyolImportAc()" title="Trendyol Export'tan Aktar">🛍️</div>
     <div class="topbar-action" onclick="csvSablonIndir()" title="CSV Şablon İndir">📋</div>
     <div class="topbar-action" onclick="csvImportAc()" title="CSV Yükle">📥</div>
     <div class="topbar-action" onclick="excelIndir()">⬇</div>
@@ -243,40 +242,6 @@
     </div>
     <button class="btn btn-primary btn-full" id="csv-kaydet-btn" onclick="csvKaydet()" style="display:none">✓ Stoka Ekle</button>
   </div>
-</div>
-<!-- TRENDYOL IMPORT MODAL -->
-<div class="modal-overlay" id="trendyol-import-modal" onclick="document.getElementById('trendyol-import-modal').classList.remove('open')">
-  <div class="modal-sheet" onclick="event.stopPropagation()">
-    <div class="modal-handle"></div>
-    <div class="modal-title">🛍️ Trendyol'dan Aktar</div>
-    <div style="background:var(--bg3);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3);line-height:1.7">
-      Trendyol Satıcı Paneli → Ürünlerim → Excel İndir dosyasını seçin.<br>
-      <b>Aktarılacak:</b> Ürün adı · Satış fiyatı · Komisyon · Kategori<br>
-      <span style="color:var(--accent)">⚡ Mevcut ürünlerde fiyat/komisyon/kategori güncellenir, yeni ürünler eklenir.</span>
-    </div>
-    <div style="border:2px dashed var(--border2);border-radius:var(--r-md);padding:20px;text-align:center;margin-bottom:12px;cursor:pointer" onclick="document.getElementById('ty-file').click()">
-      <div style="font-size:28px;margin-bottom:8px">📂</div>
-      <div style="font-size:13px;color:var(--t2)">Trendyol Excel dosyasını seç (.xlsx)</div>
-      <div style="font-size:11px;color:var(--t3);margin-top:4px" id="ty-fname">Dosya seçilmedi</div>
-    </div>
-    <input type="file" id="ty-file" accept=".xlsx,.xls" style="display:none" onchange="tyExcelOku(this)">
-    <div id="ty-onizleme" style="display:none;margin-bottom:12px">
-      <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:6px" id="ty-say"></div>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <div style="flex:1;background:var(--bg3);border-radius:var(--r-sm);padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:var(--accent)" id="ty-yeni-say">0</div>
-          <div style="font-size:11px;color:var(--t3)">Yeni ürün</div>
-        </div>
-        <div style="flex:1;background:var(--bg3);border-radius:var(--r-sm);padding:8px;text-align:center">
-          <div style="font-size:18px;font-weight:700;color:#f59e0b" id="ty-guncelle-say">0</div>
-          <div style="font-size:11px;color:var(--t3)">Güncellenecek</div>
-        </div>
-      </div>
-      <div id="ty-liste" style="max-height:200px;overflow-y:auto"></div>
-    </div>
-    <button class="btn btn-primary btn-full" id="ty-kaydet-btn" onclick="tyKaydet()" style="display:none">✓ Aktar</button>
-  </div>
-</div>
 
 <div class="toast-container" id="toastCont"></div>
 
@@ -765,108 +730,6 @@ window.csvKaydet = () => {
   render();
   toast(csvData.length + ' ürün stoka eklendi','success');
   csvData=[];
-};
-
-// ── TRENDYOL EXPORT IMPORT ──────────────────────────────────────
-let tyData = [];
-
-window.trendyolImportAc = () => {
-  if(!auth.adminMi()){toast('Admin yetkisi gerekli','error');return;}
-  document.getElementById('trendyol-import-modal').classList.add('open');
-  document.getElementById('ty-onizleme').style.display='none';
-  document.getElementById('ty-kaydet-btn').style.display='none';
-  document.getElementById('ty-fname').textContent='Dosya seçilmedi';
-  tyData=[];
-};
-
-window.tyExcelOku = async (input) => {
-  const file = input.files[0];
-  if(!file) return;
-  document.getElementById('ty-fname').textContent = file.name;
-
-  try {
-    const {read, utils} = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
-    const buf = await file.arrayBuffer();
-    const wb = read(buf);
-    const sheetName = wb.SheetNames.includes('Ürünler') ? 'Ürünler' : wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
-    const rows = utils.sheet_to_json(ws, {defval:''});
-
-    if(!rows.length){ toast('Dosyada veri bulunamadı','error'); return; }
-
-    tyData = rows.map(r => ({
-      ad:          String(r['Ürün Adı'] || '').trim(),
-      satisFiyati: parseFloat(String(r["Trendyol'da Satılacak Fiyat (KDV Dahil)"] || r['Trendyol da Satılacak Fiyat (KDV Dahil)'] || 0).toString().replace(',','.')) || 0,
-      komisyon:    parseFloat(r['Komisyon Oranı'] || 0) / 100,
-      kategori1:   String(r['Kategori İsmi'] || '').trim(),
-    })).filter(r => r.ad && r.satisFiyati > 0);
-
-    if(!tyData.length){
-      toast('Geçerli ürün bulunamadı — Trendyol export dosyası mı?','error');
-      return;
-    }
-
-    const mevcutlar = urunlerDB.hepsini();
-    let yeniSay = 0, guncelSay = 0;
-
-    tyData = tyData.map(r => {
-      const eslesme = mevcutlar.find(m =>
-        m.ad.trim().toLowerCase() === r.ad.toLowerCase()
-      );
-      if(eslesme){
-        guncelSay++;
-        return { ...r, tip:'guncelle', mevcutId: eslesme.id,
-          etiket:`<span style="color:#f59e0b;font-size:10px;font-weight:600">GÜNCELLE</span>` };
-      } else {
-        yeniSay++;
-        return { ...r, tip:'yeni',
-          etiket:`<span style="color:var(--accent);font-size:10px;font-weight:600">YENİ</span>` };
-      }
-    });
-
-    document.getElementById('ty-yeni-say').textContent = yeniSay;
-    document.getElementById('ty-guncelle-say').textContent = guncelSay;
-    document.getElementById('ty-say').textContent = `${tyData.length} ürün bulundu`;
-    document.getElementById('ty-liste').innerHTML = tyData.slice(0,6).map(r =>
-      `<div style="font-size:12px;padding:6px 0;border-bottom:1px solid var(--border);color:var(--t2);display:flex;justify-content:space-between;align-items:center">
-        <span style="flex:1;margin-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.ad}</span>
-        <span style="flex-shrink:0;color:var(--t1);font-weight:600;margin-right:6px">${r.satisFiyati.toLocaleString('tr-TR')}₺</span>
-        ${r.etiket}
-      </div>`
-    ).join('') + (tyData.length>6?`<div style="font-size:11px;color:var(--t3);padding:6px 0">...ve ${tyData.length-6} ürün daha</div>`:'');
-
-    document.getElementById('ty-onizleme').style.display='';
-    document.getElementById('ty-kaydet-btn').style.display=tyData.length?'':'none';
-  } catch(e) {
-    toast('Dosya okunamadı: ' + e.message,'error');
-  }
-};
-
-window.tyKaydet = () => {
-  if(!tyData.length) return;
-  let yeni=0, guncellendi=0;
-  tyData.forEach(r => {
-    if(r.tip === 'guncelle') {
-      urunlerDB.guncelle(r.mevcutId, {
-        satisFiyati: r.satisFiyati,
-        komisyon:    r.komisyon,
-        kategori1:   r.kategori1 || undefined,
-      });
-      guncellendi++;
-    } else {
-      urunlerDB.ekle({
-        ad: r.ad, satisFiyati: r.satisFiyati, komisyon: r.komisyon,
-        kategori1: r.kategori1 || undefined,
-        alisFiyati: 0, stok: 0, desi: 1, tip: 'stok',
-      });
-      yeni++;
-    }
-  });
-  document.getElementById('trendyol-import-modal').classList.remove('open');
-  render();
-  const msg = [yeni && `${yeni} ürün eklendi`, guncellendi && `${guncellendi} ürün güncellendi`].filter(Boolean).join(', ');
-  toast(msg, 'success');
-  tyData=[];
 };
 
 render();

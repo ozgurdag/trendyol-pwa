@@ -82,7 +82,7 @@
         <span id="sb-durum-text" style="font-size:13px;color:var(--t3)">Bağlanıyor…</span>
       </div>
       <button class="btn btn-secondary btn-full mb-8" onclick="sbSenkronize()">🔄 Ortakla Senkronize Et</button>
-      <button class="btn btn-secondary btn-full mb-8" onclick="supabaseYukle()">☁️ Tüm Veriyi Supabase'e Yükle</button>
+      <button class="btn btn-secondary btn-full mb-8" onclick="manuelSenkronize()">☁️ Tüm Veriyi Supabase'e Yükle</button>
       <button class="btn btn-ghost btn-full" onclick="sbYenidenBaglan()" style="font-size:12px">Yeniden Bağlan</button>
     </div>
 
@@ -243,6 +243,14 @@ window.toast = (msg,tip='info') => {
   const cont=document.getElementById('toastCont');
   const el=document.createElement('div'); el.className=`toast ${tip}`; el.textContent=msg;
   cont.appendChild(el); setTimeout(()=>el.remove(),3000);
+};
+
+window.manuelSenkronize = async () => {
+  showToast('Supabase'den veriler çekiliyor...','info');
+  const {supabasedenYukle} = await import('./state.js');
+  localStorage.removeItem('tsx_son_sync'); // zorla yeniden çek
+  const ok = await supabasedenYukle();
+  showToast(ok ? '✅ Veriler güncellendi' : '❌ Bağlantı hatası','success');
 };
 </script>
 </body>

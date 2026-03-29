@@ -182,7 +182,6 @@ export async function supabasedenYukle(){
       id:s.id, tip:s.tip||'listing', hedefId:s.hedef_id,
       adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
       tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
-      snapshot:s.snapshot||null,
     }))); }
 
     localStorage.setItem('tsx_son_sync', Date.now().toString());
@@ -425,8 +424,7 @@ export const satislarDB = {
     const yeniler=kayitlar.map(k=>({
       id:uid(), tip:k.tip||'listing', hedefId:k.hedefId,
       adet:k.adet, gercekFiyat:k.gercekFiyat,
-      tarih:k.tarih||today(), kayitTarih:Date.now(),
-      snapshot:k.snapshot||null,  // anlık maliyet snapshot
+      tarih:k.tarih||today(), kayitTarih:Date.now()
     }));
     set(DB_KEYS.satislar,[...this.hepsini(),...yeniler]);
 
@@ -450,7 +448,6 @@ export const satislarDB = {
     sbPost('satislar',yeniler.map(k=>({
       id:k.id, tip:k.tip, hedef_id:k.hedefId,
       adet:k.adet, gercek_fiyat:k.gercekFiyat||null, tarih:k.tarih,
-      snapshot:k.snapshot||null,
     }))).then(()=>broadcastGonder());
     return yeniler;
   },

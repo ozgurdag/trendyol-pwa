@@ -105,7 +105,7 @@ window.tipSec=t=>{
 
 function doldurDropdown(){
   const sel=document.getElementById('satis-hedef');
-  if(aktifTip==='urun'){
+  if(aktifTip==='listing'){
     const liste=listingDB.onaylananlar();
     if(!liste.length){sel.innerHTML='<option value="">— Önce Listing sayfasından onaylayın —</option>';return;}
     const stokOzeti=id=>{
@@ -135,16 +135,16 @@ window.hedefSecildi=()=>{
   const obj=aktifTip==='set'?setlerDB.bul(id):listingDB.bul(id);
   if(!obj) return;
   // Varsayılan fiyatı doldur
-  const alisTop=aktifTip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
-  const urunB=aktifTip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
+  const alisTop=aktifTip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
+  const urunB=aktifTip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:{...obj};
   const desiH=obj.desi||(aktifTip==='set'?2:1);
   const kargoFUH=kargoUcreti(ayarlar.kargoFirma||'Aras',desiH);
-  const f=hesapla.satisFiyati(urunB,ayarlar,aktifTip==='urun'?(obj.paketAdet||1):1,kargoFUH);
+  const f=hesapla.satisFiyati(urunB,ayarlar,1,kargoFUH);
   const varsayilanFiyat=obj.satisFiyatiGercek||f?.yuvarlak||0;
   document.getElementById('satis-fiyat').value=varsayilanFiyat||'';
   document.getElementById('satis-onizleme').style.display='';
   // Listing için stok: bileşenlerden hesapla
-  if(aktifTip==='urun'){
+  if(aktifTip==='listing'){
     const bilesenler=obj.stokBilesenleri||[];
     if(bilesenler.length){
       const maxAdet=Math.min(...bilesenler.map(b=>{const s=stokDB.bul(b.urunId);return s?Math.floor((s.stok||0)/b.adet):0;}));
@@ -164,11 +164,11 @@ window.karOniziGoster=()=>{
   const fiyat=+document.getElementById('satis-fiyat').value||0;
   if(!id||!fiyat){document.getElementById('on-kar').textContent='—';document.getElementById('on-kar').style.color='var(--t3)';return;}
   const obj=aktifTip==='set'?setlerDB.bul(id):listingDB.bul(id);if(!obj) return;
-  const alisTop=aktifTip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
-  const urunB=aktifTip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
+  const alisTop=aktifTip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
+  const urunB=aktifTip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:{...obj};
   const desiH=obj.desi||(aktifTip==='set'?2:1);
   const kargoFUH=kargoUcreti(ayarlar.kargoFirma||'Aras',desiH);
-  const f=hesapla.satisFiyati(urunB,ayarlar,aktifTip==='urun'?(obj.paketAdet||1):1,kargoFUH);if(!f) return;
+  const f=hesapla.satisFiyati(urunB,ayarlar,1,kargoFUH);if(!f) return;
   const kar=hesapla.gercekKar(alisTop,fiyat,obj.komisyon||0.04,f.platform,f.kargo);
   document.getElementById('on-kar').textContent=(kar.kararli?'✅ ':' ❌ ')+p(kar.net)+' (ROI: %'+Math.round(kar.roi*100)+')';
   document.getElementById('on-kar').style.color=kar.kararli?'var(--green)':'var(--red)';

@@ -82,7 +82,7 @@ export const sbAuth = {
         id: data.user.id,
         email: data.user.email,
         rol,
-        ad: rol === 'admin' ? 'Admin' : 'Ortak',
+        ad: rol === 'admin' ? 'Admin' : 'Damla',
         token: data.access_token,
         refresh: data.refresh_token,
         bitis: Date.now() + (data.expires_in * 1000),

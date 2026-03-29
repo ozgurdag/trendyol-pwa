@@ -138,6 +138,7 @@
 import { auth, ayarlarDB } from './state.js';
 const o = auth.oturum();
 if (!o) window.location.href='index.html';
+const _isAdmin = auth.adminMi();
 
 document.getElementById('k-ad').textContent = o.ad;
 document.getElementById('k-email').textContent = o.email;

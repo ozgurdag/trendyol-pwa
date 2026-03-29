@@ -114,13 +114,13 @@ const gun=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 // Satış kar hesabı
 function satisKar(s){
   const hId=s.hedefId||s.urunId;
-  const obj=s.tip==='set'?setlerDB.bul(hId):stokDB.bul(hId);
+  const obj=s.tip==='set'?setlerDB.bul(hId):listingDB.bul(hId);
   if(!obj) return null;
   // Birim alış maliyeti
-  const alisBirim=s.tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati*(obj.paketAdet||1));
+  const alisBirim=s.tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
   const urunB=s.tip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:obj;
   const kFU=kargoUcreti(ay.kargoFirma||'Aras',obj.desi||(s.tip==='set'?2:1));
-  const f=hesapla.satisFiyati(urunB,ay,s.tip==='set'?1:(obj.paketAdet||1),kFU);
+  const f=hesapla.satisFiyati(urunB,ay,1,kFU);
   if(!f) return null;
   const gf=s.gercekFiyat||f.yuvarlak;
   // Birim kar

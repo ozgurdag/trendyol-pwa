@@ -24,7 +24,7 @@
     <div class="card mb-16">
       <div class="card-title mb-12">Satış Ekle</div>
       <div class="tabs mb-12">
-        <div class="tab active" id="tip-tab-urun" onclick="tipSec('urun')">Listing</div>
+        <div class="tab active" id="tip-tab-urun" onclick="tipSec('listing')">Listing</div>
         <div class="tab" id="tip-tab-set" onclick="tipSec('set')">Set</div>
       </div>
       <div class="form-group">
@@ -91,13 +91,13 @@ const bugunStr=new Date().toISOString().slice(0,10);
 document.getElementById('satis-tarih').value=bugunStr;
 document.getElementById('tarih-goster').textContent=new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long'});
 const p=n=>(+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
-let aktifTip='urun';
+let aktifTip='listing';
 
 window.tipSec=t=>{
   aktifTip=t;
-  document.getElementById('tip-tab-urun').classList.toggle('active',t==='urun');
+  document.getElementById('tip-tab-urun').classList.toggle('active',t==='listing');
   document.getElementById('tip-tab-set').classList.toggle('active',t==='set');
-  document.getElementById('secim-label').textContent=t==='urun'?'Ürün Seç':'Set Seç';
+  document.getElementById('secim-label').textContent=t==='listing'?'Ürün Seç':'Set Seç';
   doldurDropdown();
   document.getElementById('satis-onizleme').style.display='none';
   document.getElementById('satis-fiyat').value='';
@@ -190,7 +190,7 @@ window.satisEkle=()=>{
       : (obj.stok||0);
     if(maxAdet<adet&&!confirm(`Stok yetersiz (max ${maxAdet} adet yapılabilir). Yine de kaydet?`)) return;
   }
-  satislarDB.ekle([{tip:aktifTip==='urun'?'listing':aktifTip,hedefId,adet,gercekFiyat:fiyat,tarih}]);
+  satislarDB.ekle([{tip:aktifTip==='listing'?'listing':aktifTip,hedefId,adet,gercekFiyat:fiyat,tarih}]);
   document.getElementById('satis-hedef').value='';document.getElementById('satis-adet').value='1';document.getElementById('satis-fiyat').value='';
   document.getElementById('satis-onizleme').style.display='none';
   doldurDropdown();renderBugun();renderOzet();
@@ -201,10 +201,10 @@ function renderOzet(){
   const satislar=satislarDB.guneBGore(bugunStr);let adet=0,kar=0;
   satislar.forEach(s=>{
     adet+=s.adet;
-    const obj=s.tip==='urun'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);if(!obj) return;
-    const alisTop=s.tip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
-    const urunB=s.tip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
-    const f=hesapla.satisFiyati(urunB,ayarlar,s.tip==='urun'?(obj.paketAdet||1):1);if(!f) return;
+    const obj=s.tip==='listing'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);if(!obj) return;
+    const alisTop=s.tip==='listing'?(obj.alisFiyati||0):obj.alisMaliyeti||0;
+    const urunB=s.tip==='listing'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
+    const f=hesapla.satisFiyati(urunB,ayarlar,1);if(!f) return;
     const k=hesapla.gercekKar(alisTop,s.gercekFiyat||f.yuvarlak,obj.komisyon||0.04,f.platform,f.kargo);
     kar+=k.net*s.adet;
   });
@@ -219,10 +219,10 @@ function renderBugun(){
   const el=document.getElementById('bugun-satis-listesi');
   if(!satislar.length){el.innerHTML='<div class="empty-state" style="padding:20px"><div class="empty-icon">🛒</div><div class="empty-title">Henüz satış yok</div></div>';return;}
   el.innerHTML=satislar.map(s=>{
-    const obj=s.tip==='urun'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);if(!obj) return'';
-    const alisTop=s.tip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0;
-    const urunB=s.tip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
-    const f=hesapla.satisFiyati(urunB,ayarlar,s.tip==='urun'?(obj.paketAdet||1):1);
+    const obj=s.tip==='listing'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);if(!obj) return'';
+    const alisTop=s.tip==='listing'?(obj.alisFiyati||0):obj.alisMaliyeti||0;
+    const urunB=s.tip==='listing'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04};
+    const f=hesapla.satisFiyati(urunB,ayarlar,1);
     const fiyat=s.gercekFiyat||f?.yuvarlak||0;
     const kar=f?hesapla.gercekKar(alisTop,fiyat,obj.komisyon||0.04,f.platform,f.kargo):null;
     return`<div class="urun-row"><div class="urun-avatar">${s.tip==='set'?'📦':'🛍️'}</div><div class="urun-info"><div class="urun-ad">${obj.ad}</div><div class="urun-meta">${s.adet} adet · ${fiyat.toLocaleString('tr-TR')}₺ · ${s.tarih}</div></div><div class="urun-fiyat"><div class="urun-fiyat-ana" style="color:${kar?.kararli?'var(--green)':'var(--red)'}">${kar?p(kar.net):'—'}</div><button onclick="satisIptal('${s.id}')" style="font-size:11px;color:var(--red);background:var(--red-l);border:none;border-radius:6px;padding:3px 8px;margin-top:4px;cursor:pointer">✕ İptal</button></div></div>`;
@@ -244,10 +244,10 @@ window.satisIptal=id=>{
 window.excelIndir=async()=>{
   const{utils,writeFile}=await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
   const data=satislarDB.hepsini().map(s=>{
-    const obj=s.tip==='urun'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);
-    const alisTop=obj?(s.tip==='urun'?obj.alisFiyati*(obj.paketAdet||1):obj.alisMaliyeti||0):0;
-    const urunB=obj?(s.tip==='urun'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}):null;
-    const f=urunB?hesapla.satisFiyati(urunB,ayarlar,s.tip==='urun'?(obj.paketAdet||1):1):null;
+    const obj=s.tip==='listing'?listingDB.bul(s.hedefId):setlerDB.bul(s.hedefId);
+    const alisTop=obj?(s.tip==='listing'?(obj.alisFiyati||0):obj.alisMaliyeti||0):0;
+    const urunB=obj?(s.tip==='listing'?obj:{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}):null;
+    const f=urunB?hesapla.satisFiyati(urunB,ayarlar,1):null;
     const fiyat=s.gercekFiyat||f?.yuvarlak||0;
     const kar=f?hesapla.gercekKar(alisTop,fiyat,obj.komisyon||0.04,f.platform,f.kargo):null;
     return{'Tarih':s.tarih,'Tip':s.tip==='set'?'Set':'Ürün','Ad':obj?.ad||'?','Adet':s.adet,'Satış Fiyatı':fiyat,'Net Kar':kar?kar.net.toFixed(2):'','ROI %':kar?Math.round(kar.roi*100):''};

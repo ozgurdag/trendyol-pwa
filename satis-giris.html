@@ -190,7 +190,24 @@ window.satisEkle=()=>{
       : (obj.stok||0);
     if(maxAdet<adet&&!confirm(`Stok yetersiz (max ${maxAdet} adet yapılabilir). Yine de kaydet?`)) return;
   }
-  satislarDB.ekle([{tip:aktifTip==='listing'?'listing':aktifTip,hedefId,adet,gercekFiyat:fiyat,tarih}]);
+  // Anlık hesaplama değerlerini kaydet (geçmiş satışlar etkilenmesin)
+  const _alisTop=aktifTip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
+  const _urunB=aktifTip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:{...obj};
+  const _desi=obj.desi||(aktifTip==='set'?2:1);
+  const _kFU=kargoUcreti(ayarlar.kargoFirma||'Aras',_desi);
+  const _f=hesapla.satisFiyati(_urunB,ayarlar,1,_kFU);
+  satislarDB.ekle([{
+    tip:aktifTip==='listing'?'listing':aktifTip,
+    hedefId,adet,gercekFiyat:fiyat,tarih,
+    // Anlık maliyet snapshot - değişmez
+    snapshot:{
+      alisTop:_alisTop,
+      kargo:_f?.kargo||0,
+      platform:_f?.platform||0,
+      komisyon:obj.komisyon||0.04,
+      desi:_desi,
+    }
+  }]);
   document.getElementById('satis-hedef').value='';document.getElementById('satis-adet').value='1';document.getElementById('satis-fiyat').value='';
   document.getElementById('satis-onizleme').style.display='none';
   doldurDropdown();renderBugun();renderOzet();

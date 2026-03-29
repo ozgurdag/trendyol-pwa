@@ -184,16 +184,8 @@ function render() {
     const obj = s.tip==='set' ? setlerDB.bul(hedefId) : listingDB.bul(hedefId);
     if (!obj) return;
     bugunAdet += s.adet;
-    const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati||0);
-    const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : {...obj};
-    const desiD=obj.desi||(s.tip==='set'?2:1);
-    const kargoFUD=kargoUcreti(ayarlar.kargoFirma||'Aras',desiD);
-    const fiyat = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFUD);
-    if (fiyat) {
-      const gercekFiyat = s.gercekFiyat || fiyat.yuvarlak;
-      const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo);
-      bugunGelir += kar.net * s.adet;
-    }
+    const kar = satisHesapla(s, obj, ayarlar);
+    if(kar) bugunGelir += kar.net * s.adet;
   });
 
   document.getElementById('bugun-satis').textContent = bugunAdet;
@@ -237,16 +229,8 @@ function render() {
     const obj = s.tip==='set' ? setlerDB.bul(hedefId) : listingDB.bul(hedefId);
     if (!obj) return;
     ayAdet += s.adet; ayUrunler.add(hedefId);
-    const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati||0);
-    const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : obj;
-    const desiD=obj.desi||(s.tip==='set'?2:1);
-    const kargoFUD=kargoUcreti(ayarlar.kargoFirma||'Aras',desiD);
-    const fiyat = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFUD);
-    if (fiyat) {
-      const gercekFiyat = s.gercekFiyat || fiyat.yuvarlak;
-      const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo);
-      ayGelir += kar.net * s.adet;
-    }
+    const karAy = satisHesapla(s, obj, ayarlar);
+    if(karAy) ayGelir += karAy.net * s.adet;
   });
   document.getElementById('ay-satis').textContent = ayAdet;
   document.getElementById('ay-gelir').textContent = para(ayGelir);
@@ -260,13 +244,9 @@ function render() {
     const hedefId = s.hedefId || s.urunId;
     const obj = s.tip==='set' ? setlerDB.bul(hedefId) : listingDB.bul(hedefId);
     if (!obj) return '';
-    const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati||0);
-    const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04} : obj;
-    const desiD=obj.desi||(s.tip==='set'?2:1);
-    const kargoFUD=kargoUcreti(ayarlar.kargoFirma||'Aras',desiD);
-    const fiyat = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFUD);
-    const gercekFiyat = s.gercekFiyat || fiyat?.yuvarlak || 0;
-    const kar = fiyat ? hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, fiyat.platform, fiyat.kargo) : null;
+    const fiyat_dummy = null;
+    const gercekFiyat = s.gercekFiyat || 0;
+    const kar = satisHesapla(s, obj, ayarlar);
     return `<div class="urun-row">
       <div class="urun-avatar">${s.tip==='set'?'📦':'🛒'}</div>
       <div class="urun-info">
@@ -307,12 +287,9 @@ function renderDashGrafik(){
       const obj=s.tip==='set'?setlerDB.bul(hId):listingDB.bul(hId);
       if(!obj)return;
       adet+=s.adet;
-      const alisTop=s.tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
-      const urunB=s.tip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:{...obj};
       const _ay=ayarlarDB.oku();
-      const kFU=kargoUcreti(_ay.kargoFirma||'Aras',obj.desi||(s.tip==='set'?2:1));
-      const f=hesapla.satisFiyati(urunB,_ay,1,kFU);
-      if(f){const gf=s.gercekFiyat||f.yuvarlak;kar+=hesapla.gercekKar(alisTop,gf,obj.komisyon||0.04,f.platform,f.kargo).net * s.adet;}
+      const kGraf=satisHesapla(s,obj,_ay);
+      if(kGraf) kar+=kGraf.net*s.adet;
     });
     const lbl=gunler[d.getDay()===0?6:d.getDay()-1];
     adetData.push({lbl,v:adet});

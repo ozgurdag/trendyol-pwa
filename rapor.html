@@ -116,15 +116,25 @@ function satisKar(s){
   const hId=s.hedefId||s.urunId;
   const obj=s.tip==='set'?setlerDB.bul(hId):listingDB.bul(hId);
   if(!obj) return null;
-  // Birim alış maliyeti
-  const alisBirim=s.tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
-  const urunB=s.tip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:obj;
-  const kFU=kargoUcreti(ay.kargoFirma||'Aras',obj.desi||(s.tip==='set'?2:1));
-  const f=hesapla.satisFiyati(urunB,ay,1,kFU);
-  if(!f) return null;
-  const gf=s.gercekFiyat||f.yuvarlak;
+  const gf=s.gercekFiyat||0;
+  let alisBirim, platform, kargo, komisyon;
+  // Snapshot varsa anlık değerleri kullan (geçmiş satışlar korunur)
+  if(s.snapshot){
+    alisBirim = s.snapshot.alisTop||0;
+    platform  = s.snapshot.platform||0;
+    kargo     = s.snapshot.kargo||0;
+    komisyon  = s.snapshot.komisyon||0.04;
+  } else {
+    // Snapshot yok (eski kayıt) - güncel değerlerle hesapla
+    alisBirim=s.tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
+    const urunB=s.tip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:obj;
+    const kFU=kargoUcreti(ay.kargoFirma||'Aras',obj.desi||(s.tip==='set'?2:1));
+    const f=hesapla.satisFiyati(urunB,ay,1,kFU);
+    if(!f) return null;
+    platform=f.platform; kargo=f.kargo; komisyon=obj.komisyon||0.04;
+  }
   // Birim kar
-  const karBirim=hesapla.gercekKar(alisBirim,gf,obj.komisyon||0.04,f.platform,f.kargo);
+  const karBirim=hesapla.gercekKar(alisBirim,gf||0,komisyon,platform,kargo);
   // Toplam (adet ile çarp)
   return{
     net:    karBirim.net   * s.adet,  // toplam net kar

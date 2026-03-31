@@ -324,12 +324,34 @@ function renderDashGrafik(){
   }
 
   const mkBar=(el,data,max,renk)=>{
-    el.innerHTML=data.map(d=>`
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-        ${d.v>0?`<div style="font-size:8px;color:var(--t3)">${d.v}</div>`:'<div style="font-size:8px"></div>'}
-        <div style="width:100%;border-radius:3px 3px 0 0;background:${d.v>=0?renk:'var(--red)'};height:${Math.round((Math.abs(d.v)/max)*100)}%;min-height:${d.v?2:0}px"></div>
-        <div style="font-size:9px;color:var(--t3)">${d.lbl}</div>
-      </div>`).join('');
+    if(!data||!data.length){el.innerHTML='';return;}
+    const vMax=Math.max(...data.map(d=>d.v),1);
+    const vMin=Math.min(...data.map(d=>d.v),0);
+    const range=(vMax-vMin)||1;
+    const points=data.map((d,i)=>{
+      return {x:(i/(data.length-1))*100, y: 80 - ((d.v-vMin)/range)*70, v:d.v, lbl:d.lbl};
+    });
+    const zeroY = 80 - ((0-vMin)/range)*70;
+    const pathD=`M ${points.map(p=>`${p.x},${p.y}`).join(' L ')}`;
+    const gId = 'gDash_' + Math.random().toString(36).substr(2,5);
+    el.innerHTML=`
+      <div style="position:relative;width:100%;height:60px;font-family:var(--font);margin-top:10px">
+        <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;left:0;top:-10px;height:calc(100% + 10px);overflow:visible">
+          <line x1="0" y1="${zeroY}" x2="100" y2="${zeroY}" stroke="var(--border)" stroke-dasharray="2" stroke-width="1" vector-effect="non-scaling-stroke" />
+          <linearGradient id="${gId}" x1="0" y1="0" x2="0" y2="1">
+             <stop offset="0%" stop-color="${renk}" stop-opacity="0.2"/>
+             <stop offset="100%" stop-color="${renk}" stop-opacity="0"/>
+          </linearGradient>
+          <path d="${pathD} L 100,100 L 0,100 Z" fill="url(#${gId})" vector-effect="non-scaling-stroke"/>
+          <path d="${pathD}" fill="none" stroke="${renk}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linecap="round"/>
+        </svg>
+        ${points.map(p=>`
+          ${p.v!==0 ? `<div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-50%);width:4px;height:4px;background:var(--bg);border:1.5px solid ${p.v>=0?renk:'var(--red)'};border-radius:50%;z-index:2;margin-top:-10px"></div>
+                       <div style="position:absolute;left:${p.x}%;top:${p.y}%;transform:translate(-50%,-160%);font-size:8px;font-weight:700;color:${p.v>=0?'var(--t1)':'var(--red)'};white-space:nowrap;z-index:3;text-shadow:0 0 2px var(--bg);margin-top:-10px">${p.v}</div>` : ''}
+          <div style="position:absolute;left:${p.x}%;bottom:0;transform:translate(-50%,10px);font-size:8px;color:var(--t3);white-space:nowrap">${p.lbl}</div>
+        `).join('')}
+      </div>
+    `;
   };
   mkBar(document.getElementById('dash-bar-adet'),adetData,maxAdet,'var(--accent)');
   mkBar(document.getElementById('dash-bar-kar'),karData,maxKar,'var(--green)');

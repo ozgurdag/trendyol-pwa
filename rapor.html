@@ -205,15 +205,53 @@ function aySelectDoldur(id){
 }
 
 // BAR CHART helper
-function barChart(el,data,renk='var(--accent)'){
-  const max=Math.max(...data.map(d=>d.val),1);
-  const yuksek=data.filter(d=>d.val!==0);
-  el.innerHTML=data.map(d=>`
-    <div class="bar-col">
-      <div class="bar-val" style="font-size:9px;color:var(--t3);min-height:12px">${d.val!==0?(d.label2||Math.abs(d.val)):''}</div>
-      <div class="bar" style="height:${max>0?Math.round((Math.abs(d.val)/max)*100):0}%;background:${d.val>=0?renk:'var(--red)'};min-height:${d.val?2:0}px"></div>
-      <div class="bar-lbl">${d.label}</div>
-    </div>`).join('');
+// LINE CHART helper (replaces barChart)
+function lineChart(el,data,renk='var(--accent)'){
+  if(!data || !data.length){ el.innerHTML=''; return; }
+  const vMax = Math.max(...data.map(d=>d.val), 1);
+  const vMin = Math.min(...data.map(d=>d.val), 0);
+  const range = (vMax - vMin) || 1;
+  
+  const points = data.map((d,i) => {
+    const pctX = data.length>1 ? (i / (data.length - 1)) * 100 : 50;
+    const pctY = 85 - ((d.val - vMin) / range) * 70;
+    return { ...d, x: pctX, y: pctY };
+  });
+
+  const zeroY = 85 - ((0 - vMin) / range) * 70;
+  const pathD = `M ${points.map(p => `${p.x},${p.y}`).join(' L ')}`;
+  const gId = 'gFill_' + Math.random().toString(36).substr(2,5);
+
+  el.innerHTML = `
+    <div style="position:relative; width:100%; height:150px; margin-top:20px; font-family:var(--font); user-select:none;">
+      <!-- Background SVG -->
+      <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute; left:0; top:0; overflow:visible;">
+        <line x1="0" y1="${zeroY}" x2="100" y2="${zeroY}" stroke="var(--border)" vector-effect="non-scaling-stroke" stroke-width="1" stroke-dasharray="4"/>
+        
+        <linearGradient id="${gId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${renk}" stop-opacity="0.3"/>
+          <stop offset="100%" stop-color="${renk}" stop-opacity="0"/>
+        </linearGradient>
+        <path d="${pathD} L 100,100 L 0,100 Z" fill="url(#${gId})" vector-effect="non-scaling-stroke"/>
+        
+        <path d="${pathD}" fill="none" stroke="${renk}" vector-effect="non-scaling-stroke" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      
+      <!-- Overlay Labels and Dots -->
+      ${points.map(p => {
+        const hasVal = p.val !== 0;
+        const showLbl = p.label || p.label2; 
+        if(!hasVal && !p.label) return '';
+        
+        return `
+        ${p.label ? `<div style="position:absolute; left:${p.x}%; bottom:0; transform:translateX(-50%); font-size:10px; font-weight:600; color:var(--t3); white-space:nowrap;">${p.label}</div>` : ''}
+        ${hasVal ? `
+        <div style="position:absolute; left:${p.x}%; top:${p.y}%; transform:translate(-50%, -50%); width:${showLbl?8:4}px; height:${showLbl?8:4}px; background:var(--bg); border:2px solid ${p.val>=0?renk:'var(--red)'}; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.1); z-index:2;"></div>
+        ${showLbl ? `<div style="position:absolute; left:${p.x}%; top:${p.y}%; transform:translate(-50%, -15px); font-size:10px; font-weight:${showLbl?'700':'500'}; color:${p.val>=0?'var(--t1)':'var(--red)'}; white-space:nowrap; text-shadow:0 0 3px var(--bg); z-index:3;">${p.label2 || p.val}</div>` : ''}
+        ` : ''}
+      `}).join('')}
+    </div>
+  `;
 }
 
 /* ── AYLIK ÖZET ── */
@@ -265,7 +303,7 @@ window.renderOzet=()=>{
     if(g%3===1||gunSayisi<=15) gunData.push({label:String(g),val:Math.round(gKar)});
     else gunData.push({label:'',val:Math.round(gKar)});
   }
-  barChart(document.getElementById('ozet-bar'),gunData);
+  lineChart(document.getElementById('ozet-bar'),gunData);
 };
 
 /* ── 7 GÜNLÜK ── */
@@ -282,9 +320,9 @@ function renderGrafik(){
     data7.push({label:lbl,val:adet,label2:adet>0?adet:''});
     data7.push&&(data7[data7.length-1]._kar=Math.round(kar));
   }
-  barChart(document.getElementById('grafik-adet'),data7);
+  lineChart(document.getElementById('grafik-adet'),data7);
   const karData=data7.map(d=>({label:d.label,val:d._kar||0,label2:d._kar>0?Math.round(d._kar)+'₺':''}));
-  barChart(document.getElementById('grafik-kar'),karData,`var(--green)`);
+  lineChart(document.getElementById('grafik-kar'),karData,`var(--green)`);
 }
 
 /* ── ÜRÜN KARLILIK ── */

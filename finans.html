@@ -301,19 +301,29 @@ async function claudeOku(base64Data, mimeType, tip) {
 
   try {
     const isGiden = tip === 'giden_fatura';
-    const cariKural = isGiden 
-      ? 'Bu bir SATIŞ (Giden) faturasıdır. cari_adi alanına "SAYIN" başlığı altındaki Müşteri/Alıcı adını yaz.' 
-      : 'DİKKAT (ALIŞ/GELEN FATURA): Faturayı kesen SATICI/TEDARİKÇİ firma adını vereceksin (genelde sol en üstte kalın yazan veya alt imza kısmında yer alan firma). KESİNLİKLE "SAYIN:" kısmını okuMA. KESİNLİKLE "DAMLA ÖZTÜRK" yazma. Alıcı bilgisini tamamen yok say, sadece satıcıyı bul!';
-
-    const basePrompt = `Bu bir Türk faturasıdır. Lütfen bilgileri JSON formatında çıkar:
-{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"Firma/Kişi","aciklama":"kısa açıklama"}
+    
+    let basePrompt;
+    if (isGiden) {
+      basePrompt = `Bu bir SATIŞ (Giden) faturasıdır. Kesilmiş bir faturadır. Lütfen bilgileri JSON formatında çıkar:
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"Müşteri Adı","aciklama":"kısa açıklama"}
 Kurallar:
-- fatura_no: Belge numarası, e-arşiv no veya fiş no.
+- fatura_no: GIB veya EAA ile başlayan numara.
 - tutar: KDV hariç toplam tutar.
 - kdv_tutari: KDV tutarı.
 - kdv_orani: KDV oranı (sayı).
-- ${cariKural}
-- Sadece ve sadece JSON döndür, hiçbir ek açıklama yapma.`;
+- cari_adi: Bu faturanın kesildiği MÜŞTERİ / ALICI adıdır. Faturanın sol ortasında yer alan "SAYIN:" veya "Müşteri VKN/TCKN" bölümündeki kişiyi/firmayı yazacaksın (Örn: Murat Kaya). Faturayı düzenleyen (sol üstteki) BİZİZ (örn: Damla Öztürk), onu KESİNLİKLE YAZMA.
+- Sadece ve sadece JSON döndür.`;
+    } else {
+      basePrompt = `Bu bir ALIŞ veya MASRAF (Gelen) faturasıdır. Bize kesilmiş faturadır. Lütfen bilgileri JSON formatında çıkar:
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"Satıcı Firma","aciklama":"kısa açıklama"}
+Kurallar:
+- fatura_no: Belge numarası.
+- tutar: KDV hariç toplam tutar.
+- kdv_tutari: KDV tutarı.
+- kdv_orani: KDV oranı (sayı).
+- cari_adi: Faturayı bize kesen SATICI / TEDARİKÇİ firmadır (genelde sol en üstte kalın yazan veya alt imza kısmında olan ana şirket). KESİNLİKLE "SAYIN:" başlığındaki kısımları OKUMA. KESİNLİKLE kullanıcı adını (örn: Damla Öztürk) YAZMA. Alıcıyı tamamen YOK SAY, sadece malı satan firmayı yaz.
+- Sadece ve sadece JSON döndür.`;
+    }
 
     let content;
     if (mimeType === 'application/pdf') {

@@ -102,6 +102,16 @@ async function sbDelete(tablo, id){
   } catch(e){ console.warn('sbDelete offline:',e.message); }
 }
 
+async function sbDeleteAll(tablo){
+  try {
+    const token = await gecerliToken();
+    if(!token || token===SB_KEY) return;
+    await fetch(`${SB_URL}/rest/v1/${tablo}?id=neq.null`,{
+      method:'DELETE', headers:sbHdr(token)
+    });
+  } catch(e){ console.warn('sbDeleteAll offline:',e.message); }
+}
+
 /* ── REALTIME ── */
 let _ws = null;
 let _wsReconnectTimer = null;
@@ -140,11 +150,12 @@ export async function supabasedenYukle(){
     const token = await gecerliToken();
     if(!token||token===SB_KEY) return false;
 
-    const [rS, rL, rSet, rSt] = await Promise.all([
+    const [rS, rL, rSet, rSt, rF] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/stok_kalemleri?select=*&order=ad`,{headers:sbHdr(token)}),
       fetch(`${SB_URL}/rest/v1/listingler?select=*&order=ad`,{headers:sbHdr(token)}),
       fetch(`${SB_URL}/rest/v1/setler?select=*&order=ad`,{headers:sbHdr(token)}),
       fetch(`${SB_URL}/rest/v1/satislar?select=*&order=tarih.desc`,{headers:sbHdr(token)}),
+      fetch(`${SB_URL}/rest/v1/faturalar?select=*&order=tarih.desc`,{headers:sbHdr(token)}),
     ]);
 
     if(rS.ok){ const d=await rS.json(); if(d?.length) set(DB_KEYS.stok, d.map(u=>({
@@ -196,6 +207,14 @@ export async function supabasedenYukle(){
       })));
     }}
 
+    if(rF.ok){ const d=await rF.json(); if(d?.length) {
+      set(DB_KEYS.faturalar, d.map(f=>({
+        id:f.id, tip:f.tip, tarih:f.tarih, tutar:f.tutar||0,
+        kdvTutari:f.kdv_tutari||0, kdvOrani:f.kdv_orani||20,
+        aciklama:f.aciklama||'', cariAdi:f.cari_adi||'', dosyaUrl:f.dosya_url||null,
+      })));
+    }}
+
     localStorage.setItem('tsx_son_sync', Date.now().toString());
     return true;
   } catch(e){ console.warn('supabasedenYukle hata:',e.message); return false; }
@@ -239,6 +258,14 @@ export async function localdenSupabaseYukle(){
     await sbPost('satislar',{
       id:st.id, tip:st.tip||'listing', hedef_id:st.hedefId,
       adet:st.adet, gercek_fiyat:st.gercekFiyat||null, tarih:st.tarih,
+    });
+    yuklenen++;
+  }
+  for(const f of get(DB_KEYS.faturalar)||[]){
+    await sbPost('faturalar',{
+      id:f.id, tip:f.tip, tarih:f.tarih, tutar:f.tutar||0,
+      kdv_tutari:f.kdvTutari||0, kdv_orani:f.kdvOrani||20,
+      aciklama:f.aciklama||'', cari_adi:f.cariAdi||'', dosya_url:f.dosyaUrl||null,
     });
     yuklenen++;
   }
@@ -514,6 +541,13 @@ export const satislarDB = {
       }
     });
 
+    yeniler.forEach(k=>{
+      const adBul = k.tip==='listing' ? listingDB.bul(k.hedefId)?.ad
+                  : k.tip==='set'     ? setlerDB.bul(k.hedefId)?.ad
+                  : k.tip==='stok'    ? stokDB.bul(k.hedefId)?.ad
+                  : (k.stokKombo||[]).map(it=>it.ad).join('+');
+      logDB.ekle('satis_eklendi', `${adBul||k.hedefId||'Combo'} ×${k.adet} — ${k.gercekFiyat?.toFixed(2)||'?'}₺`);
+    });
     sbPost('satislar',yeniler.map(k=>({
       id:k.id, tip:k.tip, hedef_id:k.hedefId,
       adet:k.adet, gercek_fiyat:k.gercekFiyat||null, tarih:k.tarih,
@@ -545,6 +579,11 @@ export const satislarDB = {
           if(u) stokDB.guncelle(it.urunId,{stok:(u.stok||0)+it.adet*k.adet});
         });
       }
+      const adBul2 = k.tip==='listing' ? listingDB.bul(k.hedefId)?.ad
+                   : k.tip==='set'     ? setlerDB.bul(k.hedefId)?.ad
+                   : k.tip==='stok'    ? stokDB.bul(k.hedefId)?.ad
+                   : (k.stokKombo||[]).map(it=>it.ad).join('+');
+      logDB.ekle('satis_silindi', `${adBul2||'?'} ×${k.adet} — ${k.tarih}`);
       set(DB_KEYS.satislar,this.hepsini().filter(s=>s.id!==id));
       sbDelete('satislar',id).then(()=>broadcastGonder());
     }
@@ -594,6 +633,13 @@ export const satislarDB = {
 
     const guncellendi = {...k, ...degisiklik, adet:yeniAdet, snapshot:yeniSnapshot};
     set(DB_KEYS.satislar, mevcut.map(s=>s.id===id?guncellendi:s));
+    if(degisiklik.adet!==undefined||degisiklik.gercekFiyat!==undefined){
+      const adBul3 = k.tip==='listing' ? listingDB.bul(k.hedefId)?.ad
+                   : k.tip==='set'     ? setlerDB.bul(k.hedefId)?.ad
+                   : k.tip==='stok'    ? stokDB.bul(k.hedefId)?.ad
+                   : (k.stokKombo||[]).map(it=>it.ad).join('+');
+      logDB.ekle('satis_guncellendi', `${adBul3||'?'} → adet:${yeniAdet}${degisiklik.gercekFiyat!==undefined?` fiyat:${(+degisiklik.gercekFiyat).toFixed(2)}₺`:''}`);
+    }
 
     const v={};
     if(degisiklik.adet!==undefined)        v.adet=yeniAdet;
@@ -617,6 +663,7 @@ export const faturalarDB = {
   ekle(f){
     const yeni={id:uid(), ...f, tarih:f.tarih||today(), olusturma:Date.now()};
     set(DB_KEYS.faturalar,[...this.hepsini(),yeni]);
+    logDB.ekle('fatura_eklendi', `${yeni.aciklama||yeni.cariAdi||'Fatura'} — ${(yeni.tutar||0).toFixed(2)}₺ (${yeni.tip||'?'})`);
     sbPost('faturalar',{
       id:yeni.id, tip:yeni.tip, tarih:yeni.tarih,
       tutar:yeni.tutar||0, kdv_tutari:yeni.kdvTutari||0,
@@ -668,6 +715,58 @@ export async function sbStorageUpload(bucket, dosyaAdi, file){
     return null;
   }catch(e){ console.warn('Storage upload offline:',e.message); return null; }
 }
+
+/* ── AKTİVİTE LOGU ── */
+const LOG_KEY = 'tsx_activity_log';
+const LOG_MAX = 300;
+export const logDB = {
+  hepsini(){ return get(LOG_KEY)||[]; },
+
+  ekle(olay, detay){
+    const o = auth.oturum();
+    const yeni = {
+      id: uid(),
+      zaman: Date.now(),
+      kullanici: o?.rol || 'bilinmiyor',
+      ad: o?.ad || o?.email || '?',
+      olay,
+      detay: detay||'',
+    };
+    const liste = [yeni, ...this.hepsini()].slice(0, LOG_MAX);
+    set(LOG_KEY, liste);
+    // Fire-and-forget → Supabase (diğer DB metodlarıyla aynı pattern)
+    // broadcastGonder() çağrılmaz — log yazımı tüm cihazlarda data reload tetiklememeli
+    sbPost('activity_logs', {
+      id:        yeni.id,
+      zaman:     yeni.zaman,
+      kullanici: yeni.kullanici,
+      ad:        yeni.ad,
+      olay:      yeni.olay,
+      detay:     yeni.detay,
+    });
+  },
+
+  async supabasedenGetir(){
+    try {
+      const token = await gecerliToken();
+      if(!token || token===SB_KEY) return this.hepsini();
+      const r = await fetch(
+        `${SB_URL}/rest/v1/activity_logs?select=*&order=zaman.desc&limit=500`,
+        {headers: sbHdr(token)}
+      );
+      if(!r.ok){ console.warn('logDB.supabasedenGetir hata:', await r.text()); return this.hepsini(); }
+      return await r.json();
+    } catch(e){
+      console.warn('logDB.supabasedenGetir offline:', e.message);
+      return this.hepsini();
+    }
+  },
+
+  temizle(){
+    set(LOG_KEY, []);
+    sbDeleteAll('activity_logs');
+  },
+};
 
 /* ── AYARLAR DB ── */
 export const ayarlarDB = {

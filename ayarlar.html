@@ -29,8 +29,8 @@
     </div>
 
     <!-- ORTAK KODU -->
-    <div class="section-title">Ortak Bağlantısı</div>
-    <div class="card mb-16">
+    <div class="section-title" id="sec-ortak-baglanti-title">Ortak Bağlantısı</div>
+    <div class="card mb-16" id="sec-ortak-baglanti-card">
       <div style="font-size:13px;color:var(--t3);margin-bottom:12px">
         Bu kodu ortağınıza gönderin — aynı verilere erişebilir
       </div>
@@ -42,8 +42,8 @@
     </div>
 
     <!-- KARGO AYARLARI -->
-    <div class="section-title">Kargo Barem Eşikleri</div>
-    <div class="card mb-16">
+    <div class="section-title" id="sec-kargo-barem-title">Kargo Barem Eşikleri</div>
+    <div class="card mb-16" id="sec-kargo-barem-card">
       <div class="toggle-row">
         <div>
           <div class="toggle-label">Alt Barem Eşiği (₺)</div>
@@ -77,12 +77,16 @@
     <!-- FİNANS & API AYARLARI -->
     <div class="section-title">Finans & API Ayarları</div>
     <div class="card mb-16">
-      <div class="toggle-row">
+      <div class="toggle-row" style="flex-wrap: wrap;">
         <div>
           <div class="toggle-label">Claude API Anahtarı</div>
           <div class="toggle-sub">Fatura okuma için gerekli</div>
         </div>
-        <input class="form-input" type="password" id="ay-claude-key" placeholder="sk-ant-..." style="width:180px;font-size:11px" onchange="finansAyarKaydet()">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input class="form-input" type="password" id="ay-claude-key" placeholder="sk-ant-..." style="width:140px;font-size:11px" autocomplete="off" onchange="apiKeyKaydet()">
+          <button onclick="apiKeySifirla()" title="Anahtarı Sil" style="background:var(--red-l);border:1px solid var(--red);border-radius:var(--r-sm);color:var(--red);padding:6px 10px;font-size:12px;cursor:pointer;">✕</button>
+        </div>
+        <div id="claude-durum" style="width:100%; font-size:11px; margin-top:8px; display:none; color:var(--green)"></div>
       </div>
       <div class="toggle-row">
         <div>
@@ -133,6 +137,13 @@
       </div>
       <button class="btn btn-secondary btn-full" onclick="ciftleriTemizle()">🧹 Tekrarlı Ürünleri Temizle</button>
     </div>
+    <!-- AKTİVİTE LOGU (sadece admin) -->
+    <div id="sec-log-link">
+      <a href="./log.html" class="btn btn-secondary btn-full mt-8" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none">
+        📋 Aktivite Logları
+      </a>
+    </div>
+
     <!-- ÇIKIŞ -->
     <button class="btn btn-ghost btn-full mt-8" onclick="cikis()" style="color:var(--red)">
       ↩ Çıkış Yap
@@ -158,14 +169,14 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, ayarlarDB } from './state.js';
+import { auth, ayarlarDB, logDB } from './state.js';
 const o = auth.oturum();
 if (!o) window.location.href='index.html';
 const _isAdmin = auth.adminMi();
 
 document.getElementById('k-ad').textContent = o.ad;
 document.getElementById('k-email').textContent = o.email;
-document.getElementById('k-rol').innerHTML = o.rol==='sahip'
+document.getElementById('k-rol').innerHTML = o.rol==='admin'
   ? '<span class="badge badge-accent">Hesap Sahibi</span>'
   : '<span class="badge badge-blue">Ortak</span>';
 
@@ -191,6 +202,11 @@ document.getElementById('ay-ucret1').value = ay.kargoBaremUcret1;
 document.getElementById('ay-esik2').value  = ay.kargoBaremEsik2;
 document.getElementById('ay-ucret2').value = ay.kargoBaremUcret2;
 document.getElementById('ay-claude-key').value = ay.claudeApiKey || '';
+if(ay.claudeApiKey) {
+  const d=document.getElementById('claude-durum');
+  d.textContent = '✅ API Anahtarı sistemde kayıtlı durumda.';
+  d.style.display = 'block';
+}
 document.getElementById('ay-sirket-tipi').value = ay.sirketTipi || 'sahis';
 
 window.ayarKaydet = () => {
@@ -204,11 +220,31 @@ window.ayarKaydet = () => {
   toast('Ayarlar kaydedildi','success');
 };
 
+// Herkes API key kaydedebilir (fatura okuma için gerekli)
+window.apiKeyKaydet = () => {
+  const v = document.getElementById('ay-claude-key').value.trim();
+  ayarlarDB.kaydet({ claudeApiKey: v });
+  const d = document.getElementById('claude-durum');
+  if(v){
+    d.textContent = '✅ API Anahtarı başarıyla kaydedildi.';
+    d.style.display = 'block';
+  } else {
+    d.style.display = 'none';
+  }
+  toast(v ? 'API anahtarı kaydedildi' : 'API anahtarı silindi', 'success');
+};
+
+window.apiKeySifirla = () => {
+  ayarlarDB.kaydet({ claudeApiKey: '' });
+  document.getElementById('ay-claude-key').value = '';
+  document.getElementById('claude-durum').style.display = 'none';
+  toast('API anahtarı silindi', 'info');
+};
+
 window.finansAyarKaydet = () => {
   if(!auth.adminMi()){toast('Bu işlem için admin yetkisi gerekli','error');return;}
   ayarlarDB.kaydet({
-    claudeApiKey: document.getElementById('ay-claude-key').value.trim(),
-    sirketTipi:   document.getElementById('ay-sirket-tipi').value,
+    sirketTipi: document.getElementById('ay-sirket-tipi').value,
   });
   toast('Finans ayarları kaydedildi','success');
 };
@@ -259,28 +295,36 @@ window.veriSifirla = () => {
   window.location.href='index.html';
 };
 
-window.cikis = () => { auth.cikis(); window.location.href='index.html'; };
+window.cikis = () => { logDB.ekle('cikis', 'Çıkış yapıldı'); auth.cikis(); window.location.href='index.html'; };
 
 // Ortak kısıtlamaları
 if(!_isAdmin){
-  // Tüm input ve select'leri disable et
-  document.querySelectorAll('input, select').forEach(el=>{
+  // Ortak bağlantısı, kargo barem ve log bölümlerini gizle
+  ['sec-ortak-baglanti-title','sec-ortak-baglanti-card',
+   'sec-kargo-barem-title','sec-kargo-barem-card',
+   'sec-log-link'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  // API key dışındaki input ve select'leri disable et
+  document.querySelectorAll('input:not(#ay-claude-key), select').forEach(el=>{
     el.disabled = true;
     el.style.opacity = '0.6';
     el.style.cursor = 'not-allowed';
   });
-  // Kaydet butonlarını gizle
-  document.querySelectorAll('button:not(#btn-cikis)').forEach(el=>{
-    if(el.textContent.includes('Kaydet')||el.textContent.includes('Yükle')||
-       el.textContent.includes('Yedek')||el.textContent.includes('Sıfırla')||
-       el.textContent.includes('Bağlan')||el.textContent.includes('Senkronize')){
+  // Şirket tipi, kargo, senkronizasyon, veri butonlarını gizle
+  document.querySelectorAll('button').forEach(el=>{
+    const txt = el.textContent;
+    if(txt.includes('Yedekle')||txt.includes('Geri Yükle')||txt.includes('Sıfırla')||
+       txt.includes('Yükle')||txt.includes('Senkronize')||txt.includes('Bağlan')||
+       txt.includes('Temizle')){
       el.style.display='none';
     }
   });
-  // Uyarı banner ekle
+  // Bilgi banner'ı
   const banner = document.createElement('div');
   banner.style.cssText='background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-md);padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--t3);text-align:center';
-  banner.textContent='👁 Salt okunur mod — Ayarlar yalnızca admin tarafından değiştirilebilir';
+  banner.textContent='ℹ️ Ortak modu — API anahtarınızı girebilirsiniz, diğer ayarlar admin tarafından yönetilir';
   document.querySelector('.page-content')?.prepend(banner);
 }
 

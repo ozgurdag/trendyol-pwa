@@ -55,6 +55,7 @@
 
 <script type="module">
 import { sbAuth } from './supabase.js';
+import { logDB } from './state.js';
 
 // Email → kullanıcı tipi mapping
 const EMAILS = {
@@ -99,6 +100,7 @@ window.girisYap = async () => {
   spinner.style.display = 'none';
 
   if(sonuc.ok) {
+    logDB.ekle('giris', `${secili} olarak giriş yapıldı`);
     window.location.href = './dashboard.html';
   } else {
     hataEl.textContent = sonuc.hata || 'Hatalı şifre';

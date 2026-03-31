@@ -43,6 +43,18 @@
 .kar-badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;font-family:var(--mono);}
 /* ── AYIRICI ── */
 .seksiyon-baslik{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px;}
+/* ── CUSTOM DROPDOWN ── */
+.sd-wrap{position:relative;margin-bottom:12px}
+.sd-btn{width:100%;margin-top:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-md);padding:11px 14px;font-size:14px;color:var(--t1);text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--font)}
+.sd-panel{position:absolute;top:calc(100%+4px);left:0;right:0;z-index:400;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-md);box-shadow:var(--shadow-md);display:none}
+.sd-panel.open{display:block}
+.sd-search{padding:8px;border-bottom:1px solid var(--border)}
+.sd-search input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-sm);padding:8px 10px;font-size:13px;color:var(--t1);font-family:var(--font)}
+.sd-list{max-height:200px;overflow-y:auto}
+.sd-item{padding:10px 14px;font-size:13px;color:var(--t1);cursor:pointer;border-bottom:1px solid var(--border)}
+.sd-item:hover{background:var(--bg3)}
+.sd-item:last-child{border:none}
+.sd-none{padding:12px;text-align:center;font-size:12px;color:var(--t3)}
 </style>
 </head>
 <body>
@@ -80,12 +92,18 @@
       <div id="panel-listing">
         <div class="form-group">
           <label class="form-label">Onaylı Listing Seç</label>
-          <div style="display:flex; gap:6px; margin-bottom:8px;">
-            <input type="text" id="listing-arama" class="form-input" placeholder="🔍 Tümü içinde ara..." oninput="doldurListingDropdown()" style="flex:1">
+          <div class="sd-wrap" id="listing-sd">
+            <button class="sd-btn" onclick="sdToggle('listing-sd')">
+              <span id="listing-sd-lbl" style="color:var(--t3)">Listing ara ve seç…</span><span>▾</span>
+            </button>
+            <div class="sd-panel" id="listing-sd-panel">
+              <div class="sd-search">
+                <input type="text" placeholder="Listing adı ara…" id="listing-sd-input"
+                  oninput="doldurListingDropdown()" autocomplete="off">
+              </div>
+              <div class="sd-list" id="listing-sd-list"></div>
+            </div>
           </div>
-          <select class="form-select" id="listing-hedef" onchange="listingSecildi()">
-            <option value="">— Seçin —</option>
-          </select>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -105,8 +123,13 @@
         <!-- Listing Önizleme -->
         <div id="listing-onizleme" class="onizleme-box" style="display:none;margin-bottom:12px">
           <div class="onizleme-row"><span class="onizleme-label">Kullanılabilir Stok</span><span class="onizleme-val" id="l-stok">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Toplam Alış Maliyeti</span><span class="onizleme-val" id="l-alis">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Kargo Ücreti</span><span class="onizleme-val" id="l-kargo">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Trendyol Komisyonu</span><span class="onizleme-val" id="l-komisyon">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Platform Hizm. Ücreti</span><span class="onizleme-val" id="l-platform">—</span></div>
+          <div style="height:1px;background:var(--border);margin:6px 0"></div>
           <div class="onizleme-row"><span class="onizleme-label">Önerilen Fiyat</span><span class="onizleme-val" style="color:var(--accent)" id="l-onerilen">—</span></div>
-          <div class="onizleme-row"><span class="onizleme-label">Kar / Birim</span><span class="kar-badge" id="l-kar">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Net Kar / Birim</span><span class="kar-badge" id="l-kar">—</span></div>
         </div>
 
         <button class="btn btn-primary btn-full" onclick="listingKaydet()">✓ Listing Satışı Kaydet</button>
@@ -114,22 +137,35 @@
 
       <!-- ═══ STOKTAN TAB ═══ -->
       <div id="panel-stok" style="display:none">
-        <div class="seksiyon-baslik">Kombo Ürün Ekle</div>
+        <div class="seksiyon-baslik" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Kombo Ürün Ekle</span>
+          <span style="font-size:10px;text-transform:none;color:var(--t3);font-weight:normal" id="global-kargo-kategori"></span>
+        </div>
 
-        <!-- Ürün seçici -->
-        <div class="form-row" style="align-items:flex-end">
-          <div class="form-group" style="flex:1">
-            <label class="form-label">Stok Kalemi</label>
-            <select class="form-select" id="kombo-stok-sec">
-              <option value="">— Seçin —</option>
-            </select>
+        <!-- Ürün seçici (Arama) -->
+        <div class="form-group">
+          <label class="form-label">Stok Kalemi Seç</label>
+          <div class="sd-wrap" id="kombo-sd">
+            <button class="sd-btn" onclick="sdToggle('kombo-sd')">
+              <span id="kombo-sd-lbl" style="color:var(--t3)">Stok ara ve seç…</span><span>▾</span>
+            </button>
+            <div class="sd-panel" id="kombo-sd-panel">
+              <div class="sd-search">
+                <input type="text" placeholder="Stok adı ara…" id="kombo-sd-input"
+                  oninput="doldurKomboDropdown()" autocomplete="off">
+              </div>
+              <div class="sd-list" id="kombo-sd-list"></div>
+            </div>
           </div>
+        </div>
+
+        <div class="form-row" style="align-items:flex-end">
           <div class="form-group" style="width:80px">
             <label class="form-label">Adet</label>
-            <input class="form-input" type="number" inputmode="decimal" id="kombo-adet" value="1" min="1">
+            <input class="form-input" type="number" inputmode="decimal" id="kombo-adet" value="1" min="1" style="text-align:center">
           </div>
-          <div style="padding-bottom:0;flex-shrink:0">
-            <button class="btn btn-secondary" onclick="komboEkle()" style="height:42px;padding:0 14px;white-space:nowrap">＋ Ekle</button>
+          <div class="form-group" style="flex:1">
+            <button class="btn btn-secondary btn-full" onclick="komboEkle()" style="height:42px;font-weight:600">＋ Stok Kalemi Ekle</button>
           </div>
         </div>
 
@@ -139,15 +175,8 @@
           <div id="kombo-liste"></div>
         </div>
 
-        <!-- Kombo Özet -->
-        <div id="kombo-ozet-box" class="onizleme-box" style="display:none;margin-bottom:12px">
-          <div class="onizleme-row"><span class="onizleme-label">Toplam Alış Maliyeti</span><span class="onizleme-val" id="k-alis">—</span></div>
-          <div class="onizleme-row"><span class="onizleme-label">Hedef Satış Fiyatı</span><span class="onizleme-val" style="color:var(--accent)" id="k-hedef">—</span></div>
-          <div class="onizleme-row"><span class="onizleme-label">Kargo Tahmini</span><span class="onizleme-val" id="k-kargo">—</span></div>
-        </div>
-
-        <!-- Gerçek fiyat + kar -->
-        <div id="kombo-fiyat-wrap" style="display:none">
+        <!-- Gerçek fiyat + kargo opsiyonu -->
+        <div id="kombo-fiyat-wrap" style="display:none; margin-top:12px;">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Gerçek Satış Fiyatı (₺)</label>
@@ -158,10 +187,26 @@
               <input class="form-input" type="date" id="kombo-tarih">
             </div>
           </div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">Aynı Gün Kargo (Hızlı)</label>
+            <select class="form-select" id="kombo-aynigun" onchange="komboKarGoster()">
+              <option value="1" selected>Evet</option>
+              <option value="0">Hayır</option>
+            </select>
+          </div>
 
-          <div id="kombo-kar-wrap" class="onizleme-box" style="display:none;margin-bottom:12px">
-            <div class="onizleme-row"><span class="onizleme-label">Kar / Zarar</span><span class="kar-badge" id="k-kar">—</span></div>
-            <div class="onizleme-row"><span class="onizleme-label">ROI</span><span class="onizleme-val" id="k-roi">—</span></div>
+          <!-- Tüm Özetleri Burada Alt Alta Göster -->
+          <div id="kombo-tum-ozet" class="onizleme-box" style="display:none;margin-bottom:12px">
+            <div class="onizleme-row"><span class="onizleme-label">Toplam Alış Maliyeti</span><span class="onizleme-val" id="k-alis">—</span></div>
+            <div class="onizleme-row"><span class="onizleme-label">Kargo Tahmini</span><span class="onizleme-val" id="k-kargo-t">—</span></div>
+            <div class="onizleme-row"><span class="onizleme-label">Hedef Satış Fiyatı</span><span class="onizleme-val" style="color:var(--accent)" id="k-hedef">—</span></div>
+            <div style="height:1px;background:var(--border);margin:6px 0"></div>
+            <div class="onizleme-row"><span class="onizleme-label" style="color:var(--t3)">Kargo Ücreti</span><span class="onizleme-val" id="k-kargo-net">—</span></div>
+            <div class="onizleme-row"><span class="onizleme-label" style="color:var(--t3)">Trendyol Komisyonu</span><span class="onizleme-val" id="k-komisyon-net">—</span></div>
+            <div class="onizleme-row"><span class="onizleme-label" style="color:var(--t3)">Platform Hizm. Ücreti</span><span class="onizleme-val" id="k-platform-net">—</span></div>
+            <div style="height:1px;background:var(--border);margin:6px 0"></div>
+            <div class="onizleme-row"><span class="onizleme-label">Net Kar / Zarar</span><span class="kar-badge" id="k-kar">—</span></div>
+            <div class="onizleme-row"><span class="onizleme-label">ROI (Yatırım Getirisi)</span><span class="onizleme-val" id="k-roi">—</span></div>
           </div>
 
           <button class="btn btn-primary btn-full" onclick="komboKaydet()">✓ Kombo Satış Kaydet</button>
@@ -224,6 +269,24 @@ let editId = null;
 
 // Stok-combo builder state
 let komboUrunler = []; // [{urunId, ad, alisFiyati, desi, stok, adet}]
+let aktifListingId = null;
+let aktifKomboStokId = null;
+
+window.sdToggle = id => {
+  const panel = document.getElementById(id+'-panel');
+  panel.classList.toggle('open');
+  if(panel.classList.contains('open')){
+    if(id==='listing-sd') doldurListingDropdown();
+    if(id==='kombo-sd') doldurKomboDropdown();
+    const inp = document.querySelector('#'+id+'-panel .sd-search input');
+    if(inp){inp.value='';inp.focus();}
+  }
+};
+document.addEventListener('click',e=>{
+  document.querySelectorAll('.sd-panel.open').forEach(p=>{
+    if(!p.closest('.sd-wrap').contains(e.target)) p.classList.remove('open');
+  });
+});
 
 // ── TİP SEÇ ──────────────────────────────────────────────────────
 window.tipSec = t => {
@@ -241,8 +304,8 @@ window.tipSec = t => {
 // ═══════════════════════════════════════════════════════════════
 
 function doldurListingDropdown(){
-  const sel = document.getElementById('listing-hedef');
-  const aramaInput = document.getElementById('listing-arama');
+  const listEl = document.getElementById('listing-sd-list');
+  const aramaInput = document.getElementById('listing-sd-input');
   const arama = aramaInput ? aramaInput.value.trim().toLowerCase() : '';
   
   let liste = listingDB.onaylananlar();
@@ -252,9 +315,7 @@ function doldurListingDropdown(){
   }
 
   if(!liste.length){
-    sel.innerHTML = arama 
-      ? '<option value="">— Eşleşen listing bulunamadı —</option>'
-      : '<option value="">— Önce Listing sayfasından onaylayın —</option>';
+    listEl.innerHTML = '<div class="sd-none">Eşleşen listing bulunamadı</div>';
     return;
   }
   const stokOzeti = id => {
@@ -263,19 +324,24 @@ function doldurListingDropdown(){
     if(!b.length) return '?';
     return Math.min(...b.map(x=>{ const s=stokDB.bul(x.urunId); return s?Math.floor((s.stok||0)/x.adet):0; }));
   };
-  sel.innerHTML = '<option value="">— Seçin —</option>' + liste.map(x => {
+  listEl.innerHTML = liste.map(x => {
     const max = stokOzeti(x.id);
-    return `<option value="${x.id}"${max===0?' disabled':''}>${x.ad} | Stok: ${max}</option>`;
+    const style = max === 0 ? 'opacity:0.5;pointer-events:none;' : '';
+    return `<div class="sd-item" style="${style}" onclick="listingSecildi('${x.id}')"><div>${x.ad}</div><div style="font-size:11px;color:var(--t3);margin-top:2px">Stok: ${max}</div></div>`;
   }).join('');
 }
 
-window.listingSecildi = () => {
-  const id = document.getElementById('listing-hedef').value;
+window.listingSecildi = (id) => {
+  aktifListingId = id;
+  document.getElementById('listing-sd-panel').classList.remove('open');
   const onizleme = document.getElementById('listing-onizleme');
   if(!id){ onizleme.style.display='none'; return; }
 
   const obj = listingDB.bul(id);
   if(!obj){ onizleme.style.display='none'; return; }
+
+  document.getElementById('listing-sd-lbl').textContent = obj.ad;
+  document.getElementById('listing-sd-lbl').style.color = 'var(--t1)';
 
   const desiH = obj.desi||1;
   const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
@@ -292,7 +358,7 @@ window.listingSecildi = () => {
 };
 
 window.listingKarGoster = () => {
-  const id = document.getElementById('listing-hedef').value;
+  const id = aktifListingId;
   const fiyat = +document.getElementById('listing-fiyat').value||0;
   const el = document.getElementById('l-kar');
   if(!id||!fiyat){ el.textContent='—'; el.style.color='var(--t3)'; return; }
@@ -302,13 +368,21 @@ window.listingKarGoster = () => {
   const f = hesapla.satisFiyati({...obj}, ayarlar, 1, kargoFU);
   if(!f) return;
   const adet = +document.getElementById('listing-adet').value||1;
-  const kar = hesapla.gercekKar(obj.alisFiyati||0, fiyat, obj.komisyon||0.04, f.platform, f.kargo);
+  const komisyonOran = obj.komisyon||0.04;
+  const komisyonTutar = fiyat * komisyonOran;
+  const kar = hesapla.gercekKar(obj.alisFiyati||0, fiyat, komisyonOran, f.platform, f.kargo);
+  
+  document.getElementById('l-alis').textContent = p(obj.alisFiyati||0);
+  document.getElementById('l-kargo').textContent = p(f.kargo);
+  document.getElementById('l-komisyon').textContent = p(komisyonTutar) + ` (%${Math.round(komisyonOran*100)})`;
+  document.getElementById('l-platform').textContent = p(f.platform);
+  
   el.textContent = (kar.kararli?'✅ ':' ❌ ') + p(kar.net*adet) + '  (%'+Math.round(kar.roi*100)+')';
   el.style.color = kar.kararli ? 'var(--green)' : 'var(--red)';
 };
 
 window.listingKaydet = () => {
-  const id = document.getElementById('listing-hedef').value;
+  const id = aktifListingId;
   const adet = +document.getElementById('listing-adet').value||1;
   const fiyat = +document.getElementById('listing-fiyat').value||0;
   const tarih = document.getElementById('listing-tarih').value;
@@ -326,12 +400,17 @@ window.listingKaydet = () => {
   }
 
   satislarDB.ekle([{tip:'listing', hedefId:id, adet, gercekFiyat:fiyat, tarih}]);
-  document.getElementById('listing-hedef').value = '';
+  
+  aktifListingId = null;
+  document.getElementById('listing-sd-lbl').textContent = 'Listing ara ve seç…';
+  document.getElementById('listing-sd-lbl').style.color = 'var(--t3)';
   document.getElementById('listing-adet').value = '1';
   document.getElementById('listing-fiyat').value = '';
-  document.getElementById('listing-arama').value = '';
+  const searchInp = document.getElementById('listing-sd-input');
+  if(searchInp) searchInp.value = '';
   document.getElementById('listing-onizleme').style.display = 'none';
   doldurListingDropdown();
+  
   renderSatisList(); renderOzet();
   toast((obj?.ad||'Listing') + ' — ' + adet + ' adet kaydedildi','success');
 };
@@ -341,16 +420,41 @@ window.listingKaydet = () => {
 // ═══════════════════════════════════════════════════════════════
 
 function doldurKomboDropdown(){
-  const sel = document.getElementById('kombo-stok-sec');
-  const liste = stokDB.hepsini().sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
-  if(!liste.length){ sel.innerHTML='<option value="">— Stok kalemi yok —</option>'; return; }
-  sel.innerHTML = '<option value="">— Seçin —</option>' + liste.map(x =>
-    `<option value="${x.id}"${(x.stok||0)===0?' disabled':''}>${x.ad} | Stok: ${x.stok||0} | ${p(x.alisFiyati||0)}</option>`
-  ).join('');
+  const listEl = document.getElementById('kombo-sd-list');
+  const aramaInput = document.getElementById('kombo-sd-input');
+  const arama = aramaInput ? aramaInput.value.trim().toLowerCase() : '';
+
+  let liste = stokDB.hepsini().sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
+  if(arama){
+    liste = liste.filter(x => (x.ad||'').toLowerCase().includes(arama));
+  }
+
+  if(!liste.length){ 
+    listEl.innerHTML = '<div class="sd-none">Eşleşen stok bulunamadı</div>'; 
+    return; 
+  }
+
+  listEl.innerHTML = liste.map(x => {
+    const style = (x.stok||0) === 0 ? 'opacity:0.5;pointer-events:none;' : '';
+    return `<div class="sd-item" style="${style}" onclick="komboStokSecildi('${x.id}')">
+      <div style="font-weight:600;">${x.ad}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px;">Stok: ${x.stok||0} · Maliyet: ${p(x.alisFiyati||0)}</div>
+    </div>`;
+  }).join('');
 }
 
+window.komboStokSecildi = (id) => {
+  aktifKomboStokId = id;
+  document.getElementById('kombo-sd-panel').classList.remove('open');
+  const obj = stokDB.bul(id);
+  if(obj){
+    document.getElementById('kombo-sd-lbl').textContent = obj.ad;
+    document.getElementById('kombo-sd-lbl').style.color = 'var(--t1)';
+  }
+};
+
 window.komboEkle = () => {
-  const id = document.getElementById('kombo-stok-sec').value;
+  const id = aktifKomboStokId;
   const adet = +document.getElementById('kombo-adet').value||1;
   if(!id){ toast('Stok kalemi seçin','error'); return; }
   const obj = stokDB.bul(id);
@@ -364,8 +468,13 @@ window.komboEkle = () => {
     komboUrunler.push({urunId:id, ad:obj.ad, alisFiyati:obj.alisFiyati||0, desi:obj.desi||1, stok:obj.stok||0, adet});
   }
 
-  document.getElementById('kombo-stok-sec').value = '';
+  aktifKomboStokId = null;
+  document.getElementById('kombo-sd-lbl').textContent = 'Stok ara ve seç…';
+  document.getElementById('kombo-sd-lbl').style.color = 'var(--t3)';
+  const searchInp = document.getElementById('kombo-sd-input');
+  if(searchInp) searchInp.value = '';
   document.getElementById('kombo-adet').value = '1';
+  doldurKomboDropdown();
   renderKombo();
 };
 
@@ -376,14 +485,14 @@ window.komboKaldir = i => {
 
 function renderKombo(){
   const listeWrap = document.getElementById('kombo-liste-wrap');
-  const ozet = document.getElementById('kombo-ozet-box');
   const fiyatWrap = document.getElementById('kombo-fiyat-wrap');
+  const tumOzet = document.getElementById('kombo-tum-ozet');
   const minUyari = document.getElementById('kombo-min-uyari');
 
   if(!komboUrunler.length){
     listeWrap.style.display = 'none';
-    ozet.style.display = 'none';
     fiyatWrap.style.display = 'none';
+    if(tumOzet) tumOzet.style.display = 'none';
     return;
   }
 
@@ -403,47 +512,61 @@ function renderKombo(){
   ).join('');
 
   if(komboUrunler.length < 2){
-    ozet.style.display = 'none';
     fiyatWrap.style.display = 'none';
+    if(tumOzet) tumOzet.style.display = 'none';
     return;
   }
 
-  // Hesapla
+  fiyatWrap.style.display = '';
+  
+  // Önerilen fiyatı hesaplayıp gerçek fiyat empty ise dolduralım (ilk dolum)
   const alisTop = komboUrunler.reduce((t,it)=>t+it.alisFiyati*it.adet, 0);
   const maxDesi = Math.max(...komboUrunler.map(it=>it.desi||1));
-  const synth = {alisFiyati:alisTop, desi:maxDesi, komisyon:0.04, hedefKar:ayarlar.hedefKarROI||0.30, ayniGunKargo:ayarlar.ayniGunKargo||false};
+  const komisyonOran = 0.04;
+  const ayniGunKargo = document.getElementById('kombo-aynigun')?.value === '1';
+  const synth = {alisFiyati:alisTop, desi:maxDesi, komisyon:komisyonOran, hedefKar:ayarlar.hedefKarROI||0.30, ayniGunKargo:ayniGunKargo};
   const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', maxDesi);
   const f = hesapla.satisFiyati(synth, ayarlar, 1, kargoFU);
 
-  document.getElementById('k-alis').textContent = p(alisTop);
-  document.getElementById('k-hedef').textContent = f ? p(f.yuvarlak) : '—';
-  document.getElementById('k-kargo').textContent = f ? p(f.kargo) : '—';
-  ozet.style.display = '';
-
-  // Önerilen fiyatı doldur (boşsa)
   const gercekEl = document.getElementById('kombo-gercek-fiyat');
   if(!gercekEl.value && f) gercekEl.value = f.yuvarlak;
-  fiyatWrap.style.display = '';
+
   komboKarGoster();
 }
 
 window.komboKarGoster = () => {
   const fiyat = +document.getElementById('kombo-gercek-fiyat').value||0;
-  const karWrap = document.getElementById('kombo-kar-wrap');
-  if(!fiyat || komboUrunler.length < 2){ karWrap.style.display='none'; return; }
+  const tumOzet = document.getElementById('kombo-tum-ozet');
+  if(!fiyat || komboUrunler.length < 2){ if(tumOzet) tumOzet.style.display='none'; return; }
 
   const alisTop = komboUrunler.reduce((t,it)=>t+it.alisFiyati*it.adet, 0);
   const maxDesi = Math.max(...komboUrunler.map(it=>it.desi||1));
-  const synth = {alisFiyati:alisTop, desi:maxDesi, komisyon:0.04, hedefKar:ayarlar.hedefKarROI||0.30, ayniGunKargo:ayarlar.ayniGunKargo||false};
+  const komisyonOran = 0.04;
+  const ayniGunKargo = document.getElementById('kombo-aynigun')?.value === '1';
+  const synth = {alisFiyati:alisTop, desi:maxDesi, komisyon:komisyonOran, hedefKar:ayarlar.hedefKarROI||0.30, ayniGunKargo:ayniGunKargo};
   const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', maxDesi);
   const f = hesapla.satisFiyati(synth, ayarlar, 1, kargoFU);
-  if(!f){ karWrap.style.display='none'; return; }
+  if(!f){ if(tumOzet) tumOzet.style.display='none'; return; }
 
-  const kar = hesapla.gercekKar(alisTop, fiyat, 0.04, f.platform, f.kargo);
+  // Fiyat değişimlerinde ilk tahmini değerleri de güncelle
+  document.getElementById('k-alis').textContent = p(alisTop);
+  document.getElementById('k-hedef').textContent = p(f.yuvarlak);
+  document.getElementById('k-kargo-t').textContent = p(f.kargo);
+
+  const komisyonTutar = fiyat * komisyonOran;
+  const kar = hesapla.gercekKar(alisTop, fiyat, komisyonOran, f.platform, f.kargo);
+  
+  document.getElementById('k-kargo-net').textContent = p(f.kargo);
+  document.getElementById('k-komisyon-net').textContent = p(komisyonTutar) + ` (%${Math.round(komisyonOran*100)})`;
+  document.getElementById('k-platform-net').textContent = p(f.platform);
+
   document.getElementById('k-kar').textContent = (kar.kararli?'✅ ':' ❌ ') + p(kar.net);
   document.getElementById('k-kar').style.color = kar.kararli ? 'var(--green)' : 'var(--red)';
   document.getElementById('k-roi').textContent = '%' + Math.round(kar.roi*100);
-  karWrap.style.display = '';
+  if(tumOzet) tumOzet.style.display = '';
+  
+  // Update global ayarlar string
+  document.getElementById('global-kargo-kategori').innerHTML = `📦 <b>${ayarlar.kargoFirma||'Aras'}</b> | Kategori: <b>${ayarlar.saticiTipiKey||'Genel'}</b>`;
 };
 
 window.komboKaydet = () => {
@@ -459,12 +582,11 @@ window.komboKaydet = () => {
   }
 
   const stokKombo = komboUrunler.map(it=>({urunId:it.urunId, ad:it.ad, alisFiyati:it.alisFiyati, desi:it.desi, adet:it.adet}));
-  satislarDB.ekle([{tip:'stok-combo', hedefId:null, stokKombo, adet:1, gercekFiyat:fiyat, tarih}]);
+  satislarDB.ekle([{tip:'stok-combo', hedefId:stokKombo[0].urunId, stokKombo, adet:1, gercekFiyat:fiyat, tarih}]);
 
   // Sıfırla
   komboUrunler = [];
   document.getElementById('kombo-gercek-fiyat').value = '';
-  document.getElementById('kombo-kar-wrap').style.display = 'none';
   renderKombo();
   doldurKomboDropdown();
   renderSatisList(); renderOzet();

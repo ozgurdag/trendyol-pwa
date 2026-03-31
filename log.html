@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<title>Aktivite Logları · Satış Yönetim</title>
+<link rel="stylesheet" href="./app.css">
+<style>
+.log-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.log-row:last-child{border:none}
+.log-icon{width:32px;height:32px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;margin-top:1px}
+.log-icon.giris{background:rgba(5,150,105,.12);color:var(--green)}
+.log-icon.cikis{background:rgba(225,29,72,.10);color:var(--red)}
+.log-icon.satis_eklendi{background:rgba(79,70,229,.12);color:var(--blue)}
+.log-icon.satis_silindi{background:rgba(225,29,72,.10);color:var(--red)}
+.log-icon.satis_guncellendi{background:rgba(245,158,11,.12);color:#f59e0b}
+.log-icon.fatura_eklendi{background:rgba(5,150,105,.12);color:var(--green)}
+.log-icon.diger{background:var(--bg4);color:var(--t3)}
+.log-detay{flex:1;min-width:0}
+.log-olay{font-size:13px;font-weight:600;color:var(--t1)}
+.log-alt{font-size:11px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.log-zaman{font-size:11px;color:var(--t4);flex-shrink:0;text-align:right;line-height:1.4}
+.kullanici-badge{display:inline-block;padding:1px 7px;border-radius:99px;font-size:10px;font-weight:600;margin-right:4px}
+.badge-admin{background:rgba(255,107,43,.15);color:var(--accent)}
+.badge-ortak{background:rgba(79,70,229,.12);color:var(--blue)}
+.filtre-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filtre-btn{padding:6px 12px;border-radius:99px;border:1px solid var(--border2);background:var(--bg3);color:var(--t2);font-size:12px;font-weight:500;cursor:pointer;transition:.15s}
+.filtre-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <div class="topbar">
+    <a href="./ayarlar.html" style="color:var(--t2);text-decoration:none;font-size:20px;line-height:1;padding:4px">‹</a>
+    <div class="topbar-title">📋 Aktivite Logları</div>
+    <button onclick="logTemizle()" style="background:none;border:none;color:var(--red);font-size:12px;cursor:pointer;padding:4px 8px">Temizle</button>
+  </div>
+
+  <div class="page-content">
+
+    <!-- Filtreler -->
+    <div class="filtre-row" id="filtre-row">
+      <button class="filtre-btn active" data-filtre="hepsi" onclick="filtreSec(this,'hepsi')">Tümü</button>
+      <button class="filtre-btn" data-filtre="giris" onclick="filtreSec(this,'giris')">🔑 Giriş</button>
+      <button class="filtre-btn" data-filtre="cikis" onclick="filtreSec(this,'cikis')">↩ Çıkış</button>
+      <button class="filtre-btn" data-filtre="satis" onclick="filtreSec(this,'satis')">🛒 Satış</button>
+      <button class="filtre-btn" data-filtre="fatura" onclick="filtreSec(this,'fatura')">🧾 Fatura</button>
+    </div>
+
+    <!-- Kullanıcı filtresi -->
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="filtre-btn active" data-kul="hepsi" onclick="kulSec(this,'hepsi')">Hepsi</button>
+      <button class="filtre-btn" data-kul="admin" onclick="kulSec(this,'admin')">Admin</button>
+      <button class="filtre-btn" data-kul="ortak" onclick="kulSec(this,'ortak')">Ortak</button>
+    </div>
+
+    <div class="card" id="log-liste">
+      <div style="text-align:center;color:var(--t3);padding:24px;font-size:13px">Yükleniyor…</div>
+    </div>
+
+    <div style="text-align:center;font-size:11px;color:var(--t4);margin-top:16px" id="log-sayac"></div>
+  </div>
+
+</div>
+
+<script type="module">
+import { auth, logDB } from './state.js';
+
+const o = auth.oturum();
+if(!o) { window.location.href='index.html'; }
+if(!auth.adminMi()) { window.location.href='ayarlar.html'; }
+
+const OLAY_ETIKET = {
+  giris:            {ikon:'🔑', etiket:'Giriş Yapıldı',       css:'giris'},
+  cikis:            {ikon:'↩', etiket:'Çıkış Yapıldı',        css:'cikis'},
+  satis_eklendi:    {ikon:'🛒', etiket:'Satış Eklendi',        css:'satis_eklendi'},
+  satis_silindi:    {ikon:'🗑', etiket:'Satış Silindi',        css:'satis_silindi'},
+  satis_guncellendi:{ikon:'✏️', etiket:'Satış Güncellendi',   css:'satis_guncellendi'},
+  fatura_eklendi:   {ikon:'🧾', etiket:'Fatura Eklendi',       css:'fatura_eklendi'},
+};
+
+let aktifFiltre = 'hepsi';
+let aktifKul    = 'hepsi';
+let _tumListe   = [];   // Supabase'den gelen tüm loglar (bellekte)
+
+function zamanStr(ts){
+  const d = new Date(ts);
+  const bugun = new Date();
+  const dun   = new Date(bugun); dun.setDate(dun.getDate()-1);
+  const fTarih = d.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+  const fSaat  = d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+  if(d.toDateString()===bugun.toDateString()) return `Bugün\n${fSaat}`;
+  if(d.toDateString()===dun.toDateString())   return `Dün\n${fSaat}`;
+  return `${fTarih}\n${fSaat}`;
+}
+
+function render(){
+  let liste = _tumListe;
+
+  if(aktifFiltre !== 'hepsi'){
+    liste = liste.filter(l=>{
+      if(aktifFiltre==='satis')  return l.olay.startsWith('satis');
+      if(aktifFiltre==='fatura') return l.olay.startsWith('fatura');
+      return l.olay === aktifFiltre;
+    });
+  }
+  if(aktifKul !== 'hepsi'){
+    liste = liste.filter(l=>l.kullanici===aktifKul);
+  }
+
+  const cont = document.getElementById('log-liste');
+  document.getElementById('log-sayac').textContent = `${liste.length} kayıt gösteriliyor`;
+
+  if(!liste.length){
+    cont.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px;font-size:13px">Kayıt bulunamadı</div>';
+    return;
+  }
+
+  cont.innerHTML = liste.map(l=>{
+    const meta = OLAY_ETIKET[l.olay] || {ikon:'•', etiket:l.olay, css:'diger'};
+    const kulBadge = l.kullanici==='admin'
+      ? `<span class="kullanici-badge badge-admin">${l.ad||'Admin'}</span>`
+      : `<span class="kullanici-badge badge-ortak">${l.ad||'Ortak'}</span>`;
+    const zaman = zamanStr(l.zaman);
+    return `<div class="log-row">
+      <div class="log-icon ${meta.css}">${meta.ikon}</div>
+      <div class="log-detay">
+        <div class="log-olay">${meta.etiket}</div>
+        <div class="log-alt">${kulBadge}${l.detay||''}</div>
+      </div>
+      <div class="log-zaman">${zaman.replace('\n','<br>')}</div>
+    </div>`;
+  }).join('');
+}
+
+window.filtreSec = (el, filtre) => {
+  document.querySelectorAll('[data-filtre]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  aktifFiltre = filtre;
+  render();
+};
+
+window.kulSec = (el, kul) => {
+  document.querySelectorAll('[data-kul]').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  aktifKul = kul;
+  render();
+};
+
+async function yukle(){
+  _tumListe = await logDB.supabasedenGetir();
+  render();
+}
+
+window.logTemizle = async () => {
+  if(!confirm('Tüm loglar silinecek. Emin misiniz?')) return;
+  logDB.temizle();
+  _tumListe = [];
+  render();
+  // DELETE'nin Supabase'de tamamlanması için kısa bekle, sonra doğrula
+  await new Promise(r => setTimeout(r, 600));
+  await yukle();
+};
+
+yukle();
+</script>
+</body>
+</html>

@@ -294,6 +294,20 @@ async function claudeOku(base64Data, mimeType, tip) {
   statusEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div>AI faturayı okuyor…</div>';
 
   try {
+    const isGiden = tip === 'giden_fatura';
+    const cariKural = isGiden 
+      ? 'Bu bir SATIŞ (Giden) faturasıdır. cari_adi alanına "SAYIN" başlığı altındaki Müşteri/Alıcı adını yaz.' 
+      : 'DİKKAT (ALIŞ/GELEN FATURA): Faturayı kesen SATICI/TEDARİKÇİ firma adını vereceksin (genelde sol en üstte kalın yazan veya alt imza kısmında yer alan firma). KESİNLİKLE "SAYIN:" kısmını okuMA. KESİNLİKLE "DAMLA ÖZTÜRK" yazma. Alıcı bilgisini tamamen yok say, sadece satıcıyı bul!';
+
+    const basePrompt = `Bu bir Türk faturasıdır. Lütfen bilgileri JSON formatında çıkar:
+{"tarih":"YYYY-MM-DD","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"Firma/Kişi","aciklama":"kısa açıklama"}
+Kurallar:
+- tutar: KDV hariç toplam tutar.
+- kdv_tutari: KDV tutarı.
+- kdv_orani: KDV oranı (sayı).
+- ${cariKural}
+- Sadece ve sadece JSON döndür, hiçbir ek açıklama yapma.`;
+
     let content;
     if (mimeType === 'application/pdf') {
       content = [{
@@ -301,23 +315,13 @@ async function claudeOku(base64Data, mimeType, tip) {
         source: { type: 'base64', media_type: 'application/pdf', data: base64Data }
       }, {
         type: 'text',
-        text: `Bu bir Türk faturasıdır. Lütfen şu bilgileri JSON formatında çıkar:
-{"tarih":"YYYY-MM-DD","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"firma adı","aciklama":"kısa açıklama"}
-tutar: KDV hariç toplam tutarı,  kdv_tutari: KDV tutarı, kdv_orani: KDV oranı (sayı).
-Sadece JSON döndür, başka bir şey yazma.`
+        text: basePrompt
       }];
     } else {
-      // HTML → text olarak gönder
       const text = atob(base64Data);
       content = [{
         type: 'text',
-        text: `Bu bir Türk faturasının HTML içeriğidir. Lütfen şu bilgileri JSON formatında çıkar:
-{"tarih":"YYYY-MM-DD","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"firma adı","aciklama":"kısa açıklama"}
-tutar: KDV hariç toplam tutarı.
-Sadece JSON döndür.
-
-Fatura içeriği:
-${text.substring(0, 15000)}`
+        text: `${basePrompt}\n\nFatura HTML Metni:\n${text.substring(0, 15000)}`
       }];
     }
 
@@ -330,7 +334,7 @@ ${text.substring(0, 15000)}`
         'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1024,
         messages: [{ role: 'user', content }]
       })

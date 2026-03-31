@@ -362,7 +362,16 @@ import{auth,stokDB,listingDB,setlerDB,ayarlarDB,hesapla}from'./state.js';
 import{KATEGORILER,ALT_KATEGORILER,URUN_GRUPLARI,komisyonOrani}from'./kategoriler.js';
 import{kargoUcreti}from'./kargo.js';
 if(!auth.oturum()?.token){window.location.href='./index.html';}
-if(!auth.adminMi()){window.location.href='./satis-giris.html';}
+const _isAdmin=auth.adminMi();
+if(!_isAdmin){
+  const css=document.createElement('style');
+  css.innerHTML=`
+    .topbar-action[title="Trendyol'dan İçe Aktar"], #tab-u, #tab-s,
+    .uk-actions, .onay-btn, button[onclick^="mAc("], button[onclick^="blAc("], #pnl-ayar
+    { display:none !important; }
+  `;
+  document.head.appendChild(css);
+}
 
 let ay=ayarlarDB.oku(), edId=null, edTip=null, sIc=[], uSecId=null, uSecKom=0.04;
 let blHedefId=null, blHedefTip=null, blSecilen=[];
@@ -955,7 +964,8 @@ window.showToast=(msg,tip='info')=>{
 };
 
 window.addEventListener('tsx_render',()=>renderKartlar());
-uSdDoldur();renderKartlar();
+if(!_isAdmin) sekme('l'); else uSdDoldur();
+renderKartlar();
 </script>
 </body>
 </html>

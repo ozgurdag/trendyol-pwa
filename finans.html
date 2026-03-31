@@ -69,13 +69,13 @@
              onclick="document.getElementById('dosya-gelen').click()"
              ondragover="event.preventDefault();this.classList.add('dragover')"
              ondragleave="this.classList.remove('dragover')"
-             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files[0],'gelen_fatura')">
+             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files,'gelen_fatura')">
           <div class="upload-icon">📄</div>
           <div class="upload-text">PDF veya HTML fatura yükleyin</div>
-          <div class="upload-sub">Sürükle-Bırak veya tıklayın · AI ile otomatik okuma</div>
+          <div class="upload-sub">Sürükle-Bırak (Toplu Gönderilebilir) · AI ile otomatik okuma</div>
         </div>
-        <input type="file" id="dosya-gelen" accept=".pdf,.html,.htm" style="display:none"
-               onchange="dosyaIsle(this.files[0],'gelen_fatura')">
+        <input type="file" id="dosya-gelen" accept=".pdf,.html,.htm" multiple style="display:none"
+               onchange="dosyaIsle(this.files,'gelen_fatura')">
         <div id="ai-status-gelen" style="display:none"></div>
 
         <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center">─── veya manuel giriş ───</div>
@@ -117,13 +117,13 @@
              onclick="document.getElementById('dosya-giden').click()"
              ondragover="event.preventDefault();this.classList.add('dragover')"
              ondragleave="this.classList.remove('dragover')"
-             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files[0],'giden_fatura')">
+             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files,'giden_fatura')">
           <div class="upload-icon">📄</div>
           <div class="upload-text">PDF veya HTML fatura yükleyin</div>
-          <div class="upload-sub">Sürükle-Bırak veya tıklayın · AI ile otomatik okuma</div>
+          <div class="upload-sub">Sürükle-Bırak (Toplu Gönderilebilir) · AI ile otomatik okuma</div>
         </div>
-        <input type="file" id="dosya-giden" accept=".pdf,.html,.htm" style="display:none"
-               onchange="dosyaIsle(this.files[0],'giden_fatura')">
+        <input type="file" id="dosya-giden" accept=".pdf,.html,.htm" multiple style="display:none"
+               onchange="dosyaIsle(this.files,'giden_fatura')">
         <div id="ai-status-giden" style="display:none"></div>
 
         <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center">─── veya manuel giriş ───</div>
@@ -165,13 +165,13 @@
              onclick="document.getElementById('dosya-masraf').click()"
              ondragover="event.preventDefault();this.classList.add('dragover')"
              ondragleave="this.classList.remove('dragover')"
-             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files[0],'masraf')">
+             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files,'masraf')">
           <div class="upload-icon">🧾</div>
           <div class="upload-text">Masraf fişi / faturası yükleyin</div>
-          <div class="upload-sub">Sürükle-Bırak veya tıklayın · AI ile otomatik okuma</div>
+          <div class="upload-sub">Sürükle-Bırak (Toplu Gönderilebilir) · AI ile otomatik okuma</div>
         </div>
-        <input type="file" id="dosya-masraf" accept=".pdf,.html,.htm" style="display:none"
-               onchange="dosyaIsle(this.files[0],'masraf')">
+        <input type="file" id="dosya-masraf" accept=".pdf,.html,.htm" multiple style="display:none"
+               onchange="dosyaIsle(this.files,'masraf')">
         <div id="ai-status-masraf" style="display:none"></div>
 
         <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center">─── veya manuel giriş ───</div>
@@ -380,40 +380,83 @@ KURALLAR:
 }
 
 // ═══════════════════════════════════════════════════════════════
-// ── DOSYA İŞLEME (PDF/HTML → AI → Form Doldurma) ───────────
+// ── DOSYA İŞLEME (PDF/HTML → AI → Form Doldurma veya Toplu Kayıt) 
 // ═══════════════════════════════════════════════════════════════
-window.dosyaIsle = async (file, tip) => {
-  if (!file) return;
+window.dosyaIsle = async (files, tip) => {
+  if (!files || files.length === 0) return;
+  const dosyaListesi = Array.from(files);
   const prefix = tip.replace('_fatura','');
+  const statusEl = document.getElementById('ai-status-' + prefix);
   
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const base64Full = e.target.result;
-    const base64Data = base64Full.split(',')[1];
-    const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'text/html');
+  statusEl.style.display = '';
+  statusEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div>AI Hazırlanıyor... (${dosyaListesi.length} dosya işlenecek)</div>`;
+
+  for (let i = 0; i < dosyaListesi.length; i++) {
+    const file = dosyaListesi[i];
+    statusEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div>AI İşliyor (${i+1}/${dosyaListesi.length}): ${file.name}</div>`;
     
-    const sonuc = await claudeOku(base64Data, mimeType, tip);
-    if (sonuc) {
-      if (sonuc.tarih) document.getElementById(prefix+'-tarih').value = sonuc.tarih;
-      if (sonuc.fatura_no) document.getElementById(prefix+'-no').value = sonuc.fatura_no;
-      if (sonuc.tutar) document.getElementById(prefix+'-tutar').value = sonuc.tutar;
-      if (sonuc.kdv_orani != null) document.getElementById(prefix+'-kdv-oran').value = sonuc.kdv_orani;
-      if (sonuc.kdv_tutari != null) document.getElementById(prefix+'-kdv').value = (+sonuc.kdv_tutari).toFixed(2);
-      else kdvHesapla(prefix);
-      if (sonuc.cari_adi) document.getElementById(prefix+'-cari').value = sonuc.cari_adi;
-      if (sonuc.aciklama) document.getElementById(prefix+'-aciklama').value = sonuc.aciklama;
-    }
-    
-    // Dosyayı Supabase'e yükle
     try {
-      const dosyaAdi = `${tip}/${Date.now()}_${file.name}`;
-      const url = await sbStorageUpload('faturalar', dosyaAdi, file);
-      if (url) {
-        document.getElementById(prefix+'-tarih').dataset.dosyaUrl = url;
+      // 1. Dosya okuma işlemi
+      const base64Data = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result.split(',')[1]);
+        reader.readAsDataURL(file);
+      });
+      
+      const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'text/html');
+      
+      // 2. Storage Yükleme
+      let dosyaUrl = null;
+      try {
+        const dosyaAdi = `${tip}/${Date.now()}_${file.name}`;
+        dosyaUrl = await sbStorageUpload('faturalar', dosyaAdi, file);
+      } catch(e) { console.warn('Storage yükleme atlandı:', e.message); }
+
+      // 3. AI ile Anlama
+      const sonuc = await claudeOku(base64Data, mimeType, tip);
+      
+      if (sonuc) {
+        // Formu doldur ve eğer çoklu işlemse veya başarılı okunduysa oto-kaydet!
+        // (Eğer kullanıcının hata düzeltmesi istenecekse 1'li işlemlerde kaydedilmeyebilir ama en şıkkı oto-kayıttır)
+        const fNo = sonuc.fatura_no || '';
+        const mukerrer = fNo ? faturalarDB.hepsini().find(f => f.faturaNo && f.faturaNo.toLowerCase() === fNo.toLowerCase()) : false;
+        
+        if (mukerrer) {
+           console.warn('Mükerrer olduğu için atlandı:', fNo);
+        } else if(sonuc.tutar && sonuc.tarih) {
+           faturalarDB.ekle({
+             tip, 
+             tarih: sonuc.tarih, 
+             faturaNo: fNo, 
+             tutar: Number(sonuc.tutar) || 0,
+             kdvTutari: Number(sonuc.kdv_tutari) || 0,
+             kdvOrani: Number(sonuc.kdv_orani) || (sonuc.kdv_tutari ? 0 : 20),
+             cariAdi: sonuc.cari_adi || '',
+             aciklama: sonuc.aciklama || '',
+             dosyaUrl: dosyaUrl || null
+           });
+           renderListe(tip); // Listeyi anlık güncelle
+        } else {
+           // Eksik bilgi varsa yine de formda göstersin (son dosya için)
+           if (sonuc.tarih) document.getElementById(prefix+'-tarih').value = sonuc.tarih;
+           if (sonuc.fatura_no) document.getElementById(prefix+'-no').value = sonuc.fatura_no;
+           if (sonuc.tutar) document.getElementById(prefix+'-tutar').value = sonuc.tutar;
+           if (sonuc.kdv_orani != null) document.getElementById(prefix+'-kdv-oran').value = sonuc.kdv_orani;
+           if (sonuc.kdv_tutari != null) document.getElementById(prefix+'-kdv').value = (+sonuc.kdv_tutari).toFixed(2);
+           if (sonuc.cari_adi) document.getElementById(prefix+'-cari').value = sonuc.cari_adi;
+           if (sonuc.aciklama) document.getElementById(prefix+'-aciklama').value = sonuc.aciklama;
+           if (dosyaUrl) document.getElementById(prefix+'-tarih').dataset.dosyaUrl = dosyaUrl;
+           console.warn('Eksik bilgi, otomatik kaydedilmedi:', file.name);
+        }
       }
-    } catch(e) { console.warn('Storage yükleme atlandı:', e.message); }
-  };
-  reader.readAsDataURL(file);
+    } catch(err) {
+      console.error(file.name + ' okunamadı:', err);
+    }
+  }
+
+  statusEl.innerHTML = `<div class="ai-loading" style="color:var(--green)">✅ İşlem tamamlandı! (${dosyaListesi.length} dosya)</div>`;
+  setTimeout(() => statusEl.style.display = 'none', 3000);
+  toast('Toplu fatura yüklemesi tamamlandı', 'success');
 };
 
 // ═══════════════════════════════════════════════════════════════

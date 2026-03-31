@@ -423,6 +423,14 @@ window.faturaKaydet = (tip) => {
   if (!tutar) { toast('Tutar girin', 'error'); return; }
   if (!tarih) { toast('Tarih girin', 'error'); return; }
 
+  if (faturaNo) {
+    const mukerrer = faturalarDB.hepsini().find(f => f.faturaNo && f.faturaNo.toLowerCase() === faturaNo.toLowerCase());
+    if (mukerrer) { 
+      toast('Bu fatura no zaten kayıtlı!', 'error'); 
+      return; 
+    }
+  }
+
   faturalarDB.ekle({
     tip, tarih, faturaNo, tutar, kdvTutari: kdvTutar, kdvOrani: kdvOran,
     cariAdi: cari, aciklama, dosyaUrl

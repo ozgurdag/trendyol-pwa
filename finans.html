@@ -304,25 +304,25 @@ async function claudeOku(base64Data, mimeType, tip) {
     
     let basePrompt;
     if (isGiden) {
-      basePrompt = `Bu bir SATIŞ (Giden) faturasıdır. Kesilmiş bir faturadır. Lütfen bilgileri JSON formatında çıkar:
-{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"Müşteri Adı","aciklama":"kısa açıklama"}
-Kurallar:
-- fatura_no: GIB veya EAA ile başlayan numara.
-- tutar: KDV hariç toplam tutar.
-- kdv_tutari: KDV tutarı.
-- kdv_orani: KDV oranı (sayı).
-- cari_adi: Bu faturanın kesildiği MÜŞTERİ / ALICI adıdır. Faturanın sol ortasında yer alan "SAYIN:" veya "Müşteri VKN/TCKN" bölümündeki kişiyi/firmayı yazacaksın (Örn: Murat Kaya). Faturayı düzenleyen (sol üstteki) BİZİZ (örn: Damla Öztürk), onu KESİNLİKLE YAZMA.
-- Sadece ve sadece JSON döndür.`;
+      basePrompt = `Görev: GİDEN SATIŞ FATURASI okumak. (Senin görevin MÜŞTERİYİ bulmak)
+DÖNÜŞ ŞABLONU (Sadece JSON):
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"","aciklama":""}
+
+KURALLAR:
+1) Faturayı düzenleyen kişi "Damla Öztürk" olabilir. KESİNLİKLE cari_adi kısmına "Damla Öztürk" YAZILMAYACAK.
+2) Faturanın MÜŞTERİSİ (Alıcısı) aranacak. Faturadaki "SAYIN", "SAYIN:" veya "Müşteri VKN:" yazısının hemen altındaki/yanındaki ismi bul.
+3) cari_adi alanına SADECE bu müşterinin adını yaz (Örnek: Murat Kaya, Ahmet Yılmaz vb).
+4) fatura_no: GIB veya EAA ile başlayan numara. tutar: KDV hariç toplam.`;
     } else {
-      basePrompt = `Bu bir ALIŞ veya MASRAF (Gelen) faturasıdır. Bize kesilmiş faturadır. Lütfen bilgileri JSON formatında çıkar:
-{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"Satıcı Firma","aciklama":"kısa açıklama"}
-Kurallar:
-- fatura_no: Belge numarası.
-- tutar: KDV hariç toplam tutar.
-- kdv_tutari: KDV tutarı.
-- kdv_orani: KDV oranı (sayı).
-- cari_adi: Faturayı bize kesen SATICI / TEDARİKÇİ firmadır (genelde sol en üstte kalın yazan veya alt imza kısmında olan ana şirket). KESİNLİKLE "SAYIN:" başlığındaki kısımları OKUMA. KESİNLİKLE kullanıcı adını (örn: Damla Öztürk) YAZMA. Alıcıyı tamamen YOK SAY, sadece malı satan firmayı yaz.
-- Sadece ve sadece JSON döndür.`;
+      basePrompt = `Görev: ALIŞ / MASRAF FATURASI okumak. (Senin görevin SATICIYI/TEDARİKÇİYİ bulmak)
+DÖNÜŞ ŞABLONU (Sadece JSON):
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"","aciklama":""}
+
+KURALLAR:
+1) Faturanın ALICISI (müşterisi) "Damla Öztürk" olabilir. KESİNLİKLE cari_adi kısmına "Damla Öztürk" veya "SAYIN" kısmındakileri YAZMA.
+2) Faturayı BİZE KESEN firma (Satıcı) aranacak. Genellikle sayfanın sol en üstünde, kalın büyük harflerle yazan, adresi/tel/Mersis nosu olan ANA ŞİRKET adıdır (Örn: MOON GLOBAL, DSM GRUP vb).
+3) cari_adi alanına SADECE faturayı düzenleyen (parayı alan) satıcı firmanın/kişinin adını yaz.
+4) fatura_no: Belge numarası. tutar: KDV hariç toplam.`;
     }
 
     let content;

@@ -290,12 +290,29 @@ window.renderUrun=()=>{
   const urunMap={};
   satislar.forEach(s=>{
     const k=satisKar(s);if(!k)return;
-    const hId=s.hedefId||s.urunId;
-    if(!urunMap[hId]) urunMap[hId]={ad:k.ad,tip:k.tip,adet:0,kar:0,alis:0,gelir:0};
-    urunMap[hId].adet+=s.adet;
-    urunMap[hId].kar+=k.net;    // zaten adet çarpılmış
-    urunMap[hId].alis+=k.alis;
-    urunMap[hId].gelir+=k.gelir;
+    
+    if(s.tip === 'stok-combo') {
+      const komboUrunler = s.stokKombo || [];
+      const gercekBirimAlisTop = komboUrunler.reduce((t,it)=>t + (it.alisFiyati||0)*(it.adet||1), 0);
+      
+      komboUrunler.forEach(it => {
+        const oran = gercekBirimAlisTop > 0 ? ((it.alisFiyati||0)*(it.adet||1)) / gercekBirimAlisTop : (1/komboUrunler.length);
+        const hId = it.urunId;
+        if(!urunMap[hId]) urunMap[hId]={ad:it.ad, tip:'stok', adet:0, kar:0, alis:0, gelir:0};
+        
+        urunMap[hId].adet += ((it.adet||1) * s.adet);
+        urunMap[hId].kar += (k.net * oran);
+        urunMap[hId].alis += (k.alis * oran);
+        urunMap[hId].gelir += (k.gelir * oran);
+      });
+    } else {
+      const hId=s.hedefId||s.urunId;
+      if(!urunMap[hId]) urunMap[hId]={ad:k.ad,tip:k.tip,adet:0,kar:0,alis:0,gelir:0};
+      urunMap[hId].adet+=s.adet;
+      urunMap[hId].kar+=k.net;
+      urunMap[hId].alis+=k.alis;
+      urunMap[hId].gelir+=k.gelir;
+    }
   });
   const sirali=Object.values(urunMap).sort((a,b)=>b.kar-a.kar);
   if(!sirali.length){
@@ -336,8 +353,20 @@ window.excelIndir=async()=>{
     const rows=[];
     satislar.forEach(s=>{
       const k=satisKar(s);if(!k)return;
-      rows.push({'Tarih':s.tarih,'Ürün':k.ad,'Tip':k.tip==='set'?'Set':'Ürün','Adet':s.adet,
-        'Gelir':Math.round(k.gelir),'Net Kar':Math.round(k.net*s.adet),'ROI %':k.alis>0?Math.round(k.net/k.alis*100):0});
+      
+      if(s.tip === 'stok-combo') {
+        const komboUrunler = s.stokKombo || [];
+        const gercekBirimAlisTop = komboUrunler.reduce((t,it)=>t + (it.alisFiyati||0)*(it.adet||1), 0);
+        komboUrunler.forEach(it => {
+          const oran = gercekBirimAlisTop > 0 ? ((it.alisFiyati||0)*(it.adet||1)) / gercekBirimAlisTop : (1/komboUrunler.length);
+          rows.push({'Tarih':s.tarih, 'Ürün':it.ad, 'Tip':'Ürün (K)', 'Adet': (it.adet||1) * s.adet,
+            'Gelir': Math.round(k.gelir * oran), 'Net Kar': Math.round(k.net * oran),
+            'ROI %': (k.alis * oran) > 0 ? Math.round((k.net * oran) / (k.alis * oran) * 100) : 0});
+        });
+      } else {
+        rows.push({'Tarih':s.tarih,'Ürün':k.ad,'Tip':k.tip==='set'?'Set':'Ürün','Adet':s.adet,
+          'Gelir':Math.round(k.gelir),'Net Kar':Math.round(k.net),'ROI %':k.alis>0?Math.round(k.net/k.alis*100):0});
+      }
     });
     if(rows.length){const ws=utils.json_to_sheet(rows);utils.book_append_sheet(wb,ws,ay);}
   });

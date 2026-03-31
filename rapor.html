@@ -113,31 +113,77 @@ const gun=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
 
 // Satış kar hesabı
 function satisKar(s){
-  const hId=s.hedefId||s.urunId;
-  const obj=s.tip==='set'?setlerDB.bul(hId):listingDB.bul(hId);
-  if(!obj) return null;
-  // Birim alış maliyeti
-  const alisBirim=s.tip==='set'?(obj.alisMaliyeti||0):(obj.alisFiyati||0);
-  const urunB=s.tip==='set'?{alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04}:obj;
-  const kFU=kargoUcreti(ay.kargoFirma||'Aras',obj.desi||(s.tip==='set'?2:1));
-  const f=hesapla.satisFiyati(urunB,ay,1,kFU);
-  if(!f) return null;
-  const gf=s.gercekFiyat||f.yuvarlak;
-  // Birim kar
-  const karBirim=hesapla.gercekKar(alisBirim,gf,obj.komisyon||0.04,f.platform,f.kargo);
-  // Toplam (adet ile çarp)
-  return{
-    net:    karBirim.net   * s.adet,  // toplam net kar
-    roi:    karBirim.roi,              // ROI birim bazında kalır
-    kararli:karBirim.kararli,
-    ad:     obj.ad,
-    tip:    s.tip,
-    adet:   s.adet,
-    gelir:  gf * s.adet,              // toplam gelir
-    alis:   alisBirim * s.adet,       // toplam alış
-    kargo:  f.kargo * s.adet,         // toplam kargo
-    platform: f.platform * s.adet,   // toplam platform
-    komisyon: gf * s.adet * (obj.komisyon||0.04), // toplam komisyon
+  let ad = '?';
+  let alisBirim = 0;
+  let gf = s.gercekFiyat || 0;
+  let komOrani = 0.04;
+  let kargo = 0;
+  let platform = 0;
+  let net = 0;
+  let roi = 0;
+
+  if (s.tip === 'stok-combo') {
+    ad = (s.stokKombo || []).map(it => it.ad).join(' + ') || 'Kombo';
+    alisBirim = (s.stokKombo || []).reduce((t, it) => t + (it.alisFiyati || 0) * (it.adet || 1), 0);
+  } else if (s.tip === 'stok') {
+    const u = stokDB.bul(s.hedefId);
+    if (u) { ad = u.ad; alisBirim = u.alisFiyati || 0; komOrani = u.komisyon || 0.04; }
+  } else if (s.tip === 'set') {
+    const u = setlerDB.bul(s.hedefId);
+    if (u) { ad = u.ad; alisBirim = u.alisMaliyeti || 0; komOrani = u.komisyon || 0.04; }
+  } else {
+    // listing
+    const u = listingDB.bul(s.hedefId);
+    if (u) { ad = u.ad; alisBirim = u.alisFiyati || 0; komOrani = u.komisyon || 0.04; }
+  }
+
+  // Snapshot varsa kesin verileri kullan
+  if (s.snapshot) {
+    alisBirim = s.snapshot.alisMaliyeti;
+    komOrani = s.snapshot.komisyon;
+    platform = s.snapshot.platform;
+    kargo = s.snapshot.kargo;
+    net = s.snapshot.netKar * s.adet;
+    roi = s.snapshot.roi;
+  } else {
+    // Eski/anlık satış kayıtları için fallback hesaplama
+    if (s.tip === 'stok-combo') {
+      const maxDesi = Math.max(...(s.stokKombo || []).map(it => it.desi || 1), 1);
+      const synth = { alisFiyati: alisBirim, desi: maxDesi, komisyon: komOrani, hedefKar: ay.hedefKarROI || 0.30, ayniGunKargo: ay.ayniGunKargo || false };
+      const f = hesapla.satisFiyati(synth, ay, 1, kargoUcreti(ay.kargoFirma || 'Aras', maxDesi));
+      if (f) {
+        if (!gf) gf = f.yuvarlak;
+        platform = f.platform; kargo = f.kargo;
+        const kr = hesapla.gercekKar(alisBirim, gf, komOrani, platform, kargo);
+        net = kr.net * s.adet; roi = kr.roi;
+      }
+    } else {
+      const obj = s.tip === 'stok' ? stokDB.bul(s.hedefId) : (s.tip === 'set' ? setlerDB.bul(s.hedefId) : listingDB.bul(s.hedefId));
+      if (obj) {
+        const kFU = kargoUcreti(ay.kargoFirma || 'Aras', obj.desi || (s.tip === 'set' ? 2 : 1));
+        const f = hesapla.satisFiyati(s.tip === 'set' ? { alisFiyati: alisBirim, desi: obj.desi || 2, komisyon: komOrani } : obj, ay, 1, kFU);
+        if (f) {
+          if (!gf) gf = f.yuvarlak;
+          platform = f.platform; kargo = f.kargo;
+          const kr = hesapla.gercekKar(alisBirim, gf, komOrani, platform, kargo);
+          net = kr.net * s.adet; roi = kr.roi;
+        }
+      }
+    }
+  }
+
+  return {
+    net: net,
+    roi: roi,
+    kararli: net >= 0,
+    ad: ad,
+    tip: s.tip,
+    adet: s.adet,
+    gelir: gf * s.adet,
+    alis: alisBirim * s.adet,
+    kargo: kargo * s.adet,
+    platform: platform * s.adet,
+    komisyon: gf * s.adet * komOrani
   };
 }
 
@@ -302,6 +348,31 @@ window.showToast=(msg,tip='info')=>{
   const c=document.getElementById('toast');const el=document.createElement('div');
   el.className='toast '+tip;el.textContent=msg;c.appendChild(el);setTimeout(()=>el.remove(),3000);
 };
+
+// Realtime / Multi-tab Sync
+function sayfaYenile() {
+  const aySec = document.getElementById('ay-select').value;
+  aySelectDoldur('ay-select');
+  if(aySec && [...document.getElementById('ay-select').options].some(o => o.value === aySec)) {
+    document.getElementById('ay-select').value = aySec;
+  }
+  const urunAySec = document.getElementById('urun-ay-select').value;
+  aySelectDoldur('urun-ay-select');
+  if(urunAySec && [...document.getElementById('urun-ay-select').options].some(o => o.value === urunAySec)) {
+    document.getElementById('urun-ay-select').value = urunAySec;
+  }
+  
+  if (document.getElementById('pnl-ozet').style.display !== 'none') renderOzet();
+  if (document.getElementById('pnl-grafik').style.display !== 'none') renderGrafik();
+  if (document.getElementById('pnl-urun').style.display !== 'none') renderUrun();
+}
+
+window.addEventListener('tsx_render', sayfaYenile);
+window.addEventListener('storage', (e) => {
+  if (e.key === 'tsx_satislar' || e.key === 'tsx_son_sync') {
+    sayfaYenile();
+  }
+});
 
 // İlk yükleme
 aySelectDoldur('ay-select');

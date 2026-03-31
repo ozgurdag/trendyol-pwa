@@ -7,15 +7,20 @@
 <title>Stok · Satış Yönetim</title>
 <link rel="stylesheet" href="./app.css">
 </head>
-<body>
+<body id="stok-body">
+<style>
+  body.role-ortak .admin-only { display: none !important; }
+  body.role-ortak input.form-input, body.role-ortak select.form-select { pointer-events: none; opacity: 0.8; background: var(--bg0); border-color: transparent; }
+  body.role-ortak button.btn-secondary { display: none !important; }
+</style>
 <div class="app-shell">
 
   <div class="topbar">
     <div class="topbar-title">📦 Stok Durumu</div>
-    <div class="topbar-action" onclick="csvSablonIndir()" title="CSV Şablon İndir">📋</div>
-    <div class="topbar-action" onclick="csvImportAc()" title="CSV Yükle">📥</div>
-    <div class="topbar-action" onclick="excelIndir()">⬇</div>
-    <div class="topbar-action" id="btn-urun-ekle" onclick="urunEkleModalAc()" title="Ürün Ekle">＋</div>
+    <div class="topbar-action admin-only" onclick="csvSablonIndir()" title="CSV Şablon İndir">📋</div>
+    <div class="topbar-action admin-only" onclick="csvImportAc()" title="CSV Yükle">📥</div>
+    <div class="topbar-action" onclick="excelIndir()" title="Excel İndir">⬇</div>
+    <div class="topbar-action admin-only" id="btn-urun-ekle" onclick="urunEkleModalAc()" title="Ürün Ekle">＋</div>
   </div>
 
   <div class="page-content">
@@ -139,8 +144,8 @@
       ✏️ Kategori Bilgisini Düzenle
     </button>
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn btn-primary" style="flex:1" onclick="stokKaydet()">Kaydet</button>
-      <button class="btn btn-danger" style="width:44px;height:44px;padding:0;border-radius:var(--r-md)" onclick="stokUrunSil()" title="Ürünü Sil">🗑</button>
+      <button class="btn btn-primary admin-only" style="flex:1" onclick="stokKaydet()">Kaydet</button>
+      <button class="btn btn-danger admin-only" style="width:44px;height:44px;padding:0;border-radius:var(--r-md)" onclick="stokUrunSil()" title="Ürünü Sil">🗑</button>
     </div>
   </div>
 </div>
@@ -252,6 +257,7 @@ import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } fro
 import { KATEGORILER, ALT_KATEGORILER, URUN_GRUPLARI, komisyonOrani } from './kategoriler.js';
 import { kargoUcreti } from './kargo.js';
 if (!auth.oturum()) window.location.href='index.html';
+if (auth.rol() === 'ortak') document.body.classList.add('role-ortak');
 
 let aktifId = null;
 let aktifFiltre = 'hepsi';

@@ -284,7 +284,7 @@ function render() {
         <div class="urun-meta">${s.adet} adet · ${s.tarih}</div>
       </div>
       <div class="urun-fiyat">
-        <div class="urun-fiyat-ana" style="color:${net>=0?'var(--green)':'var(--red)'}">+${Math.round(net)}₺</div>
+        <div class="urun-fiyat-ana" style="color:${net>=0?'var(--green)':'var(--red)'}">${Math.round(net)>0?'+':''}${Math.round(net)}₺</div>
         <div class="urun-fiyat-sub">net kar</div>
       </div>
     </div>`;

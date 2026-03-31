@@ -82,6 +82,8 @@
         <div class="form-inline" style="margin-top:10px">
           <div class="form-group"><label class="form-label">Cari Adı</label>
             <input class="form-input" id="gelen-cari" placeholder="Tedarikçi"></div>
+          <div class="form-group"><label class="form-label">Fatura No</label>
+            <input class="form-input" id="gelen-no" placeholder="Belge No"></div>
           <div class="form-group"><label class="form-label">Tarih</label>
             <input class="form-input" type="date" id="gelen-tarih"></div>
         </div>
@@ -128,6 +130,8 @@
         <div class="form-inline" style="margin-top:10px">
           <div class="form-group"><label class="form-label">Müşteri / Firma</label>
             <input class="form-input" id="giden-cari" placeholder="Müşteri adı"></div>
+          <div class="form-group"><label class="form-label">Fatura No</label>
+            <input class="form-input" id="giden-no" placeholder="Belge No"></div>
           <div class="form-group"><label class="form-label">Tarih</label>
             <input class="form-input" type="date" id="giden-tarih"></div>
         </div>
@@ -174,6 +178,8 @@
         <div class="form-inline" style="margin-top:10px">
           <div class="form-group"><label class="form-label">Masraf Kalemi</label>
             <input class="form-input" id="masraf-cari" placeholder="Kira, elektrik vb."></div>
+          <div class="form-group"><label class="form-label">Belge No</label>
+            <input class="form-input" id="masraf-no" placeholder="Fiş/Fatura No"></div>
           <div class="form-group"><label class="form-label">Tarih</label>
             <input class="form-input" type="date" id="masraf-tarih"></div>
         </div>
@@ -300,8 +306,9 @@ async function claudeOku(base64Data, mimeType, tip) {
       : 'DİKKAT (ALIŞ/GELEN FATURA): Faturayı kesen SATICI/TEDARİKÇİ firma adını vereceksin (genelde sol en üstte kalın yazan veya alt imza kısmında yer alan firma). KESİNLİKLE "SAYIN:" kısmını okuMA. KESİNLİKLE "DAMLA ÖZTÜRK" yazma. Alıcı bilgisini tamamen yok say, sadece satıcıyı bul!';
 
     const basePrompt = `Bu bir Türk faturasıdır. Lütfen bilgileri JSON formatında çıkar:
-{"tarih":"YYYY-MM-DD","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"Firma/Kişi","aciklama":"kısa açıklama"}
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"Firma/Kişi","aciklama":"kısa açıklama"}
 Kurallar:
+- fatura_no: Belge numarası, e-arşiv no veya fiş no.
 - tutar: KDV hariç toplam tutar.
 - kdv_tutari: KDV tutarı.
 - kdv_orani: KDV oranı (sayı).
@@ -378,6 +385,7 @@ window.dosyaIsle = async (file, tip) => {
     const sonuc = await claudeOku(base64Data, mimeType, tip);
     if (sonuc) {
       if (sonuc.tarih) document.getElementById(prefix+'-tarih').value = sonuc.tarih;
+      if (sonuc.fatura_no) document.getElementById(prefix+'-no').value = sonuc.fatura_no;
       if (sonuc.tutar) document.getElementById(prefix+'-tutar').value = sonuc.tutar;
       if (sonuc.kdv_orani != null) document.getElementById(prefix+'-kdv-oran').value = sonuc.kdv_orani;
       if (sonuc.kdv_tutari != null) document.getElementById(prefix+'-kdv').value = (+sonuc.kdv_tutari).toFixed(2);
@@ -403,6 +411,7 @@ window.dosyaIsle = async (file, tip) => {
 // ═══════════════════════════════════════════════════════════════
 window.faturaKaydet = (tip) => {
   const prefix = tip.replace('_fatura','');
+  const faturaNo = document.getElementById(prefix+'-no').value.trim();
   const cari = document.getElementById(prefix+'-cari').value.trim();
   const tarih = document.getElementById(prefix+'-tarih').value;
   const tutar = +document.getElementById(prefix+'-tutar').value || 0;
@@ -415,11 +424,12 @@ window.faturaKaydet = (tip) => {
   if (!tarih) { toast('Tarih girin', 'error'); return; }
 
   faturalarDB.ekle({
-    tip, tarih, tutar, kdvTutari: kdvTutar, kdvOrani: kdvOran,
+    tip, tarih, faturaNo, tutar, kdvTutari: kdvTutar, kdvOrani: kdvOran,
     cariAdi: cari, aciklama, dosyaUrl
   });
 
   // Formu temizle
+  document.getElementById(prefix+'-no').value = '';
   document.getElementById(prefix+'-cari').value = '';
   document.getElementById(prefix+'-tutar').value = '';
   document.getElementById(prefix+'-kdv').value = '';
@@ -453,7 +463,7 @@ function renderListe(tip) {
     <div class="fatura-row">
       <div class="fatura-ikon ${ikonCls}">${ikonEmoji}</div>
       <div class="fatura-bilgi">
-        <div class="fatura-ad">${f.cariAdi || f.aciklama || 'Fatura'}</div>
+        <div class="fatura-ad">${f.cariAdi || f.aciklama || 'Fatura'}${f.faturaNo ? ` <span style="color:var(--t3);font-weight:normal;font-size:11px">(${f.faturaNo})</span>` : ''}</div>
         <div class="fatura-meta">${f.tarih} · ${f.aciklama||''} ${f.dosyaUrl?'📎':''}</div>
       </div>
       <div class="fatura-tutar">

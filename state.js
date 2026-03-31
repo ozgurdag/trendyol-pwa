@@ -209,7 +209,7 @@ export async function supabasedenYukle(){
 
     if(rF.ok){ const d=await rF.json(); if(d?.length) {
       set(DB_KEYS.faturalar, d.map(f=>({
-        id:f.id, tip:f.tip, tarih:f.tarih, tutar:f.tutar||0,
+        id:f.id, tip:f.tip, tarih:f.tarih, faturaNo:f.fatura_no||'', tutar:f.tutar||0,
         kdvTutari:f.kdv_tutari||0, kdvOrani:f.kdv_orani||20,
         aciklama:f.aciklama||'', cariAdi:f.cari_adi||'', dosyaUrl:f.dosya_url||null,
       })));
@@ -263,7 +263,7 @@ export async function localdenSupabaseYukle(){
   }
   for(const f of get(DB_KEYS.faturalar)||[]){
     await sbPost('faturalar',{
-      id:f.id, tip:f.tip, tarih:f.tarih, tutar:f.tutar||0,
+      id:f.id, tip:f.tip, tarih:f.tarih, fatura_no:f.faturaNo||'', tutar:f.tutar||0,
       kdv_tutari:f.kdvTutari||0, kdv_orani:f.kdvOrani||20,
       aciklama:f.aciklama||'', cari_adi:f.cariAdi||'', dosya_url:f.dosyaUrl||null,
     });
@@ -663,9 +663,9 @@ export const faturalarDB = {
   ekle(f){
     const yeni={id:uid(), ...f, tarih:f.tarih||today(), olusturma:Date.now()};
     set(DB_KEYS.faturalar,[...this.hepsini(),yeni]);
-    logDB.ekle('fatura_eklendi', `${yeni.aciklama||yeni.cariAdi||'Fatura'} — ${(yeni.tutar||0).toFixed(2)}₺ (${yeni.tip||'?'})`);
+    logDB.ekle('fatura_eklendi', `${yeni.faturaNo?`[${yeni.faturaNo}] `:''}${yeni.aciklama||yeni.cariAdi||'Fatura'} — ${(yeni.tutar||0).toFixed(2)}₺ (${yeni.tip||'?'})`);
     sbPost('faturalar',{
-      id:yeni.id, tip:yeni.tip, tarih:yeni.tarih,
+      id:yeni.id, tip:yeni.tip, tarih:yeni.tarih, fatura_no:yeni.faturaNo||'',
       tutar:yeni.tutar||0, kdv_tutari:yeni.kdvTutari||0,
       kdv_orani:yeni.kdvOrani||20, aciklama:yeni.aciklama||'',
       cari_adi:yeni.cariAdi||'', dosya_url:yeni.dosyaUrl||null,
@@ -678,6 +678,7 @@ export const faturalarDB = {
     const v={};
     if(d.tip!==undefined)       v.tip=d.tip;
     if(d.tarih!==undefined)     v.tarih=d.tarih;
+    if(d.faturaNo!==undefined)  v.fatura_no=d.faturaNo;
     if(d.tutar!==undefined)     v.tutar=d.tutar;
     if(d.kdvTutari!==undefined) v.kdv_tutari=d.kdvTutari;
     if(d.kdvOrani!==undefined)  v.kdv_orani=d.kdvOrani;

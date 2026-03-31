@@ -171,7 +171,7 @@
 
         <!-- Eklenen ürünler listesi -->
         <div id="kombo-liste-wrap" style="display:none">
-          <div class="seksiyon-baslik">Kombo İçeriği <span id="kombo-min-uyari" style="color:var(--red);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(en az 2 ürün gerekli)</span></div>
+          <div class="seksiyon-baslik">Satılan Ürünler <span id="kombo-min-uyari" style="color:var(--t3);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(Combo için birden çok ekleyin)</span></div>
           <div id="kombo-liste"></div>
         </div>
 
@@ -497,7 +497,8 @@ function renderKombo(){
   }
 
   listeWrap.style.display = '';
-  minUyari.style.display = komboUrunler.length < 2 ? '' : 'none';
+  listeWrap.style.display = '';
+  // minUyari = komboUrunler.length < 2 ? '' : 'none';
 
   // Render item list
   document.getElementById('kombo-liste').innerHTML = komboUrunler.map((it,i) =>
@@ -511,7 +512,7 @@ function renderKombo(){
     </div>`
   ).join('');
 
-  if(komboUrunler.length < 2){
+  if(komboUrunler.length < 1){
     fiyatWrap.style.display = 'none';
     if(tumOzet) tumOzet.style.display = 'none';
     return;
@@ -537,7 +538,7 @@ function renderKombo(){
 window.komboKarGoster = () => {
   const fiyat = +document.getElementById('kombo-gercek-fiyat').value||0;
   const tumOzet = document.getElementById('kombo-tum-ozet');
-  if(!fiyat || komboUrunler.length < 2){ if(tumOzet) tumOzet.style.display='none'; return; }
+  if(!fiyat || komboUrunler.length < 1){ if(tumOzet) tumOzet.style.display='none'; return; }
 
   const alisTop = komboUrunler.reduce((t,it)=>t+it.alisFiyati*it.adet, 0);
   const maxDesi = Math.max(...komboUrunler.map(it=>it.desi||1));
@@ -570,7 +571,7 @@ window.komboKarGoster = () => {
 };
 
 window.komboKaydet = () => {
-  if(komboUrunler.length < 2){ toast('En az 2 stok ürünü ekleyin','error'); return; }
+  if(komboUrunler.length < 1){ toast('Stok ürünü ekleyin','error'); return; }
   const fiyat = +document.getElementById('kombo-gercek-fiyat').value||0;
   const tarih = document.getElementById('kombo-tarih').value;
   if(!fiyat){ toast('Satış fiyatı girin','error'); return; }
@@ -745,6 +746,10 @@ function renderSatisList(){
               <label class="form-label">Fiyat (₺)</label>
               <input class="form-input" type="number" inputmode="decimal" id="edit-fiyat-${s.id}" value="${fiyat}" step="0.01">
             </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Tarih</label>
+              <input class="form-input" type="date" id="edit-tarih-${s.id}" value="${s.tarih}">
+            </div>
           </div>
           <div class="edit-form-btns mt-8">
             <button class="btn btn-primary btn-sm" onclick="editKaydet('${s.id}')">✓ Kaydet</button>
@@ -785,9 +790,11 @@ window.editKapat = id => {
 window.editKaydet = id => {
   const yeniAdet = +document.getElementById('edit-adet-'+id).value;
   const yeniFiyat = +document.getElementById('edit-fiyat-'+id).value;
+  const yeniTarih = document.getElementById('edit-tarih-'+id).value;
   if(!yeniAdet||yeniAdet<1){ toast('Geçerli adet girin','error'); return; }
   if(!yeniFiyat||yeniFiyat<=0){ toast('Geçerli fiyat girin','error'); return; }
-  const ok = satislarDB.guncelle(id, {adet:yeniAdet, gercekFiyat:yeniFiyat});
+  if(!yeniTarih){ toast('Geçerli tarih girin','error'); return; }
+  const ok = satislarDB.guncelle(id, {adet:yeniAdet, gercekFiyat:yeniFiyat, tarih:yeniTarih});
   if(ok){
     editKapat(id);
     doldurListingDropdown(); renderSatisList(); renderOzet();

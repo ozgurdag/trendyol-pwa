@@ -224,10 +224,12 @@ window.renderOzet=()=>{
   const ayBas=`${secAy}-01`;
   const ayBit=`${secAy}-31`;
   const satislar=satislarDB.aralik(ayBas,ayBit);
-  let topAdet=0,topGelir=0,topKar=0,topAlis=0;
+  let topAdet=0,topGelir=0,topKar=0,topAlis=0,topKarGetiren=0,topZararEttiren=0;
   satislar.forEach(s=>{
     const k=satisKar(s);if(!k)return;
     topAdet+=s.adet;topGelir+=k.gelir;topKar+=k.net;topAlis+=k.alis;
+    if(k.net >= 0) topKarGetiren += k.net;
+    else topZararEttiren += k.net;
   });
   // Masraf hesabı - satisKar'dan al
   let topKom=0, topKargo=0, topPlat=0;
@@ -246,6 +248,9 @@ window.renderOzet=()=>{
     <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Trendyol Komisyonu</span><span class="ozet-val" style="color:var(--red)">-${p(topKom)}</span></div>
     <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Kargo</span><span class="ozet-val" style="color:var(--red)">-${p(topKargo)}</span></div>
     <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Platform Hizmeti</span><span class="ozet-val" style="color:var(--red)">-${p(topPlat)}</span></div>
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+    <div class="ozet-row"><span class="ozet-lbl" style="font-size:13px;color:var(--green)">+ Karlı Satışlar Toplamı</span><span class="ozet-val" style="color:var(--green)">+${p(topKarGetiren)}</span></div>
+    <div class="ozet-row"><span class="ozet-lbl" style="font-size:13px;color:var(--red)">- Zararına Satışlar Toplamı</span><span class="ozet-val" style="color:var(--red)">${p(topZararEttiren)}</span></div>
     <div style="height:1px;background:var(--border);margin:4px 0"></div>
     <div class="ozet-row"><span class="ozet-lbl" style="font-weight:700">Net Kar</span><span class="ozet-val ${topKar>=0?'kar-poz':'kar-neg'}" style="font-size:18px">${p(topKar)}</span></div>
     <div class="ozet-row"><span class="ozet-lbl">Ortalama ROI</span><span class="ozet-val accent">${topAlis>0?'%'+Math.round(topKar/topAlis*100):'—'}</span></div>

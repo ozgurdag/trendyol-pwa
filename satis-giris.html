@@ -303,15 +303,15 @@ window.tipSec = t => {
 // ── LİSTİNG TAB ──────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 
-function doldurListingDropdown(){
+window.doldurListingDropdown = () => {
   const listEl = document.getElementById('listing-sd-list');
   const aramaInput = document.getElementById('listing-sd-input');
-  const arama = aramaInput ? aramaInput.value.trim().toLowerCase() : '';
+  const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
   
   let liste = listingDB.onaylananlar();
   
   if (arama) {
-    liste = liste.filter(x => (x.ad || '').toLowerCase().includes(arama));
+    liste = liste.filter(x => (x.ad || '').toLocaleLowerCase('tr').includes(arama));
   }
 
   if(!liste.length){
@@ -419,14 +419,14 @@ window.listingKaydet = () => {
 // ── STOKTAN / KOMBO TAB ──────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 
-function doldurKomboDropdown(){
+window.doldurKomboDropdown = () => {
   const listEl = document.getElementById('kombo-sd-list');
   const aramaInput = document.getElementById('kombo-sd-input');
-  const arama = aramaInput ? aramaInput.value.trim().toLowerCase() : '';
+  const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
 
   let liste = stokDB.hepsini().sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
   if(arama){
-    liste = liste.filter(x => (x.ad||'').toLowerCase().includes(arama));
+    liste = liste.filter(x => (x.ad||'').toLocaleLowerCase('tr').includes(arama));
   }
 
   if(!liste.length){ 

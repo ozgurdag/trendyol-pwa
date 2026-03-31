@@ -435,7 +435,9 @@ export const satislarDB = {
     const yeniler=kayitlar.map(k=>{
       // Satış anındaki maliyet/komisyon/kargo snapshot'ı kaydet
       // Böylece sonraki ayar değişiklikleri geçmiş satışları etkilemez
-      const obj = k.tip==='set' ? setlerDB.bul(k.hedefId) : listingDB.bul(k.hedefId);
+      const obj = k.tip==='set' ? setlerDB.bul(k.hedefId)
+               : k.tip==='stok' ? stokDB.bul(k.hedefId)
+               : listingDB.bul(k.hedefId);
       let snapshot = null;
       if(obj){
         const urunB = k.tip==='set'
@@ -444,7 +446,9 @@ export const satislarDB = {
         const desiH = obj.desi||(k.tip==='set'?2:1);
         const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
         const f = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFU);
-        const alisTop = k.tip==='listing' ? (obj.alisFiyati||0) : (obj.alisMaliyeti||0);
+        const alisTop = k.tip==='listing' ? (obj.alisFiyati||0)
+                      : k.tip==='stok'    ? (obj.alisFiyati||0)
+                      : (obj.alisMaliyeti||0);
         if(f){
           const gercekFiyat = k.gercekFiyat || f.yuvarlak;
           const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, f.platform, f.kargo);
@@ -481,6 +485,9 @@ export const satislarDB = {
           const u=stokDB.bul(ic.urunId);
           if(u) stokDB.guncelle(ic.urunId,{stok:Math.max(0,(u.stok||0)-ic.adet*k.adet)});
         });
+      } else if(k.tip==='stok'){
+        const u=stokDB.bul(k.hedefId);
+        if(u) stokDB.guncelle(k.hedefId,{stok:Math.max(0,(u.stok||0)-k.adet)});
       }
     });
 
@@ -506,6 +513,9 @@ export const satislarDB = {
           const u=stokDB.bul(ic.urunId);
           if(u) stokDB.guncelle(ic.urunId,{stok:(u.stok||0)+ic.adet*k.adet});
         });
+      } else if(k.tip==='stok'){
+        const u=stokDB.bul(k.hedefId);
+        if(u) stokDB.guncelle(k.hedefId,{stok:(u.stok||0)+k.adet});
       }
       set(DB_KEYS.satislar,this.hepsini().filter(s=>s.id!==id));
       sbDelete('satislar',id).then(()=>broadcastGonder());
@@ -535,6 +545,9 @@ export const satislarDB = {
           const u=stokDB.bul(ic.urunId);
           if(u) stokDB.guncelle(ic.urunId,{stok:Math.max(0,(u.stok||0)-ic.adet*adetFarki)});
         });
+      } else if(k.tip==='stok'){
+        const u=stokDB.bul(k.hedefId);
+        if(u) stokDB.guncelle(k.hedefId,{stok:Math.max(0,(u.stok||0)-adetFarki)});
       }
     }
 

@@ -203,7 +203,7 @@ export async function supabasedenYukle(){
         adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
         tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
         snapshot: localMap[s.id]?.snapshot||null,
-        stokKombo: localMap[s.id]?.stokKombo||null,
+        stokKombo: s.stok_kombo ? (typeof s.stok_kombo==='string'?JSON.parse(s.stok_kombo):s.stok_kombo) : (localMap[s.id]?.stokKombo||null),
       })));
     }}
 
@@ -258,6 +258,7 @@ export async function localdenSupabaseYukle(){
     await sbPost('satislar',{
       id:st.id, tip:st.tip||'listing', hedef_id:st.hedefId,
       adet:st.adet, gercek_fiyat:st.gercekFiyat||null, tarih:st.tarih,
+      stok_kombo: st.stokKombo ? JSON.stringify(st.stokKombo) : null
     });
     yuklenen++;
   }
@@ -551,6 +552,7 @@ export const satislarDB = {
     sbPost('satislar',yeniler.map(k=>({
       id:k.id, tip:k.tip, hedef_id:k.hedefId,
       adet:k.adet, gercek_fiyat:k.gercekFiyat||null, tarih:k.tarih,
+      stok_kombo: k.stokKombo ? JSON.stringify(k.stokKombo) : null
     }))).then(()=>broadcastGonder());
     return yeniler;
   },

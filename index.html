@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Satış Yönetim · Giriş</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./app.css">
+<style>
+.giris-wrap{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;background:var(--bg0)}
+.giris-logo{font-size:52px;margin-bottom:16px}
+.giris-baslik{font-size:24px;font-weight:700;color:var(--t1);margin-bottom:6px;text-align:center}
+.giris-alt{font-size:13px;color:var(--t3);margin-bottom:32px;text-align:center}
+.giris-kart{width:100%;max-width:360px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-xl);padding:24px}
+.giris-hata{background:var(--red-l);border:1px solid var(--red);border-radius:var(--r-md);padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:16px;display:none;text-align:center}
+.kul-sec{display:flex;gap:8px;margin-bottom:20px}
+.kul-btn{flex:1;padding:10px;border-radius:var(--r-md);border:2px solid var(--border2);background:var(--bg3);color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:.2s}
+.kul-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-l)}
+.giris-spinner{display:none;text-align:center;padding:8px;font-size:13px;color:var(--t3)}
+</style>
+</head>
+<body>
+<div class="giris-wrap">
+  <div class="giris-logo">🛍️</div>
+  <div class="giris-baslik">Satış Yönetim</div>
+  <div class="giris-alt">Trendyol Satıcı Paneli</div>
+
+  <div class="giris-kart">
+    <div class="kul-sec">
+      <div class="kul-btn active" id="btn-admin" onclick="kulSec('admin')">👤 Admin</div>
+      <div class="kul-btn" id="btn-ortak" onclick="kulSec('ortak')">🤝 Ortak</div>
+    </div>
+
+    <div id="giris-hata" class="giris-hata"></div>
+
+    <div class="form-group">
+      <label class="form-label">Şifre</label>
+      <input class="form-input" type="password" id="giris-sifre"
+        placeholder="Supabase şifreniz"
+        onkeydown="if(event.key==='Enter')girisYap()">
+    </div>
+
+    <div class="giris-spinner" id="giris-spinner">⏳ Giriş yapılıyor…</div>
+    <button class="btn btn-primary btn-full mt-8" id="giris-btn" onclick="girisYap()">Giriş Yap</button>
+
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--t3);text-align:center;line-height:1.6">
+      🔒 Supabase Authentication ile güvenli giriş<br>
+      Supabase Authentication ile güvenli giriş
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { sbAuth } from './supabase.js';
+
+// Email → kullanıcı tipi mapping
+const EMAILS = {
+  admin: 'admin@trendyol-satis.com',
+  ortak: 'ortak@trendyol-satis.com',
+};
+
+// Zaten giriş yapılmışsa yönlendir
+if(sbAuth.oturum()?.token) {
+  window.location.href = './dashboard.html';
+}
+
+let secili = 'admin';
+
+window.kulSec = (k) => {
+  secili = k;
+  document.getElementById('btn-admin').classList.toggle('active', k==='admin');
+  document.getElementById('btn-ortak').classList.toggle('active', k==='ortak');
+  document.getElementById('giris-sifre').value = '';
+  document.getElementById('giris-hata').style.display = 'none';
+};
+
+window.girisYap = async () => {
+  const sifre = document.getElementById('giris-sifre').value.trim();
+  const hataEl = document.getElementById('giris-hata');
+  const btn = document.getElementById('giris-btn');
+  const spinner = document.getElementById('giris-spinner');
+
+  if(!sifre) {
+    hataEl.textContent = 'Şifre giriniz';
+    hataEl.style.display = '';
+    return;
+  }
+
+  btn.disabled = true;
+  spinner.style.display = '';
+  hataEl.style.display = 'none';
+
+  const sonuc = await sbAuth.girisYap(EMAILS[secili], sifre);
+
+  btn.disabled = false;
+  spinner.style.display = 'none';
+
+  if(sonuc.ok) {
+    window.location.href = './dashboard.html';
+  } else {
+    hataEl.textContent = sonuc.hata || 'Hatalı şifre';
+    hataEl.style.display = '';
+    document.getElementById('giris-sifre').value = '';
+    document.getElementById('giris-sifre').focus();
+  }
+};
+</script>
+</body>
+</html>

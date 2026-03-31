@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Dashboard · Satış Yönetim</title>
+<link rel="stylesheet" href="./app.css">
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-title">📊 Dashboard</div>
+    <div id="topbar-senkron" class="badge badge-green" style="font-size:10px;cursor:pointer" onclick="window.location.href='ayarlar.html'">⬤ Yerel</div>
+    <div class="topbar-action" onclick="cikisYap()">↩</div>
+  </div>
+
+  <div class="page-content">
+
+    <!-- HOŞ GELDİN -->
+    <div style="margin-bottom:20px">
+      <div style="font-size:22px;font-weight:700;color:var(--t1)" id="hosgeldin">Merhaba 👋</div>
+      <div style="font-size:13px;color:var(--t3);margin-top:4px" id="tarih-label"></div>
+    </div>
+
+    <!-- BUGÜN İSTATİSTİKLERİ -->
+    <div class="section-title">Bugün</div>
+    <div class="stat-grid mb-16">
+      <div class="stat-card">
+        <div class="stat-label">Satış Adedi</div>
+        <div class="stat-value accent" id="bugun-satis">0</div>
+        <div class="stat-sub">ürün</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Net Gelir</div>
+        <div class="stat-value green" id="bugun-gelir">0₺</div>
+        <div class="stat-sub">tahmini</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Toplam Ürün</div>
+        <div class="stat-value" id="toplam-urun">0</div>
+        <div class="stat-sub">kayıtlı</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Düşük Stok</div>
+        <div class="stat-value red" id="dusuk-stok">0</div>
+        <div class="stat-sub">ürün uyarısı</div>
+      </div>
+    </div>
+
+    <!-- STOK UYARILARI -->
+    <div id="stok-uyari-wrap"></div>
+
+
+    <!-- SON 7 GÜN GRAFİKLERİ -->
+    <div class="section-title mt-8">Son 7 Gün</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <span style="font-size:12px;color:var(--t3)">Satış Adedi</span>
+        <span style="font-size:12px;color:var(--t3)">Net Kar (₺)</span>
+      </div>
+      <div style="display:flex;gap:3px;align-items:flex-end;height:80px" id="dash-bar-adet"></div>
+      <div style="display:flex;gap:3px;align-items:flex-end;height:60px;margin-top:8px" id="dash-bar-kar"></div>
+    </div>
+
+    <!-- HIZLI İŞLEMLER -->
+    <div class="section-title">Hızlı İşlem</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+      <button class="btn btn-secondary" onclick="window.location.href='satis-giris.html'" style="flex-direction:column;gap:8px;padding:16px;height:auto">
+        <span style="font-size:28px">🛒</span>
+        <span style="font-size:13px">Satış Girişi</span>
+      </button>
+      <button class="btn btn-secondary" id="btn-urun-set-ekle" onclick="window.location.href='fiyatlar.html'" style="flex-direction:column;gap:8px;padding:16px;height:auto">
+        <span style="font-size:28px">🏷️</span>
+        <span style="font-size:13px">Ürün/Set Ekle</span>
+      </button>
+      <button class="btn btn-secondary" onclick="window.location.href='alis-hesap.html'" style="flex-direction:column;gap:8px;padding:16px;height:auto">
+        <span style="font-size:28px">🎯</span>
+        <span style="font-size:13px">Max Alış</span>
+      </button>
+      <button class="btn btn-secondary" onclick="window.location.href='stok.html'" style="flex-direction:column;gap:8px;padding:16px;height:auto">
+        <span style="font-size:28px">📦</span>
+        <span style="font-size:13px">Stok Durumu</span>
+      </button>
+    </div>
+
+    <!-- SON SATIŞLAR -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Son Satışlar</div>
+        <a href="satis-giris.html" style="font-size:12px;color:var(--accent)">Tümü →</a>
+      </div>
+      <div id="son-satislar">
+        <div class="empty-state" style="padding:24px">
+          <div class="empty-icon">🛒</div>
+          <div class="empty-title">Henüz satış yok</div>
+          <div class="empty-sub">Satış girişi yapın</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bu Ay Özet -->
+    <div class="card mt-12">
+      <div class="card-header">
+        <div class="card-title">Bu Ay</div>
+        <a href="rapor.html" style="font-size:12px;color:var(--accent)">Rapor →</a>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div style="text-align:center">
+          <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent)" id="ay-satis">0</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:3px">SATIŞ</div>
+        </div>
+        <div style="text-align:center;border-left:1px solid var(--border);border-right:1px solid var(--border)">
+          <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--green)" id="ay-gelir">0₺</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:3px">GELİR</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:18px;font-weight:700;font-family:var(--mono);color:var(--blue)" id="ay-urun">0</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:3px">ÜRÜN ÇEŞİDİ</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <a class="nav-item active" href="./dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="nav-label">Panel</span></a>
+    <a class="nav-item" href="./fiyatlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="nav-label">Ürün/Set</span></a>
+    <a class="nav-item" href="./satis-giris.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg><span class="nav-label">Satış</span></a>
+    <a class="nav-item" href="./stok.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><span class="nav-label">Stok</span></a>
+    <a class="nav-item" href="./alis-hesap.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg><span class="nav-label">Max Alış</span></a>
+    <a class="nav-item" href="./finans.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span class="nav-label">Finans</span></a>
+    <a class="nav-item" href="./rapor.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-label">Rapor</span></a>
+    <a class="nav-item" href="./ayarlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="nav-label">Ayarlar</span></a>
+  </nav>
+
+</div>
+
+<div class="toast-container" id="toastCont"></div>
+
+<script type="module">
+import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
+import { kargoUcreti } from './kargo.js';
+
+const o = auth.oturum();
+if (!o) { window.location.href = 'index.html'; }
+
+// Hoş geldin
+document.getElementById('hosgeldin').textContent = `Merhaba ${o.ad} 👋`;
+const simdi = new Date();
+const gunler = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+document.getElementById('tarih-label').textContent =
+  `${gunler[simdi.getDay()]}, ${simdi.toLocaleDateString('tr-TR',{day:'numeric',month:'long',year:'numeric'})}`;
+
+window.cikisYap = () => { auth.cikis(); window.location.href='index.html'; };
+
+// Supabase bağlantı durumu göster
+(async()=>{
+  const badge = document.getElementById('topbar-senkron');
+  const {supabasedenYukle} = await import('./state.js').catch(()=>({}));
+  const sonSync = parseInt(localStorage.getItem('tsx_son_sync')||'0');
+  if(sonSync > 0){
+    badge.textContent='⬤ Canlı';
+    badge.className='badge badge-green';
+    badge.style.fontSize='10px';
+  }
+})();
+
+function para(n) { return n.toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:0})+'₺'; }
+
+// Snapshot varsa ondan kullan, yoksa anlık hesapla
+const ayarlarSnap = ayarlarDB.oku();
+function satisNetKar(s){
+  if(s.snapshot) return s.snapshot.netKar * s.adet;
+  if(s.tip==='stok-combo'){
+    const items=s.stokKombo||[];
+    if(!items.length) return 0;
+    const alisTop=items.reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
+    const maxDesi=Math.max(...items.map(it=>it.desi||1));
+    const synth={alisFiyati:alisTop,desi:maxDesi,komisyon:0.04,hedefKar:ayarlarSnap.hedefKarROI||0.30,ayniGunKargo:ayarlarSnap.ayniGunKargo||false};
+    const kFU=kargoUcreti(ayarlarSnap.kargoFirma||'Aras',maxDesi);
+    const f=hesapla.satisFiyati(synth,ayarlarSnap,1,kFU);
+    if(!f) return 0;
+    return hesapla.gercekKar(alisTop,s.gercekFiyat||f.yuvarlak,0.04,f.platform,f.kargo).net * s.adet;
+  }
+  const hedefId = s.hedefId||s.urunId;
+  const obj = s.tip==='set' ? setlerDB.bul(hedefId)
+            : s.tip==='stok' ? stokDB.bul(hedefId)
+            : listingDB.bul(hedefId);
+  if(!obj) return 0;
+  const alisTop = s.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati||0);
+  const urunB = s.tip==='set' ? {alisFiyati:obj.alisMaliyeti||0,desi:obj.desi||2,komisyon:obj.komisyon||0.04,ayniGunKargo:obj.ayniGunKargo||false,hedefKar:obj.hedefKar||0.30} : {...obj};
+  const desiD = obj.desi||(s.tip==='set'?2:1);
+  const kFU = kargoUcreti(ayarlarSnap.kargoFirma||'Aras', desiD);
+  const f = hesapla.satisFiyati(urunB, ayarlarSnap, 1, kFU);
+  if(!f) return 0;
+  const kar = hesapla.gercekKar(alisTop, s.gercekFiyat||f.yuvarlak, obj.komisyon||0.04, f.platform, f.kargo);
+  return kar.net * s.adet;
+}
+
+function render() {
+  const urunler  = stokDB.hepsini();
+  const bugunStr = new Date().toISOString().slice(0,10);
+  const satislar = satislarDB.guneBGore(bugunStr);
+
+  // Bugün
+  let bugunAdet = 0, bugunGelir = 0;
+  satislar.forEach(s => {
+    bugunAdet += s.adet;
+    bugunGelir += satisNetKar(s);
+  });
+
+  document.getElementById('bugun-satis').textContent = bugunAdet;
+  document.getElementById('bugun-gelir').textContent = para(bugunGelir);
+  document.getElementById('toplam-urun').textContent = urunler.length;
+
+  // Kritik stok: her ürün için dinamik eşik
+  const bugun2 = new Date();
+  const bitis2 = bugun2.toISOString().slice(0,10);
+  const bas2 = new Date(new Date().setDate(new Date().getDate()-14)).toISOString().slice(0,10);
+  const satislar14d = satislarDB.aralik(bas2, bitis2);
+  const dusuk = urunler.filter(u => {
+    if((u.stok||0) === 0) return true; // tükenenler de uyarı
+    if(u.kritikEsikManuel) return (u.stok||0) < u.kritikEsikManuel;
+    const tedarik = u.tedarikSuresi || 5;
+    const sonuc = hesapla.kritikEsik(u.id, satislar14d, tedarik, 14);
+    const esik = sonuc.hesaplanan ? Math.max(sonuc.hesaplanan, 5) : 5;
+    return (u.stok||0) < esik;
+  });
+  document.getElementById('dusuk-stok').textContent = dusuk.length;
+
+  // Uyarılar
+  const uyariWrap = document.getElementById('stok-uyari-wrap');
+  if (dusuk.length) {
+    const tukenen = dusuk.filter(u=>(u.stok||0)===0).length;
+    const kritik5 = dusuk.filter(u=>(u.stok||0)>0&&(u.stok||0)<5).length;
+    const siparisVer = dusuk.length - tukenen - kritik5;
+    let mesaj = '';
+    if(tukenen) mesaj += `<b>${tukenen} ürün tükendi</b> · `;
+    if(kritik5) mesaj += `<b>${kritik5} ürün kritik (<5)</b> · `;
+    if(siparisVer) mesaj += `<b>${siparisVer} ürün sipariş eşiğinde</b>`;
+    uyariWrap.innerHTML = `<div class="uyari-banner mb-16">⚠️ <span>${mesaj.replace(/ · $/,'')}</span></div>`;
+  }
+
+  // Bu ay
+  const ayBas = bugunStr.slice(0,7)+'-01';
+  const aySatis = satislarDB.aralik(ayBas, bugunStr);
+  let ayAdet = 0, ayGelir = 0; const ayUrunler = new Set();
+  aySatis.forEach(s => {
+    ayAdet += s.adet; ayUrunler.add(s.hedefId||s.urunId);
+    ayGelir += satisNetKar(s);
+  });
+  document.getElementById('ay-satis').textContent = ayAdet;
+  document.getElementById('ay-gelir').textContent = para(ayGelir);
+  document.getElementById('ay-urun').textContent = ayUrunler.size;
+
+  // Son satışlar
+  const sonSatis = [...satislarDB.hepsini()].sort((a,b)=>b.kayitTarih-a.kayitTarih).slice(0,5);
+  const sonEl = document.getElementById('son-satislar');
+  if (!sonSatis.length) return;
+  sonEl.innerHTML = sonSatis.map(s => {
+    let ad, ikon;
+    if(s.tip==='stok-combo'){
+      ad = (s.stokKombo||[]).map(it=>it.ad).join(' + ') || 'Kombo';
+      ikon = '📦';
+    } else {
+      const hedefId = s.hedefId||s.urunId;
+      const obj = s.tip==='set' ? setlerDB.bul(hedefId)
+                : s.tip==='stok' ? stokDB.bul(hedefId)
+                : listingDB.bul(hedefId);
+      if (!obj) return '';
+      ad = obj.ad;
+      ikon = s.tip==='stok'?'📦':s.tip==='set'?'🎁':'🛒';
+    }
+    const net = satisNetKar(s);
+    return `<div class="urun-row">
+      <div class="urun-avatar">${ikon}</div>
+      <div class="urun-info">
+        <div class="urun-ad">${ad}</div>
+        <div class="urun-meta">${s.adet} adet · ${s.tarih}</div>
+      </div>
+      <div class="urun-fiyat">
+        <div class="urun-fiyat-ana" style="color:${net>=0?'var(--green)':'var(--red)'}">+${Math.round(net)}₺</div>
+        <div class="urun-fiyat-sub">net kar</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+render();
+renderDashGrafik();
+window.addEventListener('tsx_render',()=>{render();renderDashGrafik();});
+// Ortak kullanıcı - admin butonlarını gizle
+if(!auth.adminMi()){
+  const b=document.getElementById('btn-urun-set-ekle');
+  if(b) b.style.display='none';
+}
+
+function renderDashGrafik(){
+  const bugun=new Date();
+  const gunler=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+  const adetData=[], karData=[];
+  let maxAdet=1, maxKar=1;
+
+  for(let i=6;i>=0;i--){
+    const d=new Date(bugun);d.setDate(d.getDate()-i);
+    // Yerel saat ile tarih (UTC farkını önle)
+    const tarih=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const gSatis=satislarDB.guneBGore(tarih);
+    let adet=0, kar=0;
+    gSatis.forEach(s=>{
+      adet+=s.adet;
+      kar+=satisNetKar(s);
+    });
+    const lbl=gunler[d.getDay()===0?6:d.getDay()-1];
+    adetData.push({lbl,v:adet});
+    karData.push({lbl,v:Math.round(kar)});
+    if(adet>maxAdet) maxAdet=adet;
+    if(Math.abs(kar)>maxKar) maxKar=Math.abs(kar);
+  }
+
+  const mkBar=(el,data,max,renk)=>{
+    el.innerHTML=data.map(d=>`
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+        ${d.v>0?`<div style="font-size:8px;color:var(--t3)">${d.v}</div>`:'<div style="font-size:8px"></div>'}
+        <div style="width:100%;border-radius:3px 3px 0 0;background:${d.v>=0?renk:'var(--red)'};height:${Math.round((Math.abs(d.v)/max)*100)}%;min-height:${d.v?2:0}px"></div>
+        <div style="font-size:9px;color:var(--t3)">${d.lbl}</div>
+      </div>`).join('');
+  };
+  mkBar(document.getElementById('dash-bar-adet'),adetData,maxAdet,'var(--accent)');
+  mkBar(document.getElementById('dash-bar-kar'),karData,maxKar,'var(--green)');
+}
+</script>
+</body>
+</html>

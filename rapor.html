@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<title>Raporlar · Satış Yönetim</title>
+<link rel="stylesheet" href="./app.css">
+<style>
+.rapor-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
+.rapor-tab{padding:8px 16px;border-radius:var(--r-md);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid var(--border2);color:var(--t3);background:var(--bg2)}
+.rapor-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:12px}
+.chart-title{font-size:13px;font-weight:600;color:var(--t2);margin-bottom:12px}
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:120px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar{width:100%;border-radius:4px 4px 0 0;background:var(--accent);min-height:2px;transition:height .3s}
+.bar-lbl{font-size:9px;color:var(--t3);text-align:center}
+.bar-val{font-size:9px;color:var(--t2);font-weight:600;text-align:center}
+.ozet-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.ozet-row:last-child{border:none}
+.ozet-lbl{font-size:13px;color:var(--t2)}
+.ozet-val{font-size:14px;font-weight:700;font-family:var(--mono)}
+.tablo-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.tablo-row:last-child{border:none}
+.tablo-ikon{width:36px;height:36px;background:var(--bg3);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.tablo-bilgi{flex:1;min-width:0}
+.tablo-ad{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tablo-meta{font-size:11px;color:var(--t3);margin-top:2px}
+.tablo-kar{text-align:right;flex-shrink:0}
+.kar-poz{color:var(--green)}
+.kar-neg{color:var(--red)}
+.ay-sec{display:flex;gap:8px;margin-bottom:12px;align-items:center}
+.ay-sec select{flex:1}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="topbar-title">📈 Raporlar</div>
+    <div class="topbar-action" onclick="excelIndir()">⬇</div>
+  </div>
+  <div class="page-content">
+
+    <!-- SEKME SEÇİCİ -->
+    <div class="rapor-tabs">
+      <div class="rapor-tab active" onclick="sekme('ozet')">Aylık Özet</div>
+      <div class="rapor-tab" onclick="sekme('grafik')">7 Günlük</div>
+      <div class="rapor-tab" onclick="sekme('urun')">Ürün Karlılık</div>
+    </div>
+
+    <!-- AYLIK ÖZET -->
+    <div id="pnl-ozet">
+      <div class="ay-sec">
+        <select class="form-select" id="ay-select" onchange="renderOzet()"></select>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Özet</div>
+        <div id="ozet-icerik"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Günlük Satış Dağılımı</div>
+        <div class="bar-chart" id="ozet-bar"></div>
+      </div>
+    </div>
+
+    <!-- 7 GÜNLÜK GRAFİK -->
+    <div id="pnl-grafik" style="display:none">
+      <div class="chart-wrap">
+        <div class="chart-title">Son 7 Gün — Satış Adedi</div>
+        <div class="bar-chart" id="grafik-adet"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Son 7 Gün — Net Kar (₺)</div>
+        <div class="bar-chart" id="grafik-kar"></div>
+      </div>
+    </div>
+
+    <!-- ÜRÜN KARLILIK -->
+    <div id="pnl-urun" style="display:none">
+      <div class="ay-sec">
+        <select class="form-select" id="urun-ay-select" onchange="renderUrun()"></select>
+      </div>
+      <div class="chart-wrap" id="urun-tablo">
+        <div class="chart-title">Ürün Bazlı Karlılık</div>
+        <div id="urun-icerik"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="./dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="nav-label">Panel</span></a>
+    <a class="nav-item" href="./fiyatlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="nav-label">Ürün/Set</span></a>
+    <a class="nav-item" href="./satis-giris.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg><span class="nav-label">Satış</span></a>
+    <a class="nav-item" href="./stok.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><span class="nav-label">Stok</span></a>
+    <a class="nav-item" href="./alis-hesap.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg><span class="nav-label">Max Alış</span></a>
+    <a class="nav-item" href="./finans.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span class="nav-label">Finans</span></a>
+    <a class="nav-item active" href="./rapor.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-label">Rapor</span></a>
+    <a class="nav-item" href="./ayarlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="nav-label">Ayarlar</span></a>
+  </nav>
+</div>
+
+<div class="toast-container" id="toast"></div>
+
+<script type="module">
+import{auth,stokDB,listingDB,setlerDB,satislarDB,ayarlarDB,hesapla}from'./state.js';
+import{kargoUcreti}from'./kargo.js';
+if(!auth.oturum()?.token) window.location.href='./index.html';
+
+const ay=ayarlarDB.oku();
+const p=n=>(+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
+const gun=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+
+// Satış kar hesabı
+function satisKar(s){
+  let ad = '?';
+  let alisBirim = 0;
+  let gf = s.gercekFiyat || 0;
+  let komOrani = 0.04;
+  let kargo = 0;
+  let platform = 0;
+  let net = 0;
+  let roi = 0;
+
+  if (s.tip === 'stok-combo') {
+    ad = (s.stokKombo || []).map(it => it.ad).join(' + ') || 'Kombo';
+    alisBirim = (s.stokKombo || []).reduce((t, it) => t + (it.alisFiyati || 0) * (it.adet || 1), 0);
+  } else if (s.tip === 'stok') {
+    const u = stokDB.bul(s.hedefId);
+    if (u) { ad = u.ad; alisBirim = u.alisFiyati || 0; komOrani = u.komisyon || 0.04; }
+  } else if (s.tip === 'set') {
+    const u = setlerDB.bul(s.hedefId);
+    if (u) { ad = u.ad; alisBirim = u.alisMaliyeti || 0; komOrani = u.komisyon || 0.04; }
+  } else {
+    // listing
+    const u = listingDB.bul(s.hedefId);
+    if (u) { ad = u.ad; alisBirim = u.alisFiyati || 0; komOrani = u.komisyon || 0.04; }
+  }
+
+  // Snapshot varsa kesin verileri kullan
+  if (s.snapshot) {
+    alisBirim = s.snapshot.alisMaliyeti;
+    komOrani = s.snapshot.komisyon;
+    platform = s.snapshot.platform;
+    kargo = s.snapshot.kargo;
+    net = s.snapshot.netKar * s.adet;
+    roi = s.snapshot.roi;
+  } else {
+    // Eski/anlık satış kayıtları için fallback hesaplama
+    if (s.tip === 'stok-combo') {
+      const maxDesi = Math.max(...(s.stokKombo || []).map(it => it.desi || 1), 1);
+      const synth = { alisFiyati: alisBirim, desi: maxDesi, komisyon: komOrani, hedefKar: ay.hedefKarROI || 0.30, ayniGunKargo: ay.ayniGunKargo || false };
+      const f = hesapla.satisFiyati(synth, ay, 1, kargoUcreti(ay.kargoFirma || 'Aras', maxDesi));
+      if (f) {
+        if (!gf) gf = f.yuvarlak;
+        platform = f.platform; kargo = f.kargo;
+        const kr = hesapla.gercekKar(alisBirim, gf, komOrani, platform, kargo);
+        net = kr.net * s.adet; roi = kr.roi;
+      }
+    } else {
+      const obj = s.tip === 'stok' ? stokDB.bul(s.hedefId) : (s.tip === 'set' ? setlerDB.bul(s.hedefId) : listingDB.bul(s.hedefId));
+      if (obj) {
+        const kFU = kargoUcreti(ay.kargoFirma || 'Aras', obj.desi || (s.tip === 'set' ? 2 : 1));
+        const f = hesapla.satisFiyati(s.tip === 'set' ? { alisFiyati: alisBirim, desi: obj.desi || 2, komisyon: komOrani } : obj, ay, 1, kFU);
+        if (f) {
+          if (!gf) gf = f.yuvarlak;
+          platform = f.platform; kargo = f.kargo;
+          const kr = hesapla.gercekKar(alisBirim, gf, komOrani, platform, kargo);
+          net = kr.net * s.adet; roi = kr.roi;
+        }
+      }
+    }
+  }
+
+  return {
+    net: net,
+    roi: roi,
+    kararli: net >= 0,
+    ad: ad,
+    tip: s.tip,
+    adet: s.adet,
+    gelir: gf * s.adet,
+    alis: alisBirim * s.adet,
+    kargo: kargo * s.adet,
+    platform: platform * s.adet,
+    komisyon: gf * s.adet * komOrani
+  };
+}
+
+// Ay listesi oluştur
+function ayListesi(){
+  const satislar=satislarDB.hepsini();
+  const aylar=new Set();
+  const bugun=new Date().toISOString().slice(0,7);
+  aylar.add(bugun);
+  satislar.forEach(s=>aylar.add(s.tarih?.slice(0,7)));
+  return [...aylar].filter(Boolean).sort().reverse();
+}
+
+function aySelectDoldur(id){
+  const el=document.getElementById(id);
+  const aylar=ayListesi();
+  el.innerHTML=aylar.map(a=>`<option value="${a}">${a}</option>`).join('');
+}
+
+// BAR CHART helper
+function barChart(el,data,renk='var(--accent)'){
+  const max=Math.max(...data.map(d=>d.val),1);
+  const yuksek=data.filter(d=>d.val!==0);
+  el.innerHTML=data.map(d=>`
+    <div class="bar-col">
+      <div class="bar-val" style="font-size:9px;color:var(--t3);min-height:12px">${d.val!==0?(d.label2||Math.abs(d.val)):''}</div>
+      <div class="bar" style="height:${max>0?Math.round((Math.abs(d.val)/max)*100):0}%;background:${d.val>=0?renk:'var(--red)'};min-height:${d.val?2:0}px"></div>
+      <div class="bar-lbl">${d.label}</div>
+    </div>`).join('');
+}
+
+/* ── AYLIK ÖZET ── */
+window.renderOzet=()=>{
+  const secAy=document.getElementById('ay-select').value;
+  if(!secAy) return;
+  const [yil,ayNo]=secAy.split('-').map(Number);
+  const ayBas=`${secAy}-01`;
+  const ayBit=`${secAy}-31`;
+  const satislar=satislarDB.aralik(ayBas,ayBit);
+  let topAdet=0,topGelir=0,topKar=0,topAlis=0;
+  satislar.forEach(s=>{
+    const k=satisKar(s);if(!k)return;
+    topAdet+=s.adet;topGelir+=k.gelir;topKar+=k.net;topAlis+=k.alis;
+  });
+  // Masraf hesabı - satisKar'dan al
+  let topKom=0, topKargo=0, topPlat=0;
+  satislar.forEach(s=>{
+    const k=satisKar(s);if(!k)return;
+    topKom+=k.komisyon||0;
+    topKargo+=k.kargo||0;
+    topPlat+=k.platform||0;
+  });
+
+  document.getElementById('ozet-icerik').innerHTML=`
+    <div class="ozet-row"><span class="ozet-lbl">Toplam Satış</span><span class="ozet-val accent">${topAdet} adet</span></div>
+    <div class="ozet-row"><span class="ozet-lbl">Toplam Gelir</span><span class="ozet-val">${p(topGelir)}</span></div>
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Alış Maliyeti</span><span class="ozet-val" style="color:var(--red)">-${p(topAlis)}</span></div>
+    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Trendyol Komisyonu</span><span class="ozet-val" style="color:var(--red)">-${p(topKom)}</span></div>
+    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Kargo</span><span class="ozet-val" style="color:var(--red)">-${p(topKargo)}</span></div>
+    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Platform Hizmeti</span><span class="ozet-val" style="color:var(--red)">-${p(topPlat)}</span></div>
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+    <div class="ozet-row"><span class="ozet-lbl" style="font-weight:700">Net Kar</span><span class="ozet-val ${topKar>=0?'kar-poz':'kar-neg'}" style="font-size:18px">${p(topKar)}</span></div>
+    <div class="ozet-row"><span class="ozet-lbl">Ortalama ROI</span><span class="ozet-val accent">${topAlis>0?'%'+Math.round(topKar/topAlis*100):'—'}</span></div>
+  `;
+  // Günlük bar
+  const gunSayisi=new Date(yil,ayNo,0).getDate();
+  const gunData=[];
+  for(let g=1;g<=Math.min(gunSayisi,31);g++){
+    const tarih=`${secAy}-${String(g).padStart(2,'0')}`;
+    const gSatis=satislar.filter(s=>s.tarih===tarih);
+    let gKar=0;gSatis.forEach(s=>{const k=satisKar(s);if(k)gKar+=k.net*s.adet;});
+    if(g%3===1||gunSayisi<=15) gunData.push({label:String(g),val:Math.round(gKar)});
+    else gunData.push({label:'',val:Math.round(gKar)});
+  }
+  barChart(document.getElementById('ozet-bar'),gunData);
+};
+
+/* ── 7 GÜNLÜK ── */
+function renderGrafik(){
+  const bugun=new Date();
+  const data7=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(bugun);d.setDate(d.getDate()-i);
+    const tarih=d.toISOString().slice(0,10);
+    const gSatis=satislarDB.guneBGore(tarih);
+    let adet=0,kar=0;
+    gSatis.forEach(s=>{const k=satisKar(s);if(k){adet+=s.adet;kar+=k.net;}}); // net zaten adet ile çarpılmış
+    const lbl=gun[d.getDay()===0?6:d.getDay()-1];
+    data7.push({label:lbl,val:adet,label2:adet>0?adet:''});
+    data7.push&&(data7[data7.length-1]._kar=Math.round(kar));
+  }
+  barChart(document.getElementById('grafik-adet'),data7);
+  const karData=data7.map(d=>({label:d.label,val:d._kar||0,label2:d._kar>0?Math.round(d._kar)+'₺':''}));
+  barChart(document.getElementById('grafik-kar'),karData,`var(--green)`);
+}
+
+/* ── ÜRÜN KARLILIK ── */
+window.renderUrun=()=>{
+  const secAy=document.getElementById('urun-ay-select').value;
+  if(!secAy) return;
+  const satislar=satislarDB.aralik(`${secAy}-01`,`${secAy}-31`);
+  const urunMap={};
+  satislar.forEach(s=>{
+    const k=satisKar(s);if(!k)return;
+    const hId=s.hedefId||s.urunId;
+    if(!urunMap[hId]) urunMap[hId]={ad:k.ad,tip:k.tip,adet:0,kar:0,alis:0,gelir:0};
+    urunMap[hId].adet+=s.adet;
+    urunMap[hId].kar+=k.net;    // zaten adet çarpılmış
+    urunMap[hId].alis+=k.alis;
+    urunMap[hId].gelir+=k.gelir;
+  });
+  const sirali=Object.values(urunMap).sort((a,b)=>b.kar-a.kar);
+  if(!sirali.length){
+    document.getElementById('urun-icerik').innerHTML='<div style="text-align:center;color:var(--t3);padding:20px">Bu ay satış yok</div>';
+    return;
+  }
+  document.getElementById('urun-icerik').innerHTML=sirali.map(u=>`
+    <div class="tablo-row">
+      <div class="tablo-ikon">${u.tip==='set'?'📦':'🏷️'}</div>
+      <div class="tablo-bilgi">
+        <div class="tablo-ad">${u.ad}</div>
+        <div class="tablo-meta">${u.adet} adet · Gelir: ${p(u.gelir)}</div>
+      </div>
+      <div class="tablo-kar">
+        <div style="font-size:14px;font-weight:700;font-family:var(--mono)" class="${u.kar>=0?'kar-poz':'kar-neg'}">${p(u.kar)}</div>
+        <div style="font-size:10px;color:var(--t3)">%${u.alis>0?Math.round(u.kar/u.alis*100):0} ROI</div>
+      </div>
+    </div>`).join('');
+};
+
+/* ── SEKME ── */
+window.sekme=s=>{
+  ['ozet','grafik','urun'].forEach(id=>{
+    document.getElementById('pnl-'+id).style.display=s===id?'':'none';
+    document.querySelector(`.rapor-tab:nth-child(${['ozet','grafik','urun'].indexOf(id)+1})`).classList.toggle('active',s===id);
+  });
+  if(s==='grafik') renderGrafik();
+  if(s==='urun') renderUrun();
+};
+
+/* ── EXCEL ── */
+window.excelIndir=async()=>{
+  const{utils,writeFile}=await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
+  const aylar=ayListesi();
+  const wb=utils.book_new();
+  aylar.forEach(ay=>{
+    const satislar=satislarDB.aralik(`${ay}-01`,`${ay}-31`);
+    const rows=[];
+    satislar.forEach(s=>{
+      const k=satisKar(s);if(!k)return;
+      rows.push({'Tarih':s.tarih,'Ürün':k.ad,'Tip':k.tip==='set'?'Set':'Ürün','Adet':s.adet,
+        'Gelir':Math.round(k.gelir),'Net Kar':Math.round(k.net*s.adet),'ROI %':k.alis>0?Math.round(k.net/k.alis*100):0});
+    });
+    if(rows.length){const ws=utils.json_to_sheet(rows);utils.book_append_sheet(wb,ws,ay);}
+  });
+  writeFile(wb,'rapor_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('Excel indirildi','success');
+};
+
+window.showToast=(msg,tip='info')=>{
+  const c=document.getElementById('toast');const el=document.createElement('div');
+  el.className='toast '+tip;el.textContent=msg;c.appendChild(el);setTimeout(()=>el.remove(),3000);
+};
+
+// Realtime / Multi-tab Sync
+function sayfaYenile() {
+  const aySec = document.getElementById('ay-select').value;
+  aySelectDoldur('ay-select');
+  if(aySec && [...document.getElementById('ay-select').options].some(o => o.value === aySec)) {
+    document.getElementById('ay-select').value = aySec;
+  }
+  const urunAySec = document.getElementById('urun-ay-select').value;
+  aySelectDoldur('urun-ay-select');
+  if(urunAySec && [...document.getElementById('urun-ay-select').options].some(o => o.value === urunAySec)) {
+    document.getElementById('urun-ay-select').value = urunAySec;
+  }
+  
+  if (document.getElementById('pnl-ozet').style.display !== 'none') renderOzet();
+  if (document.getElementById('pnl-grafik').style.display !== 'none') renderGrafik();
+  if (document.getElementById('pnl-urun').style.display !== 'none') renderUrun();
+}
+
+window.addEventListener('tsx_render', sayfaYenile);
+window.addEventListener('storage', (e) => {
+  if (e.key === 'tsx_satislar' || e.key === 'tsx_son_sync') {
+    sayfaYenile();
+  }
+});
+
+// İlk yükleme
+aySelectDoldur('ay-select');
+aySelectDoldur('urun-ay-select');
+renderOzet();
+</script>
+</body>
+</html>

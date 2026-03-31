@@ -418,12 +418,23 @@ window.dosyaIsle = async (files, tip) => {
       if (sonuc) {
         // Formu doldur ve eğer çoklu işlemse veya başarılı okunduysa oto-kaydet!
         // (Eğer kullanıcının hata düzeltmesi istenecekse 1'li işlemlerde kaydedilmeyebilir ama en şıkkı oto-kayıttır)
-        const fNo = sonuc.fatura_no || '';
-        const mukerrer = fNo ? faturalarDB.hepsini().find(f => f.faturaNo && f.faturaNo.toLowerCase() === fNo.toLowerCase()) : false;
+        const fNo = (sonuc.fatura_no || '').trim();
+        let mukerrer = false;
+
+        if (fNo) {
+          mukerrer = faturalarDB.hepsini().find(f => f.tip === tip && f.faturaNo && f.faturaNo.toLowerCase() === fNo.toLowerCase());
+        } else if (sonuc.tutar && sonuc.tarih) {
+          // Eğer fatura numarası yoksa; tarih, tutar ve tip tamamen aynıysa mükerrer sayalım.
+          mukerrer = faturalarDB.hepsini().find(f => 
+             f.tip === tip && 
+             f.tarih === sonuc.tarih && 
+             Math.abs((Number(f.tutar)||0) - (Number(sonuc.tutar)||0)) < 0.01
+          );
+        }
         
         if (mukerrer) {
-           console.warn('Mükerrer olduğu için atlandı:', fNo);
-           toast(`Atlandı: ${fNo} zaten kayıtlı`, 'error');
+           console.warn('Mükerrer olduğu için atlandı:', file.name);
+           toast(`Atlandı: ${fNo || sonuc.tutar + '₺' } zaten kayıtlı`, 'error');
         } else if(sonuc.tutar && sonuc.tarih) {
            faturalarDB.ekle({
              tip, 

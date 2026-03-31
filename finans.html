@@ -423,6 +423,7 @@ window.dosyaIsle = async (files, tip) => {
         
         if (mukerrer) {
            console.warn('Mükerrer olduğu için atlandı:', fNo);
+           toast(`Atlandı: ${fNo} zaten kayıtlı`, 'error');
         } else if(sonuc.tutar && sonuc.tarih) {
            faturalarDB.ekle({
              tip, 

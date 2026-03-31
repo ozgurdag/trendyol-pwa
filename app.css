@@ -1,46 +1,46 @@
 /* ── TRENDYOL SATIŞ YÖNETİMİ · app.css ─────────────────────────
-   Mobile-first · Dark theme · PWA-ready
+   Mobile-first · Light theme · PWA-ready
 ──────────────────────────────────────────────────────────────── */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /* ── TOKENS ─────────────────────────────────────────────────── */
 :root {
-  /* Renkler — daha zengin palet */
-  --bg0:    #070B14;
-  --bg1:    #0E1420;
-  --bg2:    #141B2D;
-  --bg3:    #1C2540;
-  --bg4:    #242E4C;
-  --bg5:    #2C3859;
+  /* Renkler — açık palet */
+  --bg0:    #F0F4FA;
+  --bg1:    #FFFFFF;
+  --bg2:    #F8FAFD;
+  --bg3:    #EEF2F9;
+  --bg4:    #E4EAF5;
+  --bg5:    #D8E1F0;
 
   --accent:      #FF6B2B;  /* Trendyol turuncu */
-  --accent-l:    rgba(255,107,43,.13);
+  --accent-l:    rgba(255,107,43,.10);
   --accent-dim:  #D4531A;
-  --accent-glow: rgba(255,107,43,.25);
+  --accent-glow: rgba(255,107,43,.18);
 
-  --green:    #10B981;
-  --green-l:  rgba(16,185,129,.13);
-  --green-dim:#059669;
-  --red:      #F43F5E;
-  --red-l:    rgba(244,63,94,.13);
-  --blue:     #6366F1;
-  --blue-l:   rgba(99,102,241,.13);
-  --purple:   #A855F7;
-  --purple-l: rgba(168,85,247,.13);
-  --yellow:   #F59E0B;
-  --yellow-l: rgba(245,158,11,.13);
-  --cyan:     #06B6D4;
-  --cyan-l:   rgba(6,182,212,.13);
+  --green:    #059669;
+  --green-l:  rgba(5,150,105,.10);
+  --green-dim:#047857;
+  --red:      #E11D48;
+  --red-l:    rgba(225,29,72,.10);
+  --blue:     #4F46E5;
+  --blue-l:   rgba(79,70,229,.10);
+  --purple:   #7C3AED;
+  --purple-l: rgba(124,58,237,.10);
+  --yellow:   #D97706;
+  --yellow-l: rgba(217,119,6,.10);
+  --cyan:     #0891B2;
+  --cyan-l:   rgba(8,145,178,.10);
 
-  --t1: #F0F4FF;
-  --t2: #8B9CC8;
-  --t3: #4A5580;
-  --t4: #2C3859;
+  --t1: #0F172A;
+  --t2: #334155;
+  --t3: #64748B;
+  --t4: #94A3B8;
 
-  --border:  rgba(255,255,255,.06);
-  --border2: rgba(255,255,255,.10);
-  --border3: rgba(255,255,255,.16);
+  --border:  rgba(0,0,0,.07);
+  --border2: rgba(0,0,0,.11);
+  --border3: rgba(0,0,0,.16);
 
   /* Tipografi */
   --font:  'Inter', system-ui, -apple-system, sans-serif;
@@ -54,12 +54,12 @@
   --r-xl: 24px;
   --r-2xl:32px;
 
-  /* Gölge — daha derin */
-  --shadow-sm: 0 1px 4px rgba(0,0,0,.4), 0 2px 8px rgba(0,0,0,.2);
-  --shadow-md: 0 4px 16px rgba(0,0,0,.5), 0 1px 4px rgba(0,0,0,.3);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,.6), 0 2px 8px rgba(0,0,0,.4);
-  --shadow-accent: 0 4px 20px rgba(255,107,43,.3);
-  --shadow-green:  0 4px 20px rgba(16,185,129,.25);
+  /* Gölge — hafif */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.10), 0 1px 3px rgba(0,0,0,.06);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.07);
+  --shadow-accent: 0 4px 16px rgba(255,107,43,.25);
+  --shadow-green:  0 4px 16px rgba(5,150,105,.20);
 
   /* Nav yüksekliği */
   --nav-h:     64px;

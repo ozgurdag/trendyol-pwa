@@ -7,17 +7,6 @@
 <title>Satış Girişi · Satış Yönetim</title>
 <link rel="stylesheet" href="./app.css">
 <style>
-/* ── SEPET ── */
-.sepet-item{
-  display:flex;align-items:center;gap:10px;
-  background:var(--bg3);border-radius:var(--r-md);
-  padding:10px 12px;margin-bottom:8px;
-}
-.sepet-item-info{flex:1;min-width:0;}
-.sepet-item-ad{font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sepet-item-meta{font-size:11px;color:var(--t3);margin-top:2px;}
-.sepet-item-kar{font-size:13px;font-weight:700;font-family:var(--mono);white-space:nowrap;}
-.sepet-sil{width:28px;height:28px;background:var(--red-l);border:none;border-radius:6px;color:var(--red);font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 /* ── FİLTRE TABS ── */
 .filter-tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;}
 .filter-tabs::-webkit-scrollbar{display:none;}
@@ -36,12 +25,24 @@
 .satis-aksiyonlar{display:flex;gap:6px;margin-top:8px;padding-left:48px;}
 /* ── DÜZENLEME FORMU ── */
 .edit-form{background:var(--bg3);border-radius:var(--r-md);padding:12px;margin-top:8px;margin-left:48px;}
-.edit-form .form-row{margin-bottom:10px;}
 .edit-form-btns{display:flex;gap:6px;}
-/* ── ÖZET TOPLAM ── */
-.ozet-toplam{background:linear-gradient(135deg,var(--accent-l),transparent);border:1px solid var(--accent);border-radius:var(--r-md);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
-.ozet-toplam-label{font-size:12px;color:var(--t2);}
-.ozet-toplam-val{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent);}
+/* ── KOMBO ÜRÜNLERİ ── */
+.kombo-item{display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:var(--r-md);padding:9px 12px;margin-bottom:6px;}
+.kombo-item-info{flex:1;min-width:0;}
+.kombo-item-ad{font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kombo-item-meta{font-size:11px;color:var(--t3);margin-top:2px;}
+.kombo-item-fiyat{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--t2);white-space:nowrap;}
+.kombo-sil{width:26px;height:26px;background:var(--red-l);border:none;border-radius:6px;color:var(--red);font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+/* ── ÖNİZLEME BOX ── */
+.onizleme-box{background:var(--bg3);border-radius:var(--r-md);padding:10px 14px;margin-bottom:12px;font-size:12px;}
+.onizleme-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.onizleme-row:last-child{margin-bottom:0;}
+.onizleme-label{color:var(--t3);}
+.onizleme-val{font-weight:600;}
+/* ── KAR BADGE ── */
+.kar-badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;font-family:var(--mono);}
+/* ── AYIRICI ── */
+.seksiyon-baslik{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px;}
 </style>
 </head>
 <body>
@@ -70,62 +71,100 @@
     <!-- SATIŞ EKLE -->
     <div class="card mb-16">
       <div class="card-title mb-12">Satış Ekle</div>
-      <div class="tabs mb-12">
+      <div class="tabs mb-16">
         <div class="tab active" id="tip-tab-listing" onclick="tipSec('listing')">Listing</div>
         <div class="tab" id="tip-tab-stok" onclick="tipSec('stok')">Stoktan</div>
       </div>
 
-      <!-- Ürün seç -->
-      <div class="form-group">
-        <label class="form-label" id="secim-label">Ürün Seç</label>
-        <select class="form-select" id="satis-hedef" onchange="hedefSecildi()">
-          <option value="">— Seçin —</option>
-        </select>
-      </div>
-
-      <div class="form-row">
+      <!-- ═══ LİSTİNG TAB ═══ -->
+      <div id="panel-listing">
         <div class="form-group">
-          <label class="form-label">Adet</label>
-          <input class="form-input" type="number" id="satis-adet" value="1" min="1" oninput="karOniziGoster()">
+          <label class="form-label">Onaylı Listing Seç</label>
+          <select class="form-select" id="listing-hedef" onchange="listingSecildi()">
+            <option value="">— Seçin —</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Adet</label>
+            <input class="form-input" type="number" id="listing-adet" value="1" min="1" oninput="listingKarGoster()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Satış Fiyatı (₺)</label>
+            <input class="form-input" type="number" id="listing-fiyat" placeholder="0.00" step="0.01" oninput="listingKarGoster()">
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Satış Fiyatı (₺)</label>
-          <input class="form-input" type="number" id="satis-fiyat" placeholder="0.00" step="0.01" oninput="karOniziGoster()">
+          <label class="form-label">Tarih</label>
+          <input class="form-input" type="date" id="listing-tarih">
+        </div>
+
+        <!-- Listing Önizleme -->
+        <div id="listing-onizleme" class="onizleme-box" style="display:none;margin-bottom:12px">
+          <div class="onizleme-row"><span class="onizleme-label">Kullanılabilir Stok</span><span class="onizleme-val" id="l-stok">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Önerilen Fiyat</span><span class="onizleme-val" style="color:var(--accent)" id="l-onerilen">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Kar / Birim</span><span class="kar-badge" id="l-kar">—</span></div>
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="listingKaydet()">✓ Listing Satışı Kaydet</button>
+      </div>
+
+      <!-- ═══ STOKTAN TAB ═══ -->
+      <div id="panel-stok" style="display:none">
+        <div class="seksiyon-baslik">Kombo Ürün Ekle</div>
+
+        <!-- Ürün seçici -->
+        <div class="form-row" style="align-items:flex-end">
+          <div class="form-group" style="flex:1">
+            <label class="form-label">Stok Kalemi</label>
+            <select class="form-select" id="kombo-stok-sec">
+              <option value="">— Seçin —</option>
+            </select>
+          </div>
+          <div class="form-group" style="width:80px">
+            <label class="form-label">Adet</label>
+            <input class="form-input" type="number" id="kombo-adet" value="1" min="1">
+          </div>
+          <div style="padding-bottom:0;flex-shrink:0">
+            <button class="btn btn-secondary" onclick="komboEkle()" style="height:42px;padding:0 14px;white-space:nowrap">＋ Ekle</button>
+          </div>
+        </div>
+
+        <!-- Eklenen ürünler listesi -->
+        <div id="kombo-liste-wrap" style="display:none">
+          <div class="seksiyon-baslik">Kombo İçeriği <span id="kombo-min-uyari" style="color:var(--red);font-size:10px;font-weight:400;text-transform:none;letter-spacing:0">(en az 2 ürün gerekli)</span></div>
+          <div id="kombo-liste"></div>
+        </div>
+
+        <!-- Kombo Özet -->
+        <div id="kombo-ozet-box" class="onizleme-box" style="display:none;margin-bottom:12px">
+          <div class="onizleme-row"><span class="onizleme-label">Toplam Alış Maliyeti</span><span class="onizleme-val" id="k-alis">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Hedef Satış Fiyatı</span><span class="onizleme-val" style="color:var(--accent)" id="k-hedef">—</span></div>
+          <div class="onizleme-row"><span class="onizleme-label">Kargo Tahmini</span><span class="onizleme-val" id="k-kargo">—</span></div>
+        </div>
+
+        <!-- Gerçek fiyat + kar -->
+        <div id="kombo-fiyat-wrap" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Gerçek Satış Fiyatı (₺)</label>
+              <input class="form-input" type="number" id="kombo-gercek-fiyat" placeholder="0.00" step="0.01" oninput="komboKarGoster()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tarih</label>
+              <input class="form-input" type="date" id="kombo-tarih">
+            </div>
+          </div>
+
+          <div id="kombo-kar-wrap" class="onizleme-box" style="display:none;margin-bottom:12px">
+            <div class="onizleme-row"><span class="onizleme-label">Kar / Zarar</span><span class="kar-badge" id="k-kar">—</span></div>
+            <div class="onizleme-row"><span class="onizleme-label">ROI</span><span class="onizleme-val" id="k-roi">—</span></div>
+          </div>
+
+          <button class="btn btn-primary btn-full" onclick="komboKaydet()">✓ Kombo Satış Kaydet</button>
         </div>
       </div>
 
-      <!-- Tarih -->
-      <div class="form-group">
-        <label class="form-label">Tarih</label>
-        <input class="form-input" type="date" id="satis-tarih">
-      </div>
-
-      <!-- Önizleme -->
-      <div id="satis-onizleme" style="display:none;background:var(--bg3);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px;font-size:12px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="color:var(--t3)">Stok</span><span id="on-stok" style="font-weight:600">—</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="color:var(--t3)">Önerilen Fiyat</span><span id="on-onerilen" style="font-weight:600;color:var(--accent)">—</span>
-        </div>
-        <div style="display:flex;justify-content:space-between">
-          <span style="color:var(--t3)">Kar (bu ürün)</span><span id="on-kar" style="font-weight:700;font-family:var(--mono)">—</span>
-        </div>
-      </div>
-
-      <button class="btn btn-secondary btn-full mb-8" onclick="sepeteEkle()">＋ Sepete Ekle</button>
-
-      <!-- SEPET -->
-      <div id="sepet-wrap" style="display:none;margin-bottom:12px">
-        <div class="card-title mb-8" style="font-size:11px">Sepet</div>
-        <div id="sepet-liste"></div>
-        <div class="ozet-toplam" id="sepet-toplam-wrap">
-          <span class="ozet-toplam-label">Toplam Kar Tahmini</span>
-          <span class="ozet-toplam-val" id="sepet-toplam-kar">—</span>
-        </div>
-      </div>
-
-      <button class="btn btn-primary btn-full" onclick="satislariKaydet()">✓ Satışları Kaydet</button>
     </div>
 
     <!-- TÜM SATIŞLAR -->
@@ -135,12 +174,11 @@
         <span id="satis-sayi" style="font-size:12px;color:var(--t3)"></span>
       </div>
 
-      <!-- Filtre -->
       <div class="filter-tabs" id="filtre-tabs">
         <div class="filter-tab active" onclick="filtreAyarla('bugun')" id="f-bugun">Bugün</div>
         <div class="filter-tab" onclick="filtreAyarla('hafta')" id="f-hafta">Bu Hafta</div>
         <div class="filter-tab" onclick="filtreAyarla('ay')" id="f-ay">Bu Ay</div>
-        <div class="filter-tab" onclick="filtreAyarla('tumü')" id="f-tumu">Tümü</div>
+        <div class="filter-tab" onclick="filtreAyarla('tumu')" id="f-tumu">Tümü</div>
       </div>
 
       <div id="satis-listesi"></div>
@@ -162,7 +200,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
+import { auth, stokDB, listingDB, satislarDB, ayarlarDB, hesapla } from './state.js';
 import { kargoUcreti } from './kargo.js';
 
 if(!auth.oturum()?.token) { window.location.href='./index.html'; }
@@ -170,217 +208,258 @@ if(!auth.oturum()?.token) { window.location.href='./index.html'; }
 // ── DURUM ────────────────────────────────────────────────────────
 const ayarlar = ayarlarDB.oku();
 const bugunStr = new Date().toISOString().slice(0,10);
-document.getElementById('satis-tarih').value = bugunStr;
+document.getElementById('listing-tarih').value = bugunStr;
+document.getElementById('kombo-tarih').value = bugunStr;
 document.getElementById('tarih-goster').textContent = new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long'});
 
 const p = n => (+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
 
 let aktifTip = 'listing';
 let aktifFiltre = 'bugun';
-let sepet = [];          // [{tip, hedefId, ad, adet, gercekFiyat, karSnapshot}]
-let editId = null;       // düzenlenen satış id'si
+let editId = null;
+
+// Stok-combo builder state
+let komboUrunler = []; // [{urunId, ad, alisFiyati, desi, stok, adet}]
 
 // ── TİP SEÇ ──────────────────────────────────────────────────────
 window.tipSec = t => {
   aktifTip = t;
   document.getElementById('tip-tab-listing').classList.toggle('active', t==='listing');
   document.getElementById('tip-tab-stok').classList.toggle('active', t==='stok');
-  document.getElementById('secim-label').textContent = t==='listing' ? 'Listing Seç' : 'Stok Kalemi Seç';
-  doldurDropdown();
-  document.getElementById('satis-onizleme').style.display = 'none';
-  document.getElementById('satis-fiyat').value = '';
+  document.getElementById('panel-listing').style.display = t==='listing' ? '' : 'none';
+  document.getElementById('panel-stok').style.display = t==='stok' ? '' : 'none';
+  if(t==='listing') doldurListingDropdown();
+  if(t==='stok') doldurKomboDropdown();
 };
 
-// ── DROPDOWN DOLDUR ───────────────────────────────────────────────
-function doldurDropdown(){
-  const sel = document.getElementById('satis-hedef');
-  if(aktifTip==='listing'){
-    const liste = listingDB.onaylananlar();
-    if(!liste.length){ sel.innerHTML='<option value="">— Önce Listing sayfasından onaylayın —</option>'; return; }
-    const stokOzeti = id => {
-      const u = listingDB.bul(id);
-      const b = u?.stokBilesenleri||[];
-      if(!b.length) return '?';
-      return Math.min(...b.map(x=>{ const s=stokDB.bul(x.urunId); return s?Math.floor((s.stok||0)/x.adet):0; }));
-    };
-    sel.innerHTML = '<option value="">— Seçin —</option>' + liste.map(x => {
-      const max = stokOzeti(x.id);
-      return `<option value="${x.id}"${max===0?' disabled':''}>${x.ad} | Stok: ${max}</option>`;
-    }).join('');
-  } else {
-    // Stoktan: tüm stok kalemleri
-    const liste = stokDB.hepsini().sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
-    if(!liste.length){ sel.innerHTML='<option value="">— Stok kalemi yok —</option>'; return; }
-    sel.innerHTML = '<option value="">— Seçin —</option>' + liste.map(x => {
-      const stok = x.stok||0;
-      return `<option value="${x.id}"${stok===0?' disabled':''}>${x.ad} | Stok: ${stok}</option>`;
-    }).join('');
+// ═══════════════════════════════════════════════════════════════
+// ── LİSTİNG TAB ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+
+function doldurListingDropdown(){
+  const sel = document.getElementById('listing-hedef');
+  const liste = listingDB.onaylananlar();
+  if(!liste.length){
+    sel.innerHTML = '<option value="">— Önce Listing sayfasından onaylayın —</option>';
+    return;
   }
+  const stokOzeti = id => {
+    const u = listingDB.bul(id);
+    const b = u?.stokBilesenleri||[];
+    if(!b.length) return '?';
+    return Math.min(...b.map(x=>{ const s=stokDB.bul(x.urunId); return s?Math.floor((s.stok||0)/x.adet):0; }));
+  };
+  sel.innerHTML = '<option value="">— Seçin —</option>' + liste.map(x => {
+    const max = stokOzeti(x.id);
+    return `<option value="${x.id}"${max===0?' disabled':''}>${x.ad} | Stok: ${max}</option>`;
+  }).join('');
 }
 
-// ── HEDEF SEÇİLDİ ────────────────────────────────────────────────
-window.hedefSecildi = () => {
-  const id = document.getElementById('satis-hedef').value;
-  if(!id){ document.getElementById('satis-onizleme').style.display='none'; return; }
-  const obj = aktifTip==='stok' ? stokDB.bul(id) : listingDB.bul(id);
-  if(!obj) return;
+window.listingSecildi = () => {
+  const id = document.getElementById('listing-hedef').value;
+  const onizleme = document.getElementById('listing-onizleme');
+  if(!id){ onizleme.style.display='none'; return; }
+
+  const obj = listingDB.bul(id);
+  if(!obj){ onizleme.style.display='none'; return; }
 
   const desiH = obj.desi||1;
   const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
-  const urunB = {...obj, alisFiyati: aktifTip==='stok' ? (obj.alisFiyati||0) : (obj.alisFiyati||0)};
-  const f = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFU);
-  const varsayilanFiyat = obj.satisFiyatiGercek || f?.yuvarlak || 0;
+  const f = hesapla.satisFiyati({...obj}, ayarlar, 1, kargoFU);
 
-  document.getElementById('satis-fiyat').value = varsayilanFiyat || '';
-  document.getElementById('satis-onizleme').style.display = '';
+  const b = obj.stokBilesenleri||[];
+  const maxStok = b.length ? Math.min(...b.map(x=>{ const s=stokDB.bul(x.urunId); return s?Math.floor((s.stok||0)/x.adet):0; })) : 0;
 
-  if(aktifTip==='stok'){
-    document.getElementById('on-stok').textContent = (obj.stok||0) + ' adet mevcut';
-  } else {
-    const b = obj.stokBilesenleri||[];
-    const max = b.length ? Math.min(...b.map(x=>{ const s=stokDB.bul(x.urunId); return s?Math.floor((s.stok||0)/x.adet):0; })) : 0;
-    document.getElementById('on-stok').textContent = max + ' adet yapılabilir';
-  }
-  document.getElementById('on-onerilen').textContent = f ? p(f.yuvarlak) : '—';
-  karOniziGoster();
+  document.getElementById('l-stok').textContent = maxStok + ' adet yapılabilir';
+  document.getElementById('l-onerilen').textContent = f ? p(f.yuvarlak) : '—';
+  document.getElementById('listing-fiyat').value = obj.satisFiyatiGercek || f?.yuvarlak || '';
+  onizleme.style.display = '';
+  listingKarGoster();
 };
 
-// ── KAR ÖNİZLE ───────────────────────────────────────────────────
-window.karOniziGoster = () => {
-  const id = document.getElementById('satis-hedef').value;
-  const fiyat = +document.getElementById('satis-fiyat').value||0;
-  const el = document.getElementById('on-kar');
+window.listingKarGoster = () => {
+  const id = document.getElementById('listing-hedef').value;
+  const fiyat = +document.getElementById('listing-fiyat').value||0;
+  const el = document.getElementById('l-kar');
   if(!id||!fiyat){ el.textContent='—'; el.style.color='var(--t3)'; return; }
-  const obj = aktifTip==='stok' ? stokDB.bul(id) : listingDB.bul(id);
+  const obj = listingDB.bul(id);
   if(!obj) return;
-  const desiH = obj.desi||1;
-  const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
-  const urunB = {...obj};
-  const f = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFU);
+  const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', obj.desi||1);
+  const f = hesapla.satisFiyati({...obj}, ayarlar, 1, kargoFU);
   if(!f) return;
-  const alisTop = obj.alisFiyati||0;
-  const adet = +document.getElementById('satis-adet').value||1;
-  const kar = hesapla.gercekKar(alisTop, fiyat, obj.komisyon||0.04, f.platform, f.kargo);
-  el.textContent = (kar.kararli?'✅ ':' ❌ ') + p(kar.net*adet) + ' (ROI: %'+Math.round(kar.roi*100)+')';
+  const adet = +document.getElementById('listing-adet').value||1;
+  const kar = hesapla.gercekKar(obj.alisFiyati||0, fiyat, obj.komisyon||0.04, f.platform, f.kargo);
+  el.textContent = (kar.kararli?'✅ ':' ❌ ') + p(kar.net*adet) + '  (%'+Math.round(kar.roi*100)+')';
   el.style.color = kar.kararli ? 'var(--green)' : 'var(--red)';
 };
 
-// ── SEPETE EKLE ───────────────────────────────────────────────────
-window.sepeteEkle = () => {
-  const id = document.getElementById('satis-hedef').value;
-  const adet = +document.getElementById('satis-adet').value||1;
-  const fiyat = +document.getElementById('satis-fiyat').value||0;
-  if(!id){ toast('Ürün veya set seçin','error'); return; }
+window.listingKaydet = () => {
+  const id = document.getElementById('listing-hedef').value;
+  const adet = +document.getElementById('listing-adet').value||1;
+  const fiyat = +document.getElementById('listing-fiyat').value||0;
+  const tarih = document.getElementById('listing-tarih').value;
+
+  if(!id){ toast('Listing seçin','error'); return; }
   if(adet<1){ toast('Geçerli adet girin','error'); return; }
   if(!fiyat){ toast('Satış fiyatı girin','error'); return; }
 
-  const obj = aktifTip==='stok' ? stokDB.bul(id) : listingDB.bul(id);
-  if(!obj) return;
-
-  const desiH = obj.desi||1;
-  const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
-  const urunB = {...obj};
-  const f = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFU);
-  const alisTop = obj.alisFiyati||0;
-  let karSnapshot = null;
-  if(f){
-    const kar = hesapla.gercekKar(alisTop, fiyat, obj.komisyon||0.04, f.platform, f.kargo);
-    karSnapshot = {net: kar.net, roi: kar.roi, kararli: kar.kararli};
+  // Stok kontrolü
+  const obj = listingDB.bul(id);
+  if(obj){
+    const b = obj.stokBilesenleri||[];
+    const max = b.length ? Math.min(...b.map(x=>{ const s=stokDB.bul(x.urunId); return s?Math.floor((s.stok||0)/x.adet):0; })) : 0;
+    if(max < adet && !confirm(`"${obj.ad}" için stok yetersiz (max ${max}). Yine de kaydet?`)) return;
   }
 
-  sepet.push({tip:aktifTip, hedefId:id, ad:obj.ad, adet, gercekFiyat:fiyat, karSnapshot});
-  renderSepet();
-
-  // Formu sıfırla
-  document.getElementById('satis-hedef').value='';
-  document.getElementById('satis-adet').value='1';
-  document.getElementById('satis-fiyat').value='';
-  document.getElementById('satis-onizleme').style.display='none';
-  toast(obj.ad+' sepete eklendi','success');
+  satislarDB.ekle([{tip:'listing', hedefId:id, adet, gercekFiyat:fiyat, tarih}]);
+  document.getElementById('listing-hedef').value = '';
+  document.getElementById('listing-adet').value = '1';
+  document.getElementById('listing-fiyat').value = '';
+  document.getElementById('listing-onizleme').style.display = 'none';
+  doldurListingDropdown();
+  renderSatisList(); renderOzet();
+  toast((obj?.ad||'Listing') + ' — ' + adet + ' adet kaydedildi','success');
 };
 
-// ── SEPET RENDER ─────────────────────────────────────────────────
-function renderSepet(){
-  const wrap = document.getElementById('sepet-wrap');
-  const liste = document.getElementById('sepet-liste');
-  if(!sepet.length){ wrap.style.display='none'; return; }
-  wrap.style.display='';
+// ═══════════════════════════════════════════════════════════════
+// ── STOKTAN / KOMBO TAB ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 
-  let toplamKar = 0;
-  liste.innerHTML = sepet.map((item,i) => {
-    const karStr = item.karSnapshot
-      ? (item.karSnapshot.kararli?'✅ ':' ❌ ') + p(item.karSnapshot.net * item.adet) + ' (%'+Math.round(item.karSnapshot.roi*100)+')'
-      : '—';
-    if(item.karSnapshot) toplamKar += item.karSnapshot.net * item.adet;
-    return `<div class="sepet-item">
-      <div class="sepet-item-info">
-        <div class="sepet-item-ad">${item.ad}</div>
-        <div class="sepet-item-meta">${item.adet} adet · ${p(item.gercekFiyat)} · ${item.tip==='set'?'Set':'Listing'}</div>
-        <div class="sepet-item-kar" style="color:${item.karSnapshot?.kararli?'var(--green)':'var(--red)'}">${karStr}</div>
-      </div>
-      <button class="sepet-sil" onclick="sepetSil(${i})">✕</button>
-    </div>`;
-  }).join('');
-
-  document.getElementById('sepet-toplam-kar').textContent = p(toplamKar);
-  document.getElementById('sepet-toplam-kar').style.color = toplamKar>=0 ? 'var(--accent)' : 'var(--red)';
+function doldurKomboDropdown(){
+  const sel = document.getElementById('kombo-stok-sec');
+  const liste = stokDB.hepsini().sort((a,b)=>a.ad.localeCompare(b.ad,'tr'));
+  if(!liste.length){ sel.innerHTML='<option value="">— Stok kalemi yok —</option>'; return; }
+  sel.innerHTML = '<option value="">— Seçin —</option>' + liste.map(x =>
+    `<option value="${x.id}"${(x.stok||0)===0?' disabled':''}>${x.ad} | Stok: ${x.stok||0} | ${p(x.alisFiyati||0)}</option>`
+  ).join('');
 }
 
-window.sepetSil = i => {
-  sepet.splice(i,1);
-  renderSepet();
+window.komboEkle = () => {
+  const id = document.getElementById('kombo-stok-sec').value;
+  const adet = +document.getElementById('kombo-adet').value||1;
+  if(!id){ toast('Stok kalemi seçin','error'); return; }
+  const obj = stokDB.bul(id);
+  if(!obj) return;
+
+  // Aynı ürün varsa adetini artır
+  const mevcut = komboUrunler.find(k=>k.urunId===id);
+  if(mevcut){
+    mevcut.adet += adet;
+  } else {
+    komboUrunler.push({urunId:id, ad:obj.ad, alisFiyati:obj.alisFiyati||0, desi:obj.desi||1, stok:obj.stok||0, adet});
+  }
+
+  document.getElementById('kombo-stok-sec').value = '';
+  document.getElementById('kombo-adet').value = '1';
+  renderKombo();
 };
 
-// ── SATIŞLARI KAYDET ─────────────────────────────────────────────
-window.satislariKaydet = () => {
-  // Sepet boşsa tek ürün modunda kaydet
-  if(!sepet.length){
-    const id = document.getElementById('satis-hedef').value;
-    const adet = +document.getElementById('satis-adet').value||1;
-    const fiyat = +document.getElementById('satis-fiyat').value||0;
-    const tarih = document.getElementById('satis-tarih').value;
-    if(!id){ toast('Ürün seçin veya sepete ekleyin','error'); return; }
-    if(!fiyat){ toast('Satış fiyatı girin','error'); return; }
-    // Stok kontrolü
-    if(!stokKontrolEt([{tip:aktifTip,hedefId:id,adet}])) return;
-    satislarDB.ekle([{tip:aktifTip,hedefId:id,adet,gercekFiyat:fiyat,tarih}]);
-    const obj = aktifTip==='stok'?stokDB.bul(id):listingDB.bul(id);
-    document.getElementById('satis-hedef').value='';
-    document.getElementById('satis-adet').value='1';
-    document.getElementById('satis-fiyat').value='';
-    document.getElementById('satis-onizleme').style.display='none';
-    doldurDropdown(); renderSatisList(); renderOzet();
-    toast((obj?.ad||'Ürün')+' — '+adet+' adet kaydedildi','success');
+window.komboKaldir = i => {
+  komboUrunler.splice(i,1);
+  renderKombo();
+};
+
+function renderKombo(){
+  const listeWrap = document.getElementById('kombo-liste-wrap');
+  const ozet = document.getElementById('kombo-ozet-box');
+  const fiyatWrap = document.getElementById('kombo-fiyat-wrap');
+  const minUyari = document.getElementById('kombo-min-uyari');
+
+  if(!komboUrunler.length){
+    listeWrap.style.display = 'none';
+    ozet.style.display = 'none';
+    fiyatWrap.style.display = 'none';
     return;
   }
 
-  const tarih = document.getElementById('satis-tarih').value;
-  if(!stokKontrolEt(sepet)) return;
-  satislarDB.ekle(sepet.map(item=>({tip:item.tip,hedefId:item.hedefId,adet:item.adet,gercekFiyat:item.gercekFiyat,tarih})));
-  toast(sepet.length+' ürün kaydedildi','success');
-  sepet=[];
-  renderSepet();
-  doldurDropdown(); renderSatisList(); renderOzet();
-};
+  listeWrap.style.display = '';
+  minUyari.style.display = komboUrunler.length < 2 ? '' : 'none';
 
-// ── STOK KONTROLÜ ────────────────────────────────────────────────
-function stokKontrolEt(items){
-  for(const item of items){
-    if(item.tip==='listing'){
-      const obj = listingDB.bul(item.hedefId);
-      if(!obj) continue;
-      const b = obj.stokBilesenleri||[];
-      const max = b.length ? Math.min(...b.map(x=>{ const s=stokDB.bul(x.urunId); return s?Math.floor((s.stok||0)/x.adet):0; })) : 0;
-      if(max < item.adet && !confirm(`"${obj.ad}" için stok yetersiz (max ${max} adet). Yine de kaydet?`)) return false;
-    } else if(item.tip==='stok'){
-      const u = stokDB.bul(item.hedefId);
-      if(u && (u.stok||0) < item.adet && !confirm(`"${u.ad}" için stok yetersiz (mevcut ${u.stok||0} adet). Yine de kaydet?`)) return false;
-    }
+  // Render item list
+  document.getElementById('kombo-liste').innerHTML = komboUrunler.map((it,i) =>
+    `<div class="kombo-item">
+      <div class="kombo-item-info">
+        <div class="kombo-item-ad">${it.ad}</div>
+        <div class="kombo-item-meta">${it.adet} adet · ${p(it.alisFiyati)} birim alış</div>
+      </div>
+      <div class="kombo-item-fiyat">${p(it.alisFiyati*it.adet)}</div>
+      <button class="kombo-sil" onclick="komboKaldir(${i})">✕</button>
+    </div>`
+  ).join('');
+
+  if(komboUrunler.length < 2){
+    ozet.style.display = 'none';
+    fiyatWrap.style.display = 'none';
+    return;
   }
-  return true;
+
+  // Hesapla
+  const alisTop = komboUrunler.reduce((t,it)=>t+it.alisFiyati*it.adet, 0);
+  const maxDesi = Math.max(...komboUrunler.map(it=>it.desi||1));
+  const synth = {alisFiyati:alisTop, desi:maxDesi, komisyon:0.04, hedefKar:ayarlar.hedefKarROI||0.30, ayniGunKargo:ayarlar.ayniGunKargo||false};
+  const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', maxDesi);
+  const f = hesapla.satisFiyati(synth, ayarlar, 1, kargoFU);
+
+  document.getElementById('k-alis').textContent = p(alisTop);
+  document.getElementById('k-hedef').textContent = f ? p(f.yuvarlak) : '—';
+  document.getElementById('k-kargo').textContent = f ? p(f.kargo) : '—';
+  ozet.style.display = '';
+
+  // Önerilen fiyatı doldur (boşsa)
+  const gercekEl = document.getElementById('kombo-gercek-fiyat');
+  if(!gercekEl.value && f) gercekEl.value = f.yuvarlak;
+  fiyatWrap.style.display = '';
+  komboKarGoster();
 }
 
-// ── FİLTRE ───────────────────────────────────────────────────────
+window.komboKarGoster = () => {
+  const fiyat = +document.getElementById('kombo-gercek-fiyat').value||0;
+  const karWrap = document.getElementById('kombo-kar-wrap');
+  if(!fiyat || komboUrunler.length < 2){ karWrap.style.display='none'; return; }
+
+  const alisTop = komboUrunler.reduce((t,it)=>t+it.alisFiyati*it.adet, 0);
+  const maxDesi = Math.max(...komboUrunler.map(it=>it.desi||1));
+  const synth = {alisFiyati:alisTop, desi:maxDesi, komisyon:0.04, hedefKar:ayarlar.hedefKarROI||0.30, ayniGunKargo:ayarlar.ayniGunKargo||false};
+  const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', maxDesi);
+  const f = hesapla.satisFiyati(synth, ayarlar, 1, kargoFU);
+  if(!f){ karWrap.style.display='none'; return; }
+
+  const kar = hesapla.gercekKar(alisTop, fiyat, 0.04, f.platform, f.kargo);
+  document.getElementById('k-kar').textContent = (kar.kararli?'✅ ':' ❌ ') + p(kar.net);
+  document.getElementById('k-kar').style.color = kar.kararli ? 'var(--green)' : 'var(--red)';
+  document.getElementById('k-roi').textContent = '%' + Math.round(kar.roi*100);
+  karWrap.style.display = '';
+};
+
+window.komboKaydet = () => {
+  if(komboUrunler.length < 2){ toast('En az 2 stok ürünü ekleyin','error'); return; }
+  const fiyat = +document.getElementById('kombo-gercek-fiyat').value||0;
+  const tarih = document.getElementById('kombo-tarih').value;
+  if(!fiyat){ toast('Satış fiyatı girin','error'); return; }
+
+  // Stok kontrolü
+  for(const it of komboUrunler){
+    const u = stokDB.bul(it.urunId);
+    if(u && (u.stok||0) < it.adet && !confirm(`"${it.ad}" için stok yetersiz (mevcut ${u.stok||0}). Yine de kaydet?`)) return;
+  }
+
+  const stokKombo = komboUrunler.map(it=>({urunId:it.urunId, ad:it.ad, alisFiyati:it.alisFiyati, desi:it.desi, adet:it.adet}));
+  satislarDB.ekle([{tip:'stok-combo', hedefId:null, stokKombo, adet:1, gercekFiyat:fiyat, tarih}]);
+
+  // Sıfırla
+  komboUrunler = [];
+  document.getElementById('kombo-gercek-fiyat').value = '';
+  document.getElementById('kombo-kar-wrap').style.display = 'none';
+  renderKombo();
+  doldurKomboDropdown();
+  renderSatisList(); renderOzet();
+  toast('Kombo satış kaydedildi','success');
+};
+
+// ═══════════════════════════════════════════════════════════════
+// ── FİLTRE ───────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+
 window.filtreAyarla = f => {
   aktifFiltre = f;
   ['bugun','hafta','ay','tumu'].forEach(k => {
@@ -394,83 +473,121 @@ function filtreliSatislar(){
   const bugun = new Date().toISOString().slice(0,10);
   if(aktifFiltre==='bugun') return hepsi.filter(s=>s.tarih===bugun);
   if(aktifFiltre==='hafta'){
-    const d = new Date(); d.setDate(d.getDate()-6);
-    const bas = d.toISOString().slice(0,10);
-    return hepsi.filter(s=>s.tarih>=bas);
+    const d=new Date(); d.setDate(d.getDate()-6);
+    return hepsi.filter(s=>s.tarih>=d.toISOString().slice(0,10));
   }
   if(aktifFiltre==='ay'){
-    const bas = bugun.slice(0,7)+'-01';
-    return hepsi.filter(s=>s.tarih>=bas);
+    return hepsi.filter(s=>s.tarih>=bugun.slice(0,7)+'-01');
   }
-  return hepsi; // tümü
+  return hepsi;
 }
 
-// ── ÖZET ─────────────────────────────────────────────────────────
+// ─── KAR HESAPLA (snapshot varsa kullan) ─────────────────────
+function hesaplaKar(s){
+  if(s.snapshot) return s.snapshot.netKar;
+  if(s.tip==='stok-combo'){
+    const alisTop=(s.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
+    const maxDesi=Math.max(...(s.stokKombo||[]).map(it=>it.desi||1),1);
+    const synth={alisFiyati:alisTop,desi:maxDesi,komisyon:0.04,hedefKar:ayarlar.hedefKarROI||0.30,ayniGunKargo:ayarlar.ayniGunKargo||false};
+    const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',maxDesi);
+    const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
+    if(!f)return 0;
+    return hesapla.gercekKar(alisTop,s.gercekFiyat||f.yuvarlak,0.04,f.platform,f.kargo).net;
+  }
+  const obj = s.tip==='stok' ? stokDB.bul(s.hedefId) : listingDB.bul(s.hedefId);
+  if(!obj) return 0;
+  const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',obj.desi||1);
+  const f=hesapla.satisFiyati({...obj},ayarlar,1,kargoFU);
+  if(!f) return 0;
+  return hesapla.gercekKar(obj.alisFiyati||0,s.gercekFiyat||f.yuvarlak,obj.komisyon||0.04,f.platform,f.kargo).net;
+}
+
+function hesaplaRoi(s){
+  if(s.snapshot) return s.snapshot.roi;
+  if(s.tip==='stok-combo'){
+    const alisTop=(s.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
+    const maxDesi=Math.max(...(s.stokKombo||[]).map(it=>it.desi||1),1);
+    const synth={alisFiyati:alisTop,desi:maxDesi,komisyon:0.04,hedefKar:ayarlar.hedefKarROI||0.30,ayniGunKargo:ayarlar.ayniGunKargo||false};
+    const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',maxDesi);
+    const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
+    if(!f)return 0;
+    return hesapla.gercekKar(alisTop,s.gercekFiyat||f.yuvarlak,0.04,f.platform,f.kargo).roi;
+  }
+  const obj = s.tip==='stok' ? stokDB.bul(s.hedefId) : listingDB.bul(s.hedefId);
+  if(!obj) return 0;
+  const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',obj.desi||1);
+  const f=hesapla.satisFiyati({...obj},ayarlar,1,kargoFU);
+  if(!f)return 0;
+  return hesapla.gercekKar(obj.alisFiyati||0,s.gercekFiyat||f.yuvarlak,obj.komisyon||0.04,f.platform,f.kargo).roi;
+}
+
+// ─── SATIŞ ADI ───────────────────────────────────────────────
+function satisAdi(s){
+  if(s.tip==='stok-combo'){
+    const urunler = (s.stokKombo||[]).map(it=>it.ad).join(' + ');
+    return urunler || 'Kombo';
+  }
+  if(s.tip==='stok') return stokDB.bul(s.hedefId)?.ad || '?';
+  return listingDB.bul(s.hedefId)?.ad || '?';
+}
+
+function satisIkonu(s){
+  if(s.tip==='stok-combo') return '📦';
+  if(s.tip==='stok') return '📦';
+  if(s.tip==='set') return '🎁';
+  return '🛍️';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ── ÖZET ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+
 function renderOzet(){
   const satislar = filtreliSatislar();
   let adet = 0, kar = 0;
-  satislar.forEach(s => {
-    adet += s.adet;
-    kar += hesaplaKar(s) * s.adet;
-  });
+  satislar.forEach(s=>{ adet+=s.adet; kar+=hesaplaKar(s)*s.adet; });
   document.getElementById('ozet-adet').textContent = adet;
   document.getElementById('ozet-kar').textContent = p(kar);
   document.getElementById('ozet-kar').style.color = kar>=0 ? 'var(--green)' : 'var(--red)';
 }
 
-// ── KAR HESAPLA (snapshot varsa kullan) ──────────────────────────
-function _getObj(s){ return s.tip==='stok' ? stokDB.bul(s.hedefId) : listingDB.bul(s.hedefId); }
-function _getAlisTop(s, obj){ return obj?.alisFiyati||0; }
+// ═══════════════════════════════════════════════════════════════
+// ── SATIŞ LİSTESİ ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
 
-function hesaplaKar(s){
-  if(s.snapshot) return s.snapshot.netKar;
-  const obj = _getObj(s); if(!obj) return 0;
-  const alisTop = _getAlisTop(s, obj);
-  const f = hesapla.satisFiyati({...obj}, ayarlar, 1);
-  if(!f) return 0;
-  return hesapla.gercekKar(alisTop, s.gercekFiyat||f.yuvarlak, obj.komisyon||0.04, f.platform, f.kargo).net;
-}
-
-function hesaplaRoi(s){
-  if(s.snapshot) return s.snapshot.roi;
-  const obj = _getObj(s); if(!obj) return 0;
-  const alisTop = _getAlisTop(s, obj);
-  const f = hesapla.satisFiyati({...obj}, ayarlar, 1);
-  if(!f) return 0;
-  return hesapla.gercekKar(alisTop, s.gercekFiyat||f.yuvarlak, obj.komisyon||0.04, f.platform, f.kargo).roi;
-}
-
-// ── SATIŞ LİSTESİ ────────────────────────────────────────────────
 function renderSatisList(){
   const satislar = filtreliSatislar();
   document.getElementById('satis-sayi').textContent = satislar.length + ' kayıt';
   const el = document.getElementById('satis-listesi');
   if(!satislar.length){
     el.innerHTML='<div class="empty-state" style="padding:20px"><div class="empty-icon">🛒</div><div class="empty-title">Bu dönemde satış yok</div></div>';
-    return;
+    renderOzet(); return;
   }
 
-  // Tarihe göre grupla
   const gruplar = {};
   satislar.forEach(s=>{ if(!gruplar[s.tarih]) gruplar[s.tarih]=[]; gruplar[s.tarih].push(s); });
 
   el.innerHTML = Object.entries(gruplar).map(([tarih,gunSatislar]) => {
-    const gunKar = gunSatislar.reduce((t,s)=>t+hesaplaKar(s)*s.adet, 0);
+    const gunKar = gunSatislar.reduce((t,s)=>t+hesaplaKar(s)*s.adet,0);
+
     const rows = gunSatislar.map(s => {
-      const obj = _getObj(s);
-      if(!obj) return '';
+      const ad = satisAdi(s);
       const netKar = hesaplaKar(s);
       const roi = hesaplaRoi(s);
       const toplamKar = netKar * s.adet;
       const kararli = netKar >= 0;
       const fiyat = s.gercekFiyat || 0;
       const snapshotBadge = s.snapshot ? '' : '<span style="font-size:9px;color:var(--t3);margin-left:4px">(anlık)</span>';
+      const komboDetail = s.tip==='stok-combo' && (s.stokKombo||[]).length
+        ? `<div style="font-size:10px;color:var(--t3);margin-top:3px">${(s.stokKombo).map(it=>`${it.ad} ×${it.adet}`).join(' + ')}</div>` : '';
+
       return `<div class="satis-row" id="srow-${s.id}">
         <div class="satis-row-header">
-          <div class="satis-avatar">${s.tip==='stok'?'📦':s.tip==='set'?'🎁':'🛍️'}</div>
+          <div class="satis-avatar">${satisIkonu(s)}</div>
           <div class="satis-info">
-            <div class="satis-ad">${obj.ad}${snapshotBadge}</div>
+            <div class="satis-ad">${ad}${snapshotBadge}</div>
             <div class="satis-meta">${s.adet} adet · ${p(fiyat)} · ${s.tarih}</div>
+            ${komboDetail}
           </div>
           <div class="satis-kar">
             <div class="satis-kar-val" style="color:${kararli?'var(--green)':'var(--red)'}">${p(toplamKar)}</div>
@@ -485,7 +602,7 @@ function renderSatisList(){
           <div class="form-row">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Adet</label>
-              <input class="form-input" type="number" id="edit-adet-${s.id}" value="${s.adet}" min="1">
+              <input class="form-input" type="number" id="edit-adet-${s.id}" value="${s.adet}" min="1"${s.tip==='stok-combo'?' disabled title="Kombo satışlar 1 adet olarak kaydedilir"':''}>
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Fiyat (₺)</label>
@@ -513,9 +630,11 @@ function renderSatisList(){
   renderOzet();
 }
 
-// ── DÜZENLEME ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// ── DÜZENLEME ────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+
 window.editAc = id => {
-  // Açık olanı kapat
   if(editId && editId!==id) editKapat(editId);
   editId = id;
   document.getElementById('edit-'+id).style.display='';
@@ -534,41 +653,43 @@ window.editKaydet = id => {
   const ok = satislarDB.guncelle(id, {adet:yeniAdet, gercekFiyat:yeniFiyat});
   if(ok){
     editKapat(id);
-    doldurDropdown(); renderSatisList(); renderOzet();
+    doldurListingDropdown(); renderSatisList(); renderOzet();
     toast('Satış güncellendi','success');
   } else {
     toast('Satış bulunamadı','error');
   }
 };
 
-// ── İPTAL ────────────────────────────────────────────────────────
 window.satisIptal = id => {
   const k = satislarDB.hepsini().find(s=>s.id===id);
   if(!k) return;
-  const obj = _getObj(k);
-  if(!confirm('"'+(obj?.ad||'Satış')+'" satışını iptal etmek istiyor musunuz? Stoklar geri yüklenecek.')) return;
+  const ad = satisAdi(k);
+  if(!confirm('"'+ad+'" satışını iptal etmek istiyor musunuz? Stoklar geri yüklenecek.')) return;
   satislarDB.sil(id);
-  doldurDropdown(); renderSatisList(); renderOzet();
+  doldurListingDropdown(); doldurKomboDropdown();
+  renderSatisList(); renderOzet();
   toast('Satış iptal edildi, stoklar güncellendi','success');
 };
 
-// ── EXCEL ────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// ── EXCEL ────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+
 window.excelIndir = async () => {
   const { utils, writeFile } = await import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm');
   const data = satislarDB.hepsini().sort((a,b)=>b.tarih.localeCompare(a.tarih)).map(s => {
-    const obj = _getObj(s);
     const netKar = hesaplaKar(s);
     const roi = hesaplaRoi(s);
     return {
       'Tarih': s.tarih,
-      'Tip': s.tip==='set'?'Set':'Ürün',
-      'Ad': obj?.ad||'?',
+      'Tip': s.tip==='stok-combo'?'Stok Kombo':s.tip==='stok'?'Stok':'Listing',
+      'Ad': satisAdi(s),
       'Adet': s.adet,
       'Satış Fiyatı': s.gercekFiyat||0,
       'Birim Net Kar': netKar.toFixed(2),
       'Toplam Net Kar': (netKar*s.adet).toFixed(2),
       'ROI %': Math.round(roi*100),
-      'Snapshot': s.snapshot?'Evet':'Hayır (anlık hesap)',
+      'Snapshot': s.snapshot?'Evet':'Hayır (anlık)',
     };
   });
   const ws = utils.json_to_sheet(data);
@@ -578,7 +699,7 @@ window.excelIndir = async () => {
   toast('Excel indirildi','success');
 };
 
-// ── TOAST ────────────────────────────────────────────────────────
+// ── TOAST ────────────────────────────────────────────────────
 window.toast = (msg, tip='info') => {
   const c = document.getElementById('toastCont');
   const el = document.createElement('div');
@@ -588,15 +709,17 @@ window.toast = (msg, tip='info') => {
   setTimeout(()=>el.remove(), 3000);
 };
 
-// ── REALTIME GÜNCELLEME ──────────────────────────────────────────
+// ── REALTIME ─────────────────────────────────────────────────
 window.addEventListener('tsx_render', () => {
-  doldurDropdown();
+  doldurListingDropdown();
+  doldurKomboDropdown();
   renderSatisList();
   renderOzet();
 });
 
-// ── BAŞLAT ───────────────────────────────────────────────────────
-doldurDropdown();
+// ── BAŞLAT ───────────────────────────────────────────────────
+doldurListingDropdown();
+doldurKomboDropdown();
 renderSatisList();
 renderOzet();
 </script>

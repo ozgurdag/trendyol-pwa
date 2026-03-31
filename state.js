@@ -191,6 +191,7 @@ export async function supabasedenYukle(){
         adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
         tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
         snapshot: localMap[s.id]?.snapshot||null,
+        stokKombo: localMap[s.id]?.stokKombo||null,
       })));
     }}
 
@@ -437,6 +438,7 @@ export const satislarDB = {
       // Böylece sonraki ayar değişiklikleri geçmiş satışları etkilemez
       const obj = k.tip==='set' ? setlerDB.bul(k.hedefId)
                : k.tip==='stok' ? stokDB.bul(k.hedefId)
+               : k.tip==='stok-combo' ? null
                : listingDB.bul(k.hedefId);
       let snapshot = null;
       if(obj){
@@ -457,14 +459,29 @@ export const satislarDB = {
             komisyon: obj.komisyon||0.04,
             platform: f.platform,
             kargo: f.kargo,
-            netKar: kar.net,   // birim başına kar
+            netKar: kar.net,
             roi: kar.roi,
           };
         }
       }
+      if(k.tip==='stok-combo' && (k.stokKombo||[]).length){
+        const alisTop=(k.stokKombo).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
+        const maxDesi=Math.max(...k.stokKombo.map(it=>it.desi||1));
+        const synth={alisFiyati:alisTop,desi:maxDesi,komisyon:0.04,
+          hedefKar:ayarlar.hedefKarROI||0.30,ayniGunKargo:ayarlar.ayniGunKargo||false};
+        const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',maxDesi);
+        const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
+        if(f){
+          const gercekFiyat=k.gercekFiyat||f.yuvarlak;
+          const kar=hesapla.gercekKar(alisTop,gercekFiyat,0.04,f.platform,f.kargo);
+          snapshot={alisMaliyeti:alisTop,komisyon:0.04,platform:f.platform,
+            kargo:f.kargo,netKar:kar.net,roi:kar.roi};
+        }
+      }
       return {
-        id:uid(), tip:k.tip||'listing', hedefId:k.hedefId,
+        id:uid(), tip:k.tip||'listing', hedefId:k.hedefId||null,
         adet:k.adet, gercekFiyat:k.gercekFiyat,
+        stokKombo:k.stokKombo||null,
         tarih:k.tarih||today(), kayitTarih:Date.now(),
         snapshot,
       };
@@ -488,6 +505,11 @@ export const satislarDB = {
       } else if(k.tip==='stok'){
         const u=stokDB.bul(k.hedefId);
         if(u) stokDB.guncelle(k.hedefId,{stok:Math.max(0,(u.stok||0)-k.adet)});
+      } else if(k.tip==='stok-combo'){
+        (k.stokKombo||[]).forEach(it=>{
+          const u=stokDB.bul(it.urunId);
+          if(u) stokDB.guncelle(it.urunId,{stok:Math.max(0,(u.stok||0)-it.adet*k.adet)});
+        });
       }
     });
 
@@ -516,6 +538,11 @@ export const satislarDB = {
       } else if(k.tip==='stok'){
         const u=stokDB.bul(k.hedefId);
         if(u) stokDB.guncelle(k.hedefId,{stok:(u.stok||0)+k.adet});
+      } else if(k.tip==='stok-combo'){
+        (k.stokKombo||[]).forEach(it=>{
+          const u=stokDB.bul(it.urunId);
+          if(u) stokDB.guncelle(it.urunId,{stok:(u.stok||0)+it.adet*k.adet});
+        });
       }
       set(DB_KEYS.satislar,this.hepsini().filter(s=>s.id!==id));
       sbDelete('satislar',id).then(()=>broadcastGonder());
@@ -548,6 +575,11 @@ export const satislarDB = {
       } else if(k.tip==='stok'){
         const u=stokDB.bul(k.hedefId);
         if(u) stokDB.guncelle(k.hedefId,{stok:Math.max(0,(u.stok||0)-adetFarki)});
+      } else if(k.tip==='stok-combo'){
+        (k.stokKombo||[]).forEach(it=>{
+          const u=stokDB.bul(it.urunId);
+          if(u) stokDB.guncelle(it.urunId,{stok:Math.max(0,(u.stok||0)-it.adet*adetFarki)});
+        });
       }
     }
 

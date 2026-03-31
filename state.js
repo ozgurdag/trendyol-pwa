@@ -1,4 +1,5 @@
 /* ── SATIŞ YÖNETİM · state.js ────────────────────────────────── */
+import { kargoUcreti } from './kargo.js';
 
 /* ── TİP TANIMLARI ─────────────────────────────────────────────
    stokDB    → Fiziksel stok kalemleri (stok_kalemleri tablosu)
@@ -102,13 +103,16 @@ async function sbDelete(tablo, id){
 
 /* ── REALTIME ── */
 let _ws = null;
+let _wsReconnectTimer = null;
 function realtimeBaglat(){
   if(_ws?.readyState===1) return;
+  // Eski bağlantıyı temizle (memory leak önlemi)
+  if(_ws){ try{ _ws.onclose=null; _ws.onerror=null; _ws.onmessage=null; _ws.close(); }catch(e){} _ws=null; }
   const o = auth.oturum(); if(!o?.token) return;
   try {
     const url = SB_URL.replace('https','wss')+'/realtime/v1/websocket?apikey='+SB_KEY+'&vsn=1.0.0';
     _ws = new WebSocket(url);
-    _ws.onopen = ()=>_ws.send(JSON.stringify({topic:'realtime:tsx',event:'phx_join',payload:{config:{broadcast:{self:false}}},ref:'1'}));
+    _ws.onopen = ()=>{ try{ _ws.send(JSON.stringify({topic:'realtime:tsx',event:'phx_join',payload:{config:{broadcast:{self:false}}},ref:'1'})); }catch(e){} };
     _ws.onmessage = async e=>{
       try {
         const msg=JSON.parse(e.data);
@@ -119,8 +123,8 @@ function realtimeBaglat(){
         }
       } catch(e){}
     };
-    _ws.onclose = ()=>{ _ws=null; setTimeout(realtimeBaglat,5000); };
-    _ws.onerror = ()=>{ _ws=null; };
+    _ws.onclose = ()=>{ _ws=null; clearTimeout(_wsReconnectTimer); _wsReconnectTimer=setTimeout(realtimeBaglat,5000); };
+    _ws.onerror = ()=>{ if(_ws){ try{ _ws.close(); }catch(e){} _ws=null; } };
   } catch(e){}
 }
 async function broadcastGonder(){
@@ -178,11 +182,17 @@ export async function supabasedenYukle(){
       tarih:s.created_at?.slice(0,10),
     }))); }
 
-    if(rSt.ok){ const d=await rSt.json(); if(d?.length) set(DB_KEYS.satislar, d.map(s=>({
-      id:s.id, tip:s.tip||'listing', hedefId:s.hedef_id,
-      adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
-      tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
-    }))); }
+    if(rSt.ok){ const d=await rSt.json(); if(d?.length) {
+      // Supabase'den gelen veriler üzerine yerel snapshot'ları koru
+      const localSatislar = get(DB_KEYS.satislar)||[];
+      const localMap = Object.fromEntries(localSatislar.map(s=>[s.id,s]));
+      set(DB_KEYS.satislar, d.map(s=>({
+        id:s.id, tip:s.tip||'listing', hedefId:s.hedef_id,
+        adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
+        tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
+        snapshot: localMap[s.id]?.snapshot||null,
+      })));
+    }}
 
     localStorage.setItem('tsx_son_sync', Date.now().toString());
     return true;
@@ -421,11 +431,40 @@ export const satislarDB = {
   hepsini(){ return get(DB_KEYS.satislar)||[]; },
 
   ekle(kayitlar){
-    const yeniler=kayitlar.map(k=>({
-      id:uid(), tip:k.tip||'listing', hedefId:k.hedefId,
-      adet:k.adet, gercekFiyat:k.gercekFiyat,
-      tarih:k.tarih||today(), kayitTarih:Date.now()
-    }));
+    const ayarlar = ayarlarDB.oku();
+    const yeniler=kayitlar.map(k=>{
+      // Satış anındaki maliyet/komisyon/kargo snapshot'ı kaydet
+      // Böylece sonraki ayar değişiklikleri geçmiş satışları etkilemez
+      const obj = k.tip==='set' ? setlerDB.bul(k.hedefId) : listingDB.bul(k.hedefId);
+      let snapshot = null;
+      if(obj){
+        const urunB = k.tip==='set'
+          ? {alisFiyati:obj.alisMaliyeti||0, desi:obj.desi||2, komisyon:obj.komisyon||0.04, ayniGunKargo:obj.ayniGunKargo||false, hedefKar:obj.hedefKar||0.30}
+          : {...obj};
+        const desiH = obj.desi||(k.tip==='set'?2:1);
+        const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
+        const f = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFU);
+        const alisTop = k.tip==='listing' ? (obj.alisFiyati||0) : (obj.alisMaliyeti||0);
+        if(f){
+          const gercekFiyat = k.gercekFiyat || f.yuvarlak;
+          const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, f.platform, f.kargo);
+          snapshot = {
+            alisMaliyeti: alisTop,
+            komisyon: obj.komisyon||0.04,
+            platform: f.platform,
+            kargo: f.kargo,
+            netKar: kar.net,   // birim başına kar
+            roi: kar.roi,
+          };
+        }
+      }
+      return {
+        id:uid(), tip:k.tip||'listing', hedefId:k.hedefId,
+        adet:k.adet, gercekFiyat:k.gercekFiyat,
+        tarih:k.tarih||today(), kayitTarih:Date.now(),
+        snapshot,
+      };
+    });
     set(DB_KEYS.satislar,[...this.hepsini(),...yeniler]);
 
     // Stok düş
@@ -471,6 +510,50 @@ export const satislarDB = {
       set(DB_KEYS.satislar,this.hepsini().filter(s=>s.id!==id));
       sbDelete('satislar',id).then(()=>broadcastGonder());
     }
+  },
+
+  guncelle(id, degisiklik){
+    const mevcut = this.hepsini();
+    const k = mevcut.find(s=>s.id===id);
+    if(!k) return false;
+
+    const eskiAdet = k.adet;
+    const yeniAdet = degisiklik.adet!==undefined ? +degisiklik.adet : eskiAdet;
+    const adetFarki = yeniAdet - eskiAdet;
+
+    // Stok farkını güncelle
+    if(adetFarki!==0){
+      if(k.tip==='listing'){
+        const l=listingDB.bul(k.hedefId);
+        if(l)(l.stokBilesenleri||[]).forEach(b=>{
+          const u=stokDB.bul(b.urunId);
+          if(u) stokDB.guncelle(b.urunId,{stok:Math.max(0,(u.stok||0)-b.adet*adetFarki)});
+        });
+      } else if(k.tip==='set'){
+        const s=setlerDB.bul(k.hedefId);
+        if(s)(s.icindekiler||[]).forEach(ic=>{
+          const u=stokDB.bul(ic.urunId);
+          if(u) stokDB.guncelle(ic.urunId,{stok:Math.max(0,(u.stok||0)-ic.adet*adetFarki)});
+        });
+      }
+    }
+
+    // Snapshot'ı yeniden hesapla (fiyat değiştiyse)
+    let yeniSnapshot = k.snapshot;
+    if(k.snapshot){
+      const yeniFiyat = degisiklik.gercekFiyat!==undefined ? +degisiklik.gercekFiyat : k.gercekFiyat;
+      const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, k.snapshot.platform, k.snapshot.kargo);
+      yeniSnapshot = {...k.snapshot, netKar:yeniKar.net, roi:yeniKar.roi};
+    }
+
+    const guncellendi = {...k, ...degisiklik, adet:yeniAdet, snapshot:yeniSnapshot};
+    set(DB_KEYS.satislar, mevcut.map(s=>s.id===id?guncellendi:s));
+
+    const v={};
+    if(degisiklik.adet!==undefined)        v.adet=yeniAdet;
+    if(degisiklik.gercekFiyat!==undefined) v.gercek_fiyat=+degisiklik.gercekFiyat;
+    if(Object.keys(v).length) sbPatch('satislar',id,v).then(()=>broadcastGonder());
+    return true;
   },
 
   guneBGore(t){ return this.hepsini().filter(s=>s.tarih===t); },

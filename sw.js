@@ -2,19 +2,19 @@
    Offline çalışma için tüm statik dosyaları cache'ler
 ──────────────────────────────────────────────────────────────── */
 
-const CACHE_NAME = 'satis-yonetim-v14';
+const CACHE_NAME = 'satis-yonetim-v15';
 const CACHE_FILES = [
-  '/',
-  '/index.html',
-  '/app.css',
-  '/state.js',
-  '/manifest.json',
-  '/dashboard.html',
-  '/fiyatlar.html',
-  '/satis-giris.html',
-  '/stok.html',
-  '/alis-hesap.html',
-  '/ayarlar.html',
+  './',
+  './index.html',
+  './app.css',
+  './state.js',
+  './manifest.json',
+  './dashboard.html',
+  './fiyatlar.html',
+  './satis-giris.html',
+  './stok.html',
+  './alis-hesap.html',
+  './ayarlar.html',
 ];
 
 self.addEventListener('install', e => {

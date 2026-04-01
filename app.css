@@ -858,3 +858,106 @@ img { display: block; max-width: 100%; }
 .urun-kart-actions {
   display:flex; gap:6px;
 }
+
+
+/* ¦¦ MASAÜSTÜ (GENÝÞ EKRAN) GÖRÜNÜMÜ ¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦ */
+@media (min-width: 900px) {
+  body { display: flex; justify-content: center; }
+  .app-shell {
+    max-width: 1400px;
+    width: 100%;
+    margin: 0;
+    padding-left: 260px;
+  }
+  .topbar {
+    width: calc(100% - 260px);
+    left: 260px;
+    padding: 0 40px;
+    height: 72px;
+  }
+  .topbar-title { font-size: 20px; letter-spacing: -0.5px; }
+  .page-content { padding: 40px 40px 64px 40px; }
+  .bottom-nav {
+    position: fixed;
+    top: 0; left: 0;
+    width: 260px;
+    height: 100dvh;
+    transform: none;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 32px 20px;
+    border-top: none;
+    border-right: 1px solid var(--border);
+    background: var(--bg1);
+    gap: 12px;
+    box-shadow: 2px 0 24px rgba(0,0,0,.03);
+  }
+  .nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 16px 20px;
+    border-radius: var(--r-lg);
+    gap: 16px;
+    color: var(--t2);
+    transition: all .25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .nav-item:hover {
+    background: var(--bg3);
+    color: var(--t1);
+    transform: translateX(6px);
+  }
+  .nav-item.active {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+    color: #fff;
+    box-shadow: var(--shadow-accent);
+    transform: translateX(8px);
+  }
+  .nav-item.active svg { filter: drop-shadow(0 0 10px rgba(255,107,43,.5)); }
+  .nav-item:active svg { transform: none; }
+  .nav-item svg { width: 22px; height: 22px; }
+  .nav-label { font-size: 15px; font-weight: 600; letter-spacing: 0; margin-top: 0; }
+  .nav-badge {
+    position: static;
+    margin-left: auto;
+    width: auto; height: 22px;
+    min-width: 22px;
+    font-size: 11px;
+    padding: 0 8px;
+    border-radius: 11px;
+    top: auto; right: auto;
+  }
+  .modal-sheet {
+    max-width: 600px;
+    border-radius: 24px;
+    top: 50%;
+    transform: translateY(-50%) translateY(20px) scale(0.95);
+    margin: 0 auto;
+    height: auto;
+    max-height: 85vh;
+    box-shadow: var(--shadow-lg);
+  }
+  .modal-overlay.open .modal-sheet { transform: translateY(-50%) scale(1); }
+  .modal-handle { display: none; }
+  .card { padding: 32px; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.04); }
+  .card-title { font-size: 15px; margin-bottom: 24px; }
+  .urun-row { padding: 20px 0; gap: 24px; }
+  .urun-avatar { width: 64px; height: 64px; font-size: 28px; border-radius: 18px; }
+  .urun-ad { font-size: 16px; white-space: normal; }
+  .urun-fiyat-ana { font-size: 19px; }
+  .stat-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 24px; }
+  .stat-card { padding: 28px 24px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,.03); }
+  .stat-value { font-size: 40px; margin-top: 16px; }
+  .fin-tabs, .tabs {
+    display: flex; flex-wrap: wrap; background: var(--bg2);
+    border: 1px solid var(--border); padding: 8px; border-radius: var(--r-lg);
+  }
+  .fin-tab { flex: 1 1 auto !important; text-align: center; padding: 14px 24px !important; font-size: 14px !important; }
+  .tab { font-size: 14px; padding: 14px 24px; }
+  .fab { right: 48px; bottom: 48px; width: 64px; height: 64px; font-size: 28px; border-radius: 20px; box-shadow: 0 8px 32px rgba(249,115,22,.4); }
+  .form-inline { display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: end; }
+  .form-inline .form-group { margin-top: 16px !important; margin-bottom: 0; }
+  .flex-wrap { flex-wrap: wrap; }
+}
+

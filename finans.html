@@ -103,8 +103,14 @@
         <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('gelen_fatura')">✓ Gelen Fatura Kaydet</button>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Gelen Faturalar</div>
-          <span id="gelen-sayi" style="font-size:12px;color:var(--t3)"></span></div>
+        <div class="card-header" style="flex-wrap:wrap;gap:8px">
+          <div class="card-title">Gelen Faturalar</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+            <select class="form-select" id="filtre-gelen" onchange="renderListe('gelen_fatura')" style="font-size:12px;padding:6px 10px;min-width:130px">
+            </select>
+            <span id="gelen-sayi" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>
+          </div>
+        </div>
         <div id="liste-gelen"></div>
       </div>
     </div>
@@ -151,8 +157,14 @@
         <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('giden_fatura')">✓ Giden Fatura Kaydet</button>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Giden Faturalar</div>
-          <span id="giden-sayi" style="font-size:12px;color:var(--t3)"></span></div>
+        <div class="card-header" style="flex-wrap:wrap;gap:8px">
+          <div class="card-title">Giden Faturalar</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+            <select class="form-select" id="filtre-giden" onchange="renderListe('giden_fatura')" style="font-size:12px;padding:6px 10px;min-width:130px">
+            </select>
+            <span id="giden-sayi" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>
+          </div>
+        </div>
         <div id="liste-giden"></div>
       </div>
     </div>
@@ -199,8 +211,14 @@
         <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('masraf')">✓ Masraf Kaydet</button>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Masraflar</div>
-          <span id="masraf-sayi" style="font-size:12px;color:var(--t3)"></span></div>
+        <div class="card-header" style="flex-wrap:wrap;gap:8px">
+          <div class="card-title">Masraflar</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+            <select class="form-select" id="filtre-masraf" onchange="renderListe('masraf')" style="font-size:12px;padding:6px 10px;min-width:130px">
+            </select>
+            <span id="masraf-sayi" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>
+          </div>
+        </div>
         <div id="liste-masraf"></div>
       </div>
     </div>
@@ -262,6 +280,29 @@ const pInt = n => (+n).toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFr
   const el=document.getElementById(id); if(el) el.value=bugunStr;
 });
 document.getElementById('rapor-ay').value = buAy;
+
+// ── AY FİLTRELERİNİ DOLDUR ─────────────────────────────────
+function filtreleriDoldur() {
+  const ayAdlari = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+  // Son 12 ayı oluştur
+  const aylar = [];
+  const simdi = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(simdi.getFullYear(), simdi.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = `${ayAdlari[d.getMonth()]} ${d.getFullYear()}`;
+    aylar.push({val, label});
+  }
+  
+  ['filtre-gelen','filtre-giden','filtre-masraf'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = `<option value="">📅 Tümü</option>` + 
+      aylar.map(a => `<option value="${a.val}"${a.val===buAy?' selected':''}>${a.label}</option>`).join('');
+  });
+}
+filtreleriDoldur();
+
 
 // ═══════════════════════════════════════════════════════════════
 // ── SEKME YÖNETİMİ ──────────────────────────────────────────
@@ -550,13 +591,22 @@ window.faturaKaydet = (tip) => {
 // ═══════════════════════════════════════════════════════════════
 function renderListe(tip) {
   const prefix = tip.replace('_fatura','');
-  const faturalar = faturalarDB.tipGore(tip).sort((a,b) => b.tarih?.localeCompare(a.tarih));
+  const filtreEl = document.getElementById('filtre-'+prefix);
+  const seciliAy = filtreEl?.value || '';
+  
+  let faturalar = faturalarDB.tipGore(tip).sort((a,b) => b.tarih?.localeCompare(a.tarih));
+  
+  // Ay filtresini uygula
+  if (seciliAy) {
+    faturalar = faturalar.filter(f => f.tarih?.startsWith(seciliAy));
+  }
+  
   const listeEl = document.getElementById('liste-'+prefix);
   const sayiEl = document.getElementById(prefix+'-sayi');
   sayiEl.textContent = faturalar.length + ' kayıt';
 
   if (!faturalar.length) {
-    listeEl.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px;font-size:13px">Henüz kayıt yok</div>';
+    listeEl.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px;font-size:13px">Bu dönemde kayıt yok</div>';
     return;
   }
 

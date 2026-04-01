@@ -472,6 +472,31 @@ window.dosyaIsle = async (files, tip) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// ── MEVCUT FATURAYA DOSYA EKLE ─────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+window.faturayadosyaEkle = async (faturaId, tip, inputEl) => {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const label = inputEl.parentElement;
+  label.textContent = '⏳ Yükleniyor...';
+  try {
+    const dosyaAdi = `${tip}/${Date.now()}_${file.name}`;
+    const url = await sbStorageUpload('faturalar', dosyaAdi, file);
+    if (url) {
+      faturalarDB.guncelle(faturaId, { dosyaUrl: url });
+      toast('✅ Dosya eklendi!', 'success');
+      renderListe(tip);
+    } else {
+      label.textContent = '❌ Yükleme başarısız';
+      toast('Dosya yüklenemedi. Oturumunuzu kontrol edin.', 'error');
+    }
+  } catch(e) {
+    label.textContent = '❌ Hata';
+    toast('Dosya eklenirken hata: ' + e.message, 'error');
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════
 // ── FATURA KAYDETME ──────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 window.faturaKaydet = (tip) => {
@@ -537,7 +562,15 @@ function renderListe(tip) {
       <div class="fatura-ikon ${ikonCls}">${ikonEmoji}</div>
       <div class="fatura-bilgi">
         <div class="fatura-ad">${f.cariAdi || f.aciklama || 'Fatura'}${f.faturaNo ? ` <span style="color:var(--t3);font-weight:normal;font-size:11px">(${f.faturaNo})</span>` : ''}</div>
-        <div class="fatura-meta">${f.tarih} · ${f.aciklama||''} ${f.dosyaUrl ? `<a href="${f.dosyaUrl}" target="_blank" style="text-decoration:none;font-size:14px;padding:2px 4px;background:var(--bg);border-radius:4px" title="Faturayı / Fişi Görüntüle">📎</a>` : ''}</div>
+        <div class="fatura-meta">${f.tarih} · ${f.aciklama||''} 
+          ${f.dosyaUrl 
+            ? `<a href="${f.dosyaUrl}" target="_blank" style="text-decoration:none;font-size:14px;padding:2px 4px;background:var(--bg);border-radius:4px" title="Faturayı / Fişi Görüntüle">📎</a>`
+            : `<label title="Bu faturaya dosya ekle" style="cursor:pointer;font-size:11px;color:var(--accent);padding:2px 6px;border:1px dashed var(--accent);border-radius:4px">
+                + Dosya Ekle
+                <input type="file" accept=".pdf,.html,.htm,image/*" style="display:none" onchange="faturayadosyaEkle('${f.id}','${tip}',this)">
+               </label>`
+          }
+        </div>
       </div>
       <div class="fatura-tutar">
         <div class="fatura-tutar-ana">${p(f.tutar)}</div>

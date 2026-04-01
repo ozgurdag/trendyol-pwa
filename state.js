@@ -71,7 +71,6 @@ function sbHdr(token){
 async function sbPost(tablo, veri){
   try {
     const token = await gecerliToken();
-    if(!token || token===SB_KEY){ console.warn('sbPost: token yok'); return; }
     const r = await fetch(`${SB_URL}/rest/v1/${tablo}`,{
       method:'POST',
       headers:{...sbHdr(token),'Prefer':'resolution=merge-duplicates,return=minimal'},
@@ -699,8 +698,14 @@ export const faturalarDB = {
 /* ── SUPABASE STORAGE ── */
 export async function sbStorageUpload(bucket, dosyaAdi, file){
   try {
-    const token = await gecerliToken();
-    if(!token||token===SB_KEY) return null;
+    // Önce gecerliToken dene, olmadıysa oturum token'ını direkt al
+    let token = await gecerliToken();
+    if(!token || token===SB_KEY){
+      // Token yenilenememişse oturumdaki token'ı direkt kullanalım
+      const o = auth.oturum();
+      token = o?.token || null;
+    }
+    if(!token) { console.warn('Storage upload: oturum yok'); return null; }
     const r = await fetch(`${SB_URL}/storage/v1/object/${bucket}/${dosyaAdi}`,{
       method:'POST',
       headers:{
@@ -714,7 +719,8 @@ export async function sbStorageUpload(bucket, dosyaAdi, file){
     if(r.ok){
       return `${SB_URL}/storage/v1/object/public/${bucket}/${dosyaAdi}`;
     }
-    console.warn('Storage upload hata:', await r.text());
+    const errText = await r.text();
+    console.warn('Storage upload hata:', errText);
     return null;
   }catch(e){ console.warn('Storage upload offline:',e.message); return null; }
 }

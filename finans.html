@@ -103,14 +103,8 @@
         <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('gelen_fatura')">✓ Gelen Fatura Kaydet</button>
       </div>
       <div class="card">
-        <div class="card-header" style="flex-wrap:wrap;gap:8px">
-          <div class="card-title">Gelen Faturalar</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-            <select class="form-select" id="filtre-gelen" onchange="renderListe('gelen_fatura')" style="font-size:12px;padding:6px 10px;min-width:130px">
-            </select>
-            <span id="gelen-sayi" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>
-          </div>
-        </div>
+        <div class="card-header"><div class="card-title">Gelen Faturalar</div>
+          <span id="gelen-sayi" style="font-size:12px;color:var(--t3)"></span></div>
         <div id="liste-gelen"></div>
       </div>
     </div>
@@ -157,14 +151,8 @@
         <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('giden_fatura')">✓ Giden Fatura Kaydet</button>
       </div>
       <div class="card">
-        <div class="card-header" style="flex-wrap:wrap;gap:8px">
-          <div class="card-title">Giden Faturalar</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-            <select class="form-select" id="filtre-giden" onchange="renderListe('giden_fatura')" style="font-size:12px;padding:6px 10px;min-width:130px">
-            </select>
-            <span id="giden-sayi" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>
-          </div>
-        </div>
+        <div class="card-header"><div class="card-title">Giden Faturalar</div>
+          <span id="giden-sayi" style="font-size:12px;color:var(--t3)"></span></div>
         <div id="liste-giden"></div>
       </div>
     </div>
@@ -211,14 +199,8 @@
         <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('masraf')">✓ Masraf Kaydet</button>
       </div>
       <div class="card">
-        <div class="card-header" style="flex-wrap:wrap;gap:8px">
-          <div class="card-title">Masraflar</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-            <select class="form-select" id="filtre-masraf" onchange="renderListe('masraf')" style="font-size:12px;padding:6px 10px;min-width:130px">
-            </select>
-            <span id="masraf-sayi" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>
-          </div>
-        </div>
+        <div class="card-header"><div class="card-title">Masraflar</div>
+          <span id="masraf-sayi" style="font-size:12px;color:var(--t3)"></span></div>
         <div id="liste-masraf"></div>
       </div>
     </div>
@@ -280,28 +262,6 @@ const pInt = n => (+n).toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFr
   const el=document.getElementById(id); if(el) el.value=bugunStr;
 });
 document.getElementById('rapor-ay').value = buAy;
-
-// ── AY FİLTRELERİNİ DOLDUR ─────────────────────────────────
-function filtreleriDoldur() {
-  const ayAdlari = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
-  // Son 12 ayı oluştur
-  const aylar = [];
-  const simdi = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(simdi.getFullYear(), simdi.getMonth() - i, 1);
-    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const label = `${ayAdlari[d.getMonth()]} ${d.getFullYear()}`;
-    aylar.push({val, label});
-  }
-  
-  ['filtre-gelen','filtre-giden','filtre-masraf'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.innerHTML = `<option value="">📅 Tümü</option>` + 
-      aylar.map(a => `<option value="${a.val}"${a.val===buAy?' selected':''}>${a.label}</option>`).join('');
-  });
-}
-filtreleriDoldur();
 
 
 // ═══════════════════════════════════════════════════════════════
@@ -590,51 +550,68 @@ window.faturaKaydet = (tip) => {
 // ── FATURA LİSTESİ ──────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
 function renderListe(tip) {
+  const ayAdlari = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   const prefix = tip.replace('_fatura','');
-  const filtreEl = document.getElementById('filtre-'+prefix);
-  const seciliAy = filtreEl?.value || '';
-  
-  let faturalar = faturalarDB.tipGore(tip).sort((a,b) => b.tarih?.localeCompare(a.tarih));
-  
-  // Ay filtresini uygula
-  if (seciliAy) {
-    faturalar = faturalar.filter(f => f.tarih?.startsWith(seciliAy));
-  }
-  
+  const faturalar = faturalarDB.tipGore(tip).sort((a,b) => b.tarih?.localeCompare(a.tarih));
   const listeEl = document.getElementById('liste-'+prefix);
   const sayiEl = document.getElementById(prefix+'-sayi');
   sayiEl.textContent = faturalar.length + ' kayıt';
 
   if (!faturalar.length) {
-    listeEl.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px;font-size:13px">Bu dönemde kayıt yok</div>';
+    listeEl.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px;font-size:13px">Henüz kayıt yok</div>';
     return;
   }
+
+  // Aya göre grupla
+  const gruplar = {};
+  faturalar.forEach(f => {
+    const ayKey = f.tarih?.slice(0,7) || 'Bilinmiyor';
+    if (!gruplar[ayKey]) gruplar[ayKey] = [];
+    gruplar[ayKey].push(f);
+  });
 
   const ikonCls = tip==='gelen_fatura' ? 'gelen' : tip==='giden_fatura' ? 'giden' : 'masraf';
   const ikonEmoji = tip==='gelen_fatura' ? '📥' : tip==='giden_fatura' ? '📤' : '🧾';
 
   listeEl.innerHTML = faturalar.map(f => `
     <div class="fatura-row">
-      <div class="fatura-ikon ${ikonCls}">${ikonEmoji}</div>
-      <div class="fatura-bilgi">
-        <div class="fatura-ad">${f.cariAdi || f.aciklama || 'Fatura'}${f.faturaNo ? ` <span style="color:var(--t3);font-weight:normal;font-size:11px">(${f.faturaNo})</span>` : ''}</div>
-        <div class="fatura-meta">${f.tarih} · ${f.aciklama||''} 
-          ${f.dosyaUrl 
-            ? `<a href="${f.dosyaUrl}" target="_blank" style="text-decoration:none;font-size:14px;padding:2px 4px;background:var(--bg);border-radius:4px" title="Faturayı / Fişi Görüntüle">📎</a>`
-            : `<label title="Bu faturaya dosya ekle" style="cursor:pointer;font-size:11px;color:var(--accent);padding:2px 6px;border:1px dashed var(--accent);border-radius:4px">
-                + Dosya Ekle
-                <input type="file" accept=".pdf,.html,.htm,image/*" style="display:none" onchange="faturayadosyaEkle('${f.id}','${tip}',this)">
-               </label>`
-          }
+  let html = '';
+  Object.keys(gruplar).forEach(ayKey => {
+    const ayFaturalar = gruplar[ayKey];
+    // Ay başlığı
+    const [yil, ay] = ayKey.split('-');
+    const ayLabel = ayAdlari[parseInt(ay)-1] || ayKey;
+    const ayToplam = ayFaturalar.reduce((t,f) => t + (f.tutar||0), 0);
+    html += `<div style="padding:12px 0 6px 0;margin-top:8px;border-bottom:2px solid var(--accent);display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-weight:700;font-size:14px;color:var(--t1)">${ayLabel} ${yil}</span>
+      <span style="font-size:12px;color:var(--t3)">${ayFaturalar.length} kayıt · ${p(ayToplam)}</span>
+    </div>`;
+    
+    ayFaturalar.forEach(f => {
+      html += `
+      <div class="fatura-row">
+        <div class="fatura-ikon ${ikonCls}">${ikonEmoji}</div>
+        <div class="fatura-bilgi">
+          <div class="fatura-ad">${f.cariAdi || f.aciklama || 'Fatura'}${f.faturaNo ? ` <span style="color:var(--t3);font-weight:normal;font-size:11px">(${f.faturaNo})</span>` : ''}</div>
+          <div class="fatura-meta">${f.tarih} · ${f.aciklama||''} 
+            ${f.dosyaUrl 
+              ? `<a href="${f.dosyaUrl}" target="_blank" style="text-decoration:none;font-size:14px;padding:2px 4px;background:var(--bg);border-radius:4px" title="Faturayı / Fişi Görüntüle">📎</a>`
+              : `<label title="Bu faturaya dosya ekle" style="cursor:pointer;font-size:11px;color:var(--accent);padding:2px 6px;border:1px dashed var(--accent);border-radius:4px">
+                  + Dosya Ekle
+                  <input type="file" accept=".pdf,.html,.htm,image/*" style="display:none" onchange="faturayadosyaEkle('${f.id}','${tip}',this)">
+                 </label>`
+            }
+          </div>
         </div>
-      </div>
-      <div class="fatura-tutar">
-        <div class="fatura-tutar-ana">${p(f.tutar)}</div>
-        <div class="fatura-tutar-kdv">KDV: ${p(f.kdvTutari||0)}</div>
-      </div>
-      <button onclick="faturaSil('${f.id}','${tip}')" style="background:var(--red-l);border:none;border-radius:6px;color:var(--red);font-size:12px;padding:4px 8px;cursor:pointer;flex-shrink:0">✕</button>
-    </div>
-  `).join('');
+        <div class="fatura-tutar">
+          <div class="fatura-tutar-ana">${p(f.tutar)}</div>
+          <div class="fatura-tutar-kdv">KDV: ${p(f.kdvTutari||0)}</div>
+        </div>
+        <button onclick="faturaSil('${f.id}','${tip}')" style="background:var(--red-l);border:none;border-radius:6px;color:var(--red);font-size:12px;padding:4px 8px;cursor:pointer;flex-shrink:0">✕</button>
+      </div>`;
+    });
+  });
+  listeEl.innerHTML = html;
 }
 
 window.faturaSil = (id, tip) => {

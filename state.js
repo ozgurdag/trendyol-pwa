@@ -740,6 +740,9 @@ export const logDB = {
 
   ekle(olay, detay){
     const o = auth.oturum();
+    // Token'ı HEMEN yakala — çıkış gibi durumlarda auth.cikis() async sbPost'tan önce
+    // token'ı sileceği için gecerliToken() kullanmak yerine direkt alıyoruz
+    const token = o?.token || null;
     const yeni = {
       id: uid(),
       zaman: Date.now(),
@@ -750,16 +753,21 @@ export const logDB = {
     };
     const liste = [yeni, ...this.hepsini()].slice(0, LOG_MAX);
     set(LOG_KEY, liste);
-    // Fire-and-forget → Supabase (diğer DB metodlarıyla aynı pattern)
-    // broadcastGonder() çağrılmaz — log yazımı tüm cihazlarda data reload tetiklememeli
-    sbPost('activity_logs', {
-      id:        yeni.id,
-      zaman:     yeni.zaman,
-      kullanici: yeni.kullanici,
-      ad:        yeni.ad,
-      olay:      yeni.olay,
-      detay:     yeni.detay,
-    });
+    // Token varsa direkt fetch — gecerliToken() beklemeden, kayıt uçup gitmesin
+    if(token && token !== SB_KEY){
+      fetch(`${SB_URL}/rest/v1/activity_logs`,{
+        method:'POST',
+        headers:{...sbHdr(token),'Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify({
+          id:        yeni.id,
+          zaman:     yeni.zaman,
+          kullanici: yeni.kullanici,
+          ad:        yeni.ad,
+          olay:      yeni.olay,
+          detay:     yeni.detay,
+        })
+      }).catch(e=>console.warn('logDB sbPost offline:',e.message));
+    }
   },
 
   async supabasedenGetir(){

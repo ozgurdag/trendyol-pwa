@@ -701,26 +701,31 @@ export async function sbStorageUpload(bucket, dosyaAdi, file){
     // Önce gecerliToken dene, olmadıysa oturum token'ını direkt al
     let token = await gecerliToken();
     if(!token || token===SB_KEY){
-      // Token yenilenememişse oturumdaki token'ı direkt kullanalım
       const o = auth.oturum();
       token = o?.token || null;
     }
     if(!token) { console.warn('Storage upload: oturum yok'); return null; }
-    const r = await fetch(`${SB_URL}/storage/v1/object/${bucket}/${dosyaAdi}`,{
+    
+    // Dosya adındaki Türkçe/özel karakterleri temizle
+    const temizDosyaAdi = dosyaAdi.replace(/[^a-zA-Z0-9._\-\/]/g, '_');
+    
+    // HTML dosyaları Supabase tarafında sorun çıkarabileceği için
+    // tüm fatura dosyalarını octet-stream olarak yüklüyoruz
+    const r = await fetch(`${SB_URL}/storage/v1/object/${bucket}/${temizDosyaAdi}`,{
       method:'POST',
       headers:{
         'Authorization':`Bearer ${token}`,
         'apikey':SB_KEY,
-        'Content-Type':file.type||'application/octet-stream',
+        'Content-Type':'application/octet-stream',
         'x-upsert':'true',
       },
       body:file
     });
     if(r.ok){
-      return `${SB_URL}/storage/v1/object/public/${bucket}/${dosyaAdi}`;
+      return `${SB_URL}/storage/v1/object/public/${bucket}/${temizDosyaAdi}`;
     }
     const errText = await r.text();
-    console.warn('Storage upload hata:', errText);
+    console.warn('Storage upload hata:', r.status, errText);
     return null;
   }catch(e){ console.warn('Storage upload offline:',e.message); return null; }
 }

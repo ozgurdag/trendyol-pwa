@@ -312,7 +312,9 @@ KURALLAR:
 1) Faturayı düzenleyen kişi "Damla Öztürk" olabilir. KESİNLİKLE cari_adi kısmına "Damla Öztürk" YAZILMAYACAK.
 2) Faturanın MÜŞTERİSİ (Alıcısı) aranacak. Faturadaki "SAYIN", "SAYIN:" veya "Müşteri VKN:" yazısının hemen altındaki/yanındaki ismi bul.
 3) cari_adi alanına SADECE bu müşterinin adını yaz (Örnek: Murat Kaya, Ahmet Yılmaz vb).
-4) fatura_no: GIB veya EAA ile başlayan numara. tutar: KDV hariç toplam.`;
+4) fatura_no: GIB, EAA, DCA, DDA veya benzeri belge numarası.
+5) ÇOK ÖNEMLİ - tutar: "ÖDENECEK TUTAR" veya "Toplam Tutar (KDV Dahil)" değerini yaz. Eğer faturada "Ödenecek Tutar" açıkça yazıyorsa O DEĞERİ AL. Bu KDV DAHİL nihai toplamıdır, "Mal/Hizmet Toplam Tutarı" DEĞİLDİR.
+6) kdv_tutari: Faturadaki "Hesaplanan KDV" veya "KDV Tutarı" alanındaki değer.`;
     } else {
       basePrompt = `Görev: ALIŞ / MASRAF FATURASI okumak. (Senin görevin SATICIYI/TEDARİKÇİYİ bulmak)
 DÖNÜŞ ŞABLONU (Sadece JSON):
@@ -322,7 +324,9 @@ KURALLAR:
 1) Faturanın ALICISI (müşterisi) "Damla Öztürk" olabilir. KESİNLİKLE cari_adi kısmına "Damla Öztürk" veya "SAYIN" kısmındakileri YAZMA.
 2) Faturayı BİZE KESEN firma (Satıcı) aranacak. Genellikle sayfanın sol en üstünde, kalın büyük harflerle yazan, adresi/tel/Mersis nosu olan ANA ŞİRKET adıdır (Örn: MOON GLOBAL, DSM GRUP vb).
 3) cari_adi alanına SADECE faturayı düzenleyen (parayı alan) satıcı firmanın/kişinin adını yaz.
-4) fatura_no: Belge numarası. tutar: KDV hariç toplam.`;
+4) fatura_no: Belge numarası (DCA, DDA, GIB, EAA vb ile başlayabilir).
+5) ÇOK ÖNEMLİ - tutar: "ÖDENECEK TUTAR" veya "Toplam Tutar (KDV Dahil)" değerini yaz. Eğer faturada "Ödenecek Tutar" açıkça yazıyorsa O DEĞERİ AL. Bu KDV DAHİL nihai toplamıdır, "Mal/Hizmet Toplam Tutarı" DEĞİLDİR.
+6) kdv_tutari: Faturadaki "Hesaplanan KDV" veya "KDV Tutarı" alanındaki değer.`;
     }
 
     let content;
@@ -405,11 +409,13 @@ window.dosyaIsle = async (files, tip) => {
       
       const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'text/html');
       
-      // 2. Storage Yükleme
+      // 2. Storage Yükleme (dosya adındaki Türkçe/özel karakterleri temizle)
       let dosyaUrl = null;
       try {
-        const dosyaAdi = `${tip}/${Date.now()}_${file.name}`;
+        const temizAd = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const dosyaAdi = `${tip}/${Date.now()}_${temizAd}`;
         dosyaUrl = await sbStorageUpload('faturalar', dosyaAdi, file);
+        if (!dosyaUrl) console.warn('Storage URL null döndü, dosya:', file.name, 'tip:', file.type);
       } catch(e) { console.warn('Storage yükleme atlandı:', e.message); }
 
       // 3. AI ile Anlama

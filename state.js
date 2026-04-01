@@ -755,8 +755,10 @@ export const logDB = {
     set(LOG_KEY, liste);
     // Token varsa direkt fetch — gecerliToken() beklemeden, kayıt uçup gitmesin
     if(token && token !== SB_KEY){
+      // keepalive:true → sayfa navigate olsa bile (giriş/çıkış sonrası) istek iptal edilmez
       fetch(`${SB_URL}/rest/v1/activity_logs`,{
         method:'POST',
+        keepalive: true,
         headers:{...sbHdr(token),'Prefer':'resolution=merge-duplicates,return=minimal'},
         body:JSON.stringify({
           id:        yeni.id,

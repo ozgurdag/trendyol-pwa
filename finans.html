@@ -573,8 +573,6 @@ function renderListe(tip) {
   const ikonCls = tip==='gelen_fatura' ? 'gelen' : tip==='giden_fatura' ? 'giden' : 'masraf';
   const ikonEmoji = tip==='gelen_fatura' ? '📥' : tip==='giden_fatura' ? '📤' : '🧾';
 
-  listeEl.innerHTML = faturalar.map(f => `
-    <div class="fatura-row">
   let html = '';
   Object.keys(gruplar).forEach(ayKey => {
     const ayFaturalar = gruplar[ayKey];

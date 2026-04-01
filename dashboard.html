@@ -150,7 +150,7 @@ const o = auth.oturum();
 if (!o) { window.location.href = 'index.html'; }
 
 // Hoş geldin
-document.getElementById('hosgeldin').textContent = `Merhaba ${o.ad} 👋`;
+document.getElementById('hosgeldin').textContent = `Merhaba ${o.ad === 'Admin' ? 'Özgür' : o.ad} 👋`;
 const simdi = new Date();
 const gunler = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
 document.getElementById('tarih-label').textContent =

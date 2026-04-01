@@ -698,7 +698,6 @@ export const faturalarDB = {
 /* ── SUPABASE STORAGE ── */
 export async function sbStorageUpload(bucket, dosyaAdi, file){
   try {
-    // Önce gecerliToken dene, olmadıysa oturum token'ını direkt al
     let token = await gecerliToken();
     if(!token || token===SB_KEY){
       const o = auth.oturum();
@@ -709,14 +708,17 @@ export async function sbStorageUpload(bucket, dosyaAdi, file){
     // Dosya adındaki Türkçe/özel karakterleri temizle
     const temizDosyaAdi = dosyaAdi.replace(/[^a-zA-Z0-9._\-\/]/g, '_');
     
-    // HTML dosyaları Supabase tarafında sorun çıkarabileceği için
-    // tüm fatura dosyalarını octet-stream olarak yüklüyoruz
+    // Dosyanın gerçek Content-Type'ını belirle
+    let contentType = file.type || 'application/octet-stream';
+    if(dosyaAdi.endsWith('.pdf')) contentType = 'application/pdf';
+    else if(dosyaAdi.endsWith('.html') || dosyaAdi.endsWith('.htm')) contentType = 'text/html';
+    
     const r = await fetch(`${SB_URL}/storage/v1/object/${bucket}/${temizDosyaAdi}`,{
       method:'POST',
       headers:{
         'Authorization':`Bearer ${token}`,
         'apikey':SB_KEY,
-        'Content-Type':'application/octet-stream',
+        'Content-Type': contentType,
         'x-upsert':'true',
       },
       body:file

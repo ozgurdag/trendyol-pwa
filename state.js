@@ -83,7 +83,6 @@ async function sbPost(tablo, veri){
 async function sbPatch(tablo, id, veri){
   try {
     const token = await gecerliToken();
-    if(!token || token===SB_KEY) return;
     const r = await fetch(`${SB_URL}/rest/v1/${tablo}?id=eq.${id}`,{
       method:'PATCH', headers:sbHdr(token), body:JSON.stringify(veri)
     });
@@ -94,7 +93,6 @@ async function sbPatch(tablo, id, veri){
 async function sbDelete(tablo, id){
   try {
     const token = await gecerliToken();
-    if(!token || token===SB_KEY) return;
     await fetch(`${SB_URL}/rest/v1/${tablo}?id=eq.${id}`,{
       method:'DELETE', headers:sbHdr(token)
     });
@@ -104,7 +102,6 @@ async function sbDelete(tablo, id){
 async function sbDeleteAll(tablo){
   try {
     const token = await gecerliToken();
-    if(!token || token===SB_KEY) return;
     await fetch(`${SB_URL}/rest/v1/${tablo}?id=neq.null`,{
       method:'DELETE', headers:sbHdr(token)
     });
@@ -146,8 +143,12 @@ async function broadcastGonder(){
 /* ── SUPABASE'DEN YÜKLE ── */
 export async function supabasedenYukle(){
   try {
-    const token = await gecerliToken();
-    if(!token||token===SB_KEY) return false;
+    let token = await gecerliToken();
+    if(!token || token===SB_KEY){
+      // Token yenilenemezse oturumdaki token'ı direkt kullanalım
+      const o = auth.oturum();
+      token = o?.token || SB_KEY;
+    }
 
     const [rS, rL, rSet, rSt, rF] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/stok_kalemleri?select=*&order=ad`,{headers:sbHdr(token)}),
@@ -222,7 +223,6 @@ export async function supabasedenYukle(){
 /* ── MİGRASYON: localStorage → Supabase ── */
 export async function localdenSupabaseYukle(){
   const token = await gecerliToken();
-  if(!token||token===SB_KEY) return {ok:false};
   let yuklenen=0;
 
   for(const u of get(DB_KEYS.stok)||[]){

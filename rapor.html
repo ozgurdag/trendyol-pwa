@@ -45,6 +45,7 @@
     <!-- SEKME SEÇİCİ -->
     <div class="rapor-tabs">
       <div class="rapor-tab active" onclick="sekme('ozet')">Aylık Özet</div>
+      <div class="rapor-tab" onclick="sekme('yillik')">Yıllık Özet</div>
       <div class="rapor-tab" onclick="sekme('grafik')">7 Günlük</div>
       <div class="rapor-tab" onclick="sekme('urun')">Ürün Karlılık</div>
     </div>
@@ -62,6 +63,30 @@
         <div class="chart-title">Günlük Satış Dağılımı</div>
         <div class="bar-chart" id="ozet-bar"></div>
       </div>
+      <!-- Satış Listesi container -->
+      <div class="chart-wrap">
+        <div class="chart-title">Bu Ay Satılanlar</div>
+        <div id="ozet-liste"></div>
+      </div>
+    </div>
+
+    <!-- YILLIK ÖZET -->
+    <div id="pnl-yillik" style="display:none">
+      <div class="ay-sec">
+        <select class="form-select" id="yil-select" onchange="renderYillik()"></select>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Yıllık Özet</div>
+        <div id="yillik-icerik"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Aylık Satış Dağılımı</div>
+        <div class="bar-chart" id="yillik-bar"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Yıllık Satılanlar</div>
+        <div id="yillik-liste"></div>
+      </div>
     </div>
 
     <!-- 7 GÜNLÜK GRAFİK -->
@@ -73,6 +98,10 @@
       <div class="chart-wrap">
         <div class="chart-title">Son 7 Gün — Net Kar (₺)</div>
         <div class="bar-chart" id="grafik-kar"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Son 7 Günlük Satışlar</div>
+        <div id="grafik-liste"></div>
       </div>
     </div>
 
@@ -204,6 +233,51 @@ function aySelectDoldur(id){
   el.innerHTML=aylar.map(a=>`<option value="${a}">${a}</option>`).join('');
 }
 
+// Yıl listesi oluştur
+function yilListesi(){
+  const satislar=satislarDB.hepsini();
+  const yillar=new Set();
+  const buYil=new Date().getFullYear().toString();
+  yillar.add(buYil);
+  satislar.forEach(s=>yillar.add(s.tarih?.slice(0,4)));
+  return [...yillar].filter(Boolean).sort().reverse();
+}
+
+function yilSelectDoldur(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const yillar=yilListesi();
+  el.innerHTML=yillar.map(y=>`<option value="${y}">${y}</option>`).join('');
+}
+
+// SATIŞ LİSTESİ render
+function renderSatisListesi(satislar, targetId){
+  const el = document.getElementById(targetId);
+  if(!el) return;
+  satislar = satislar.sort((a,b) => b.tarih.localeCompare(a.tarih));
+  if(!satislar.length){
+    el.innerHTML='<div style="text-align:center;color:var(--t3);padding:20px">Kayıt bulunamadı.</div>';
+    return;
+  }
+  el.innerHTML = satislar.map(s=>{
+    const k = satisKar(s);
+    if(!k) return '';
+    return `
+    <div class="tablo-row">
+      <div class="tablo-ikon">${k.tip==='set'?'📦':k.tip==='stok-combo'?'🎁':'🏷️'}</div>
+      <div class="tablo-bilgi">
+        <div class="tablo-ad">${k.ad} <span style="font-size:11px;color:var(--t3)">(${s.adet} adet)</span></div>
+        <div class="tablo-meta">${s.tarih} · Gelir: ${p(k.gelir)}</div>
+      </div>
+      <div class="tablo-kar">
+        <div style="font-size:14px;font-weight:700;font-family:var(--mono)" class="${k.kararli?'kar-poz':'kar-neg'}">${(k.kararli?'+':'')}${p(k.net)}</div>
+        <div style="font-size:10px;color:var(--t3)">%${k.alis>0?Math.round(k.net/k.alis*100):0} ROI</div>
+      </div>
+    </div>
+    `;
+  }).join('');
+}
+
 // BAR CHART helper
 // LINE CHART helper (replaces barChart)
 function lineChart(el,data,renk='var(--accent)'){
@@ -304,16 +378,58 @@ window.renderOzet=()=>{
     else gunData.push({label:'',val:Math.round(gKar)});
   }
   lineChart(document.getElementById('ozet-bar'),gunData);
+  renderSatisListesi(satislar, 'ozet-liste');
+};
+
+/* ── YILLIK ÖZET ── */
+window.renderYillik=()=>{
+  const secYil=document.getElementById('yil-select').value;
+  if(!secYil) return;
+  const satislar=satislarDB.hepsini().filter(s=>s.tarih?.startsWith(secYil));
+  let topAdet=0,topGelir=0,topKar=0,topAlis=0,topKarGetiren=0,topZararEttiren=0;
+  let topKom=0, topKargo=0, topPlat=0;
+
+  satislar.forEach(s=>{
+    const k=satisKar(s);if(!k)return;
+    topAdet+=s.adet;topGelir+=k.gelir;topKar+=k.net;topAlis+=k.alis;
+    if(k.net >= 0) topKarGetiren += k.net; else topZararEttiren += k.net;
+    topKom+=k.komisyon||0; topKargo+=k.kargo||0; topPlat+=k.platform||0;
+  });
+
+  document.getElementById('yillik-icerik').innerHTML=`
+    <div class="ozet-row"><span class="ozet-lbl">Toplam Satış</span><span class="ozet-val accent">${topAdet} adet</span></div>
+    <div class="ozet-row"><span class="ozet-lbl">Toplam Gelir</span><span class="ozet-val">${p(topGelir)}</span></div>
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Alış Maliyeti</span><span class="ozet-val" style="color:var(--red)">-${p(topAlis)}</span></div>
+    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Trendyol Komisyonu</span><span class="ozet-val" style="color:var(--red)">-${p(topKom)}</span></div>
+    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Kargo</span><span class="ozet-val" style="color:var(--red)">-${p(topKargo)}</span></div>
+    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Platform Hizmeti</span><span class="ozet-val" style="color:var(--red)">-${p(topPlat)}</span></div>
+    <div style="height:1px;background:var(--border);margin:4px 0"></div>
+    <div class="ozet-row"><span class="ozet-lbl" style="font-weight:700">Net Kar</span><span class="ozet-val ${topKar>=0?'kar-poz':'kar-neg'}" style="font-size:18px">${p(topKar)}</span></div>
+  `;
+
+  // Bar chart - aylık
+  const ayData=[];
+  for(let i=1;i<=12;i++){
+    const ayStr=`${secYil}-${String(i).padStart(2,'0')}`;
+    const aySatis=satislar.filter(s=>s.tarih?.startsWith(ayStr));
+    let aKar=0; aySatis.forEach(s=>{const k=satisKar(s);if(k)aKar+=k.net;});
+    ayData.push({label:String(i),val:Math.round(aKar)});
+  }
+  lineChart(document.getElementById('yillik-bar'),ayData);
+  renderSatisListesi(satislar, 'yillik-liste');
 };
 
 /* ── 7 GÜNLÜK ── */
 function renderGrafik(){
   const bugun=new Date();
   const data7=[];
+  let haftalikSatislar=[];
   for(let i=6;i>=0;i--){
     const d=new Date(bugun);d.setDate(d.getDate()-i);
     const tarih=d.toISOString().slice(0,10);
     const gSatis=satislarDB.guneBGore(tarih);
+    haftalikSatislar.push(...gSatis);
     let adet=0,kar=0;
     gSatis.forEach(s=>{const k=satisKar(s);if(k){adet+=s.adet;kar+=k.net;}}); // net zaten adet ile çarpılmış
     const lbl=gun[d.getDay()===0?6:d.getDay()-1];
@@ -323,6 +439,7 @@ function renderGrafik(){
   lineChart(document.getElementById('grafik-adet'),data7);
   const karData=data7.map(d=>({label:d.label,val:d._kar||0,label2:d._kar>0?Math.round(d._kar)+'₺':''}));
   lineChart(document.getElementById('grafik-kar'),karData,`var(--green)`);
+  renderSatisListesi(haftalikSatislar, 'grafik-liste');
 }
 
 /* ── ÜRÜN KARLILIK ── */
@@ -378,11 +495,14 @@ window.renderUrun=()=>{
 
 /* ── SEKME ── */
 window.sekme=s=>{
-  ['ozet','grafik','urun'].forEach(id=>{
+  ['ozet','yillik','grafik','urun'].forEach(id=>{
     document.getElementById('pnl-'+id).style.display=s===id?'':'none';
-    document.querySelector(`.rapor-tab:nth-child(${['ozet','grafik','urun'].indexOf(id)+1})`).classList.toggle('active',s===id);
+    document.querySelector(`.rapor-tab:nth-child(${['ozet','yillik','grafik','urun'].indexOf(id)+1})`).classList.toggle('active',s===id);
   });
+  if(s==='yillik') window.renderYillik();
   if(s==='grafik') renderGrafik();
+  if(s==='urun') renderUrun();
+};
   if(s==='urun') renderUrun();
 };
 
@@ -429,6 +549,13 @@ function sayfaYenile() {
   if(aySec && [...document.getElementById('ay-select').options].some(o => o.value === aySec)) {
     document.getElementById('ay-select').value = aySec;
   }
+  const yilSec = document.getElementById('yil-select')?.value;
+  if(document.getElementById('yil-select')){
+      yilSelectDoldur('yil-select');
+      if(yilSec && [...document.getElementById('yil-select').options].some(o => o.value === yilSec)) {
+        document.getElementById('yil-select').value = yilSec;
+      }
+  }
   const urunAySec = document.getElementById('urun-ay-select').value;
   aySelectDoldur('urun-ay-select');
   if(urunAySec && [...document.getElementById('urun-ay-select').options].some(o => o.value === urunAySec)) {
@@ -436,6 +563,7 @@ function sayfaYenile() {
   }
   
   if (document.getElementById('pnl-ozet').style.display !== 'none') renderOzet();
+  if (document.getElementById('pnl-yillik') && document.getElementById('pnl-yillik').style.display !== 'none') window.renderYillik();
   if (document.getElementById('pnl-grafik').style.display !== 'none') renderGrafik();
   if (document.getElementById('pnl-urun').style.display !== 'none') renderUrun();
 }
@@ -450,6 +578,7 @@ window.addEventListener('storage', (e) => {
 // İlk yükleme
 aySelectDoldur('ay-select');
 aySelectDoldur('urun-ay-select');
+if(document.getElementById('yil-select')) yilSelectDoldur('yil-select');
 renderOzet();
 </script>
 </body>

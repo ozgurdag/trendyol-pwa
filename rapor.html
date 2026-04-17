@@ -44,8 +44,8 @@
 
     <!-- SEKME SEÇİCİ -->
     <div class="rapor-tabs">
-      <div class="rapor-tab active" onclick="sekme('ozet')">Aylık Özet</div>
-      <div class="rapor-tab" onclick="sekme('yillik')">Yıllık Özet</div>
+      <div class="rapor-tab active" onclick="sekme('yillik')">Yıllık Özet</div>
+      <div class="rapor-tab" onclick="sekme('ozet')">Aylık Özet</div>
       <div class="rapor-tab" onclick="sekme('grafik')">7 Günlük</div>
       <div class="rapor-tab" onclick="sekme('urun')">Ürün Karlılık</div>
     </div>
@@ -495,11 +495,12 @@ window.renderUrun=()=>{
 
 /* ── SEKME ── */
 window.sekme=s=>{
-  ['ozet','yillik','grafik','urun'].forEach(id=>{
+  ['yillik','ozet','grafik','urun'].forEach(id=>{
     document.getElementById('pnl-'+id).style.display=s===id?'':'none';
-    document.querySelector(`.rapor-tab:nth-child(${['ozet','yillik','grafik','urun'].indexOf(id)+1})`).classList.toggle('active',s===id);
+    document.querySelector(`.rapor-tab:nth-child(${['yillik','ozet','grafik','urun'].indexOf(id)+1})`).classList.toggle('active',s===id);
   });
   if(s==='yillik') window.renderYillik();
+  if(s==='ozet') renderOzet();
   if(s==='grafik') renderGrafik();
   if(s==='urun') renderUrun();
 };
@@ -577,7 +578,7 @@ window.addEventListener('storage', (e) => {
 aySelectDoldur('ay-select');
 aySelectDoldur('urun-ay-select');
 if(document.getElementById('yil-select')) yilSelectDoldur('yil-select');
-renderOzet();
+window.sekme('yillik');
 </script>
 </body>
 </html>

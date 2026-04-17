@@ -28,27 +28,6 @@
       </div>
     </div>
 
-    <!-- YILLIK ÖZET -->
-    <div class="section-title">Yıllık Finansal Özet (<span id="ozet-yili"></span>)</div>
-    <div class="card mb-16" id="sec-yillik-ozet-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:13px;color:var(--t2)">Gelir (Satışlar)</span>
-        <span style="font-size:14px;font-weight:700;color:var(--green)" id="yz-giden">0₺</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:13px;color:var(--t2)">Alış & Masraf</span>
-        <span style="font-size:14px;font-weight:700;color:var(--red)" id="yz-gider">0₺</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:13px;color:var(--t2)">Vergi Öncesi Kar</span>
-        <span style="font-size:14px;font-weight:700" id="yz-kar">0₺</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
-        <span style="font-size:13px;color:var(--t2)">Vergi Sonrası Net Kar</span>
-        <span style="font-size:16px;font-weight:700" id="yz-net">0₺</span>
-      </div>
-    </div>
-
     <!-- ORTAK KODU -->
     <div class="section-title" id="sec-ortak-baglanti-title">Ortak Bağlantısı</div>
     <div class="card mb-16" id="sec-ortak-baglanti-card">
@@ -190,7 +169,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, ayarlarDB, logDB, faturalarDB, hesapla } from './state.js';
+import { auth, ayarlarDB, logDB } from './state.js';
 const o = auth.oturum();
 if (!o) window.location.href='index.html';
 const _isAdmin = auth.adminMi();
@@ -215,39 +194,6 @@ window.kodKopyala = () => {
   const kod = document.getElementById('ortak-kod-goster').textContent;
   navigator.clipboard.writeText(kod).then(() => toast('Kod kopyalandı','success'));
 };
-
-// Yıllık Özet Hesaplama
-window.renderYillikOzet = () => {
-  const pFormat = n => (+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
-  const buYil = new Date().getFullYear().toString();
-  document.getElementById('ozet-yili').textContent = buYil;
-
-  const yilFaturalar = faturalarDB.hepsini().filter(f => f.tarih?.startsWith(buYil));
-  let yGiden=0, yGelen=0, yMasraf=0;
-  yilFaturalar.forEach(f => {
-    if (f.tip==='giden_fatura') yGiden += f.tutar||0;
-    else if (f.tip==='gelen_fatura') yGelen += f.tutar||0;
-    else if (f.tip==='masraf') yMasraf += f.tutar||0;
-  });
-  const yGiderTop = yGelen + yMasraf;
-  const yKar = yGiden - yGiderTop;
-  const ySirketTipi = ayarlarDB.oku().sirketTipi || 'sahis';
-  let yVergiSonuc;
-  if (ySirketTipi === 'sahis') {
-    yVergiSonuc = hesapla.gelirVergisi(Math.max(0, yKar));
-  } else {
-    yVergiSonuc = hesapla.kurumlarVergisi(Math.max(0, yKar));
-  }
-  const yNetKar = yKar - yVergiSonuc.vergi;
-
-  document.getElementById('yz-giden').textContent = pFormat(yGiden);
-  document.getElementById('yz-gider').textContent = '-' + pFormat(yGiderTop);
-  document.getElementById('yz-kar').textContent = (yKar>=0?'':'-') + pFormat(Math.abs(yKar));
-  document.getElementById('yz-kar').style.color = yKar>=0 ? 'var(--green)' : 'var(--red)';
-  document.getElementById('yz-net').textContent = (yNetKar>=0?'':'-') + pFormat(Math.abs(yNetKar));
-  document.getElementById('yz-net').style.color = yNetKar>=0 ? 'var(--green)' : 'var(--red)';
-};
-renderYillikOzet();
 
 // Ayarlar
 const ay = ayarlarDB.oku();
@@ -300,7 +246,6 @@ window.finansAyarKaydet = () => {
   ayarlarDB.kaydet({
     sirketTipi: document.getElementById('ay-sirket-tipi').value,
   });
-  if(window.renderYillikOzet) window.renderYillikOzet();
   toast('Finans ayarları kaydedildi','success');
 };
 

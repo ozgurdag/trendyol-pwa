@@ -81,6 +81,8 @@ const OLAY_ETIKET = {
   fatura_eklendi:   {ikon:'🧾', etiket:'Fatura Eklendi',       css:'fatura_eklendi'},
 };
 
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 let aktifFiltre = 'hepsi';
 let aktifKul    = 'hepsi';
 let _tumListe   = [];   // Supabase'den gelen tüm loglar (bellekte)
@@ -121,14 +123,14 @@ function render(){
   cont.innerHTML = liste.map(l=>{
     const meta = OLAY_ETIKET[l.olay] || {ikon:'•', etiket:l.olay, css:'diger'};
     const kulBadge = l.kullanici==='admin'
-      ? `<span class="kullanici-badge badge-admin">${l.ad||'Admin'}</span>`
-      : `<span class="kullanici-badge badge-ortak">${l.ad||'Ortak'}</span>`;
+      ? `<span class="kullanici-badge badge-admin">${esc(l.ad)||'Admin'}</span>`
+      : `<span class="kullanici-badge badge-ortak">${esc(l.ad)||'Ortak'}</span>`;
     const zaman = zamanStr(l.zaman);
     return `<div class="log-row">
       <div class="log-icon ${meta.css}">${meta.ikon}</div>
       <div class="log-detay">
         <div class="log-olay">${meta.etiket}</div>
-        <div class="log-alt">${kulBadge}${l.detay||''}</div>
+        <div class="log-alt">${kulBadge}${esc(l.detay)}</div>
       </div>
       <div class="log-zaman">${zaman.replace('\n','<br>')}</div>
     </div>`;

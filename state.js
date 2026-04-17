@@ -222,7 +222,6 @@ export async function supabasedenYukle(){
 
 /* ── MİGRASYON: localStorage → Supabase ── */
 export async function localdenSupabaseYukle(){
-  const token = await gecerliToken();
   let yuklenen=0;
 
   for(const u of get(DB_KEYS.stok)||[]){
@@ -903,7 +902,6 @@ export const hesapla = {
   },
 };
 
-export function demoYukle(){}
 
 /* ── SAYFA AÇILIŞINDA OTOMATİK SYNC ── */
 (async()=>{

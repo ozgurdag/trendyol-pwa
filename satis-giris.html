@@ -249,7 +249,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, stokDB, listingDB, satislarDB, ayarlarDB, hesapla } from './state.js';
+import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
 import { kargoUcreti } from './kargo.js';
 
 if(!auth.oturum()?.token) { window.location.href='./index.html'; }
@@ -752,16 +752,24 @@ function renderSatisList(){
           <div class="form-row">
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Adet</label>
-              <input class="form-input" type="number" inputmode="decimal" id="edit-adet-${s.id}" value="${s.adet}" min="1"${s.tip==='stok-combo'?' disabled title="Kombo satışlar 1 adet olarak kaydedilir"':''}>
+              <input class="form-input" type="number" inputmode="decimal" id="edit-adet-${s.id}" value="${s.adet}" min="1"${s.tip==='stok-combo'?' disabled title="Kombo satışlar 1 adet olarak kaydedilir"':''} oninput="editHesapGuncelle('${s.id}')">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Fiyat (₺)</label>
-              <input class="form-input" type="number" inputmode="decimal" id="edit-fiyat-${s.id}" value="${fiyat}" step="0.01">
+              <input class="form-input" type="number" inputmode="decimal" id="edit-fiyat-${s.id}" value="${fiyat}" step="0.01" oninput="editHesapGuncelle('${s.id}')">
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="form-label">Tarih</label>
               <input class="form-input" type="date" id="edit-tarih-${s.id}" value="${s.tarih}">
             </div>
+          </div>
+          <div id="edit-hesap-${s.id}" style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-md);font-size:12px;display:none">
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--t3)">Alış Maliyeti</span><span id="eh-alis-${s.id}" style="font-family:var(--mono)">—</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--t3)">Platform Hizm.</span><span id="eh-plat-${s.id}" style="font-family:var(--mono)">—</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--t3)">Kargo</span><span id="eh-kargo-${s.id}" style="font-family:var(--mono)">—</span></div>
+            <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--t3)">Komisyon</span><span id="eh-kom-${s.id}" style="font-family:var(--mono)">—</span></div>
+            <div style="display:flex;justify-content:space-between;padding:5px 0 2px"><span style="font-weight:600">Net Kar</span><span id="eh-net-${s.id}" style="font-family:var(--mono);font-weight:700">—</span></div>
+            <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--t3)">ROI</span><span id="eh-roi-${s.id}" style="font-family:var(--mono)">—</span></div>
           </div>
           <div class="edit-form-btns mt-8">
             <button class="btn btn-primary btn-sm" onclick="editKaydet('${s.id}')">✓ Kaydet</button>
@@ -792,6 +800,61 @@ window.editAc = id => {
   if(editId && editId!==id) editKapat(editId);
   editId = id;
   document.getElementById('edit-'+id).style.display='';
+  editHesapGuncelle(id);
+};
+
+window.editHesapGuncelle = id => {
+  const s = satislarDB.hepsini().find(x=>x.id===id);
+  if(!s) return;
+  const yeniAdet = +document.getElementById('edit-adet-'+id).value||1;
+  const yeniFiyat = +document.getElementById('edit-fiyat-'+id).value||0;
+  const panelEl = document.getElementById('edit-hesap-'+id);
+  if(!panelEl) return;
+  if(!yeniFiyat){ panelEl.style.display='none'; return; }
+
+  let alisBirim=0, komOrani=0.04, platform=0;
+  let desiH=1;
+
+  if(s.snapshot){
+    alisBirim = s.snapshot.alisMaliyeti;
+    komOrani  = s.snapshot.komisyon;
+    platform  = s.snapshot.platform;
+  }
+
+  if(s.tip==='stok-combo'){
+    if(!s.snapshot) alisBirim=(s.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
+    desiH=Math.max(...(s.stokKombo||[]).map(it=>it.desi||1),1);
+  } else if(s.tip==='stok'){
+    const u=stokDB.bul(s.hedefId);
+    if(u){ if(!s.snapshot){alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;} desiH=u.desi||1; }
+  } else if(s.tip==='set'){
+    const u=setlerDB.bul(s.hedefId);
+    if(u){ if(!s.snapshot){alisBirim=u.alisMaliyeti||0;komOrani=u.komisyon||0.04;} desiH=u.desi||2; }
+  } else {
+    const u=listingDB.bul(s.hedefId);
+    if(u){ if(!s.snapshot){alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;} desiH=u.desi||1; }
+  }
+
+  if(!s.snapshot){
+    const obj = s.tip==='stok'?stokDB.bul(s.hedefId):s.tip==='set'?setlerDB.bul(s.hedefId):s.tip==='listing'?listingDB.bul(s.hedefId):null;
+    const ayniGun = obj?.ayniGunKargo??ayarlar.ayniGunKargo??false;
+    platform = ayniGun?(ayarlar.platformAyniGun||8.388):(ayarlar.platformNormal||13.188);
+  }
+
+  const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
+  const kargo   = hesapla.gercekKargoBedeli(yeniFiyat, desiH, ayarlar, kargoFU);
+  const kar     = hesapla.gercekKar(alisBirim, yeniFiyat, komOrani, platform, kargo);
+
+  const set$ = (elId,val)=>{ const el=document.getElementById(elId); if(el) el.textContent=val; };
+  set$('eh-alis-'+id,  p(alisBirim*yeniAdet));
+  set$('eh-plat-'+id,  p(platform*yeniAdet));
+  set$('eh-kargo-'+id, p(kargo*yeniAdet));
+  set$('eh-kom-'+id,   p(yeniFiyat*komOrani*yeniAdet)+` (%${Math.round(komOrani*100)})`);
+  const netEl=document.getElementById('eh-net-'+id);
+  const netTop=kar.net*yeniAdet;
+  if(netEl){ netEl.textContent=(kar.kararli?'+':'')+p(netTop); netEl.style.color=kar.kararli?'var(--green)':'var(--red)'; }
+  set$('eh-roi-'+id, '%'+Math.round(kar.roi*100));
+  panelEl.style.display='';
 };
 
 window.editKapat = id => {

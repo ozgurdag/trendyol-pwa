@@ -255,7 +255,7 @@ import { kargoUcreti } from './kargo.js';
 if(!auth.oturum()?.token) { window.location.href='./index.html'; }
 
 // ── DURUM ────────────────────────────────────────────────────────
-const ayarlar = ayarlarDB.oku();
+let ayarlar = ayarlarDB.oku();
 const bugunStr = new Date().toISOString().slice(0,10);
 document.getElementById('listing-tarih').value = bugunStr;
 document.getElementById('kombo-tarih').value = bugunStr;
@@ -370,10 +370,11 @@ window.listingKarGoster = () => {
   const adet = +document.getElementById('listing-adet').value||1;
   const komisyonOran = obj.komisyon||0.04;
   const komisyonTutar = fiyat * komisyonOran;
-  const kar = hesapla.gercekKar(obj.alisFiyati||0, fiyat, komisyonOran, f.platform, f.kargo);
+  const gercekKargo = hesapla.gercekKargoBedeli(fiyat, obj.desi||1, ayarlar, kargoFU);
+  const kar = hesapla.gercekKar(obj.alisFiyati||0, fiyat, komisyonOran, f.platform, gercekKargo);
   
   document.getElementById('l-alis').textContent = p(obj.alisFiyati||0);
-  document.getElementById('l-kargo').textContent = p(f.kargo);
+  document.getElementById('l-kargo').textContent = p(gercekKargo);
   document.getElementById('l-komisyon').textContent = p(komisyonTutar) + ` (%${Math.round(komisyonOran*100)})`;
   document.getElementById('l-platform').textContent = p(f.platform);
   
@@ -555,9 +556,10 @@ window.komboKarGoster = () => {
   document.getElementById('k-kargo-t').textContent = p(f.kargo);
 
   const komisyonTutar = fiyat * komisyonOran;
-  const kar = hesapla.gercekKar(alisTop, fiyat, komisyonOran, f.platform, f.kargo);
+  const gercekKargo = hesapla.gercekKargoBedeli(fiyat, maxDesi, ayarlar, kargoFU);
+  const kar = hesapla.gercekKar(alisTop, fiyat, komisyonOran, f.platform, gercekKargo);
   
-  document.getElementById('k-kargo-net').textContent = p(f.kargo);
+  document.getElementById('k-kargo-net').textContent = p(gercekKargo);
   document.getElementById('k-komisyon-net').textContent = p(komisyonTutar) + ` (%${Math.round(komisyonOran*100)})`;
   document.getElementById('k-platform-net').textContent = p(f.platform);
 
@@ -630,14 +632,19 @@ function hesaplaKar(s){
     const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',maxDesi);
     const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
     if(!f)return 0;
-    return hesapla.gercekKar(alisTop,s.gercekFiyat||f.yuvarlak,0.04,f.platform,f.kargo).net;
+    const gercekFiyat = s.gercekFiyat||f.yuvarlak;
+    const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat,maxDesi,ayarlar,kargoFU);
+    return hesapla.gercekKar(alisTop,gercekFiyat,0.04,f.platform,gercekKargo).net;
   }
   const obj = s.tip==='stok' ? stokDB.bul(s.hedefId) : listingDB.bul(s.hedefId);
   if(!obj) return 0;
-  const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',obj.desi||1);
+  const desiH = obj.desi||1;
+  const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',desiH);
   const f=hesapla.satisFiyati({...obj},ayarlar,1,kargoFU);
   if(!f) return 0;
-  return hesapla.gercekKar(obj.alisFiyati||0,s.gercekFiyat||f.yuvarlak,obj.komisyon||0.04,f.platform,f.kargo).net;
+  const gercekFiyat = s.gercekFiyat||f.yuvarlak;
+  const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat,desiH,ayarlar,kargoFU);
+  return hesapla.gercekKar(obj.alisFiyati||0,gercekFiyat,obj.komisyon||0.04,f.platform,gercekKargo).net;
 }
 
 function hesaplaRoi(s){
@@ -649,14 +656,19 @@ function hesaplaRoi(s){
     const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',maxDesi);
     const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
     if(!f)return 0;
-    return hesapla.gercekKar(alisTop,s.gercekFiyat||f.yuvarlak,0.04,f.platform,f.kargo).roi;
+    const gercekFiyat = s.gercekFiyat||f.yuvarlak;
+    const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat,maxDesi,ayarlar,kargoFU);
+    return hesapla.gercekKar(alisTop,gercekFiyat,0.04,f.platform,gercekKargo).roi;
   }
   const obj = s.tip==='stok' ? stokDB.bul(s.hedefId) : listingDB.bul(s.hedefId);
   if(!obj) return 0;
-  const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',obj.desi||1);
+  const desiH = obj.desi||1;
+  const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',desiH);
   const f=hesapla.satisFiyati({...obj},ayarlar,1,kargoFU);
   if(!f)return 0;
-  return hesapla.gercekKar(obj.alisFiyati||0,s.gercekFiyat||f.yuvarlak,obj.komisyon||0.04,f.platform,f.kargo).roi;
+  const gercekFiyat = s.gercekFiyat||f.yuvarlak;
+  const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat,desiH,ayarlar,kargoFU);
+  return hesapla.gercekKar(obj.alisFiyati||0,gercekFiyat,obj.komisyon||0.04,f.platform,gercekKargo).roi;
 }
 
 // ─── SATIŞ ADI ───────────────────────────────────────────────
@@ -855,10 +867,31 @@ window.toast = (msg, tip='info') => {
 
 // ── REALTIME ─────────────────────────────────────────────────
 window.addEventListener('tsx_render', () => {
+  ayarlar = ayarlarDB.oku();
   doldurListingDropdown();
   doldurKomboDropdown();
   renderSatisList();
   renderOzet();
+});
+
+// Ayarlar başka sekmede değişirse veya sayfa bfcache'den dönerse güncelle
+window.addEventListener('storage', e => {
+  if(e.key === 'tsx_ayarlar') {
+    ayarlar = ayarlarDB.oku();
+    if(aktifListingId) listingKarGoster();
+    if(komboUrunler.length) komboKarGoster();
+    renderSatisList();
+    renderOzet();
+  }
+});
+window.addEventListener('pageshow', e => {
+  if(e.persisted) {
+    ayarlar = ayarlarDB.oku();
+    doldurListingDropdown();
+    doldurKomboDropdown();
+    renderSatisList();
+    renderOzet();
+  }
 });
 
 // ── BAŞLAT ───────────────────────────────────────────────────

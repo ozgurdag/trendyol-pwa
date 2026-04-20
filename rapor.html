@@ -183,7 +183,8 @@ function satisKar(s){
       const f = hesapla.satisFiyati(synth, ay, 1, kargoUcreti(ay.kargoFirma || 'Aras', maxDesi));
       if (f) {
         if (!gf) gf = f.yuvarlak;
-        platform = f.platform; kargo = f.kargo;
+        platform = f.platform; 
+        kargo = hesapla.gercekKargoBedeli(gf, maxDesi, ay, kargoUcreti(ay.kargoFirma || 'Aras', maxDesi));
         const kr = hesapla.gercekKar(alisBirim, gf, komOrani, platform, kargo);
         net = kr.net * s.adet; roi = kr.roi;
       }
@@ -194,7 +195,9 @@ function satisKar(s){
         const f = hesapla.satisFiyati(s.tip === 'set' ? { alisFiyati: alisBirim, desi: obj.desi || 2, komisyon: komOrani } : obj, ay, 1, kFU);
         if (f) {
           if (!gf) gf = f.yuvarlak;
-          platform = f.platform; kargo = f.kargo;
+          platform = f.platform; 
+          const desiH = obj.desi || (s.tip === 'set' ? 2 : 1);
+          kargo = hesapla.gercekKargoBedeli(gf, desiH, ay, kFU);
           const kr = hesapla.gercekKar(alisBirim, gf, komOrani, platform, kargo);
           net = kr.net * s.adet; roi = kr.roi;
         }
@@ -501,8 +504,6 @@ window.sekme=s=>{
   });
   if(s==='yillik') window.renderYillik();
   if(s==='grafik') renderGrafik();
-  if(s==='urun') renderUrun();
-};
   if(s==='urun') renderUrun();
 };
 

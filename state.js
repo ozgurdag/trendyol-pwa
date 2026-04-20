@@ -150,12 +150,13 @@ export async function supabasedenYukle(){
       token = o?.token || SB_KEY;
     }
 
-    const [rS, rL, rSet, rSt, rF] = await Promise.all([
+    const [rS, rL, rSet, rSt, rF, rLog] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/stok_kalemleri?select=*&order=ad`,{headers:sbHdr(token)}),
       fetch(`${SB_URL}/rest/v1/listingler?select=*&order=ad`,{headers:sbHdr(token)}),
       fetch(`${SB_URL}/rest/v1/setler?select=*&order=ad`,{headers:sbHdr(token)}),
       fetch(`${SB_URL}/rest/v1/satislar?select=*&order=tarih.desc`,{headers:sbHdr(token)}),
       fetch(`${SB_URL}/rest/v1/faturalar?select=*&order=tarih.desc`,{headers:sbHdr(token)}),
+      fetch(`${SB_URL}/rest/v1/activity_logs?select=*&order=zaman.desc&limit=500`,{headers:sbHdr(token)}),
     ]);
 
     if(rS.ok){ const d=await rS.json(); if(d?.length) set(DB_KEYS.stok, d.map(u=>({
@@ -195,16 +196,19 @@ export async function supabasedenYukle(){
     }))); }
 
     if(rSt.ok){ const d=await rSt.json(); if(d?.length) {
-      // Supabase'den gelen veriler üzerine yerel snapshot'ları koru
+      // Supabase snapshot > yerel snapshot > null öncelik sırası
       const localSatislar = get(DB_KEYS.satislar)||[];
       const localMap = Object.fromEntries(localSatislar.map(s=>[s.id,s]));
-      set(DB_KEYS.satislar, d.map(s=>({
-        id:s.id, tip:s.tip||'listing', hedefId:s.hedef_id,
-        adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
-        tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
-        snapshot: localMap[s.id]?.snapshot||null,
-        stokKombo: s.stok_kombo ? (typeof s.stok_kombo==='string'?JSON.parse(s.stok_kombo):s.stok_kombo) : (localMap[s.id]?.stokKombo||null),
-      })));
+      set(DB_KEYS.satislar, d.map(s=>{
+        const sbSnapshot = s.snapshot ? (typeof s.snapshot==='string'?JSON.parse(s.snapshot):s.snapshot) : null;
+        return {
+          id:s.id, tip:s.tip||'listing', hedefId:s.hedef_id,
+          adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
+          tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
+          snapshot: sbSnapshot || localMap[s.id]?.snapshot || null,
+          stokKombo: s.stok_kombo ? (typeof s.stok_kombo==='string'?JSON.parse(s.stok_kombo):s.stok_kombo) : (localMap[s.id]?.stokKombo||null),
+        };
+      }));
     }}
 
     if(rF.ok){ const d=await rF.json(); if(d?.length) {
@@ -213,6 +217,15 @@ export async function supabasedenYukle(){
         kdvTutari:f.kdv_tutari||0, kdvOrani:f.kdv_orani||20,
         aciklama:f.aciklama||'', cariAdi:f.cari_adi||'', dosyaUrl:f.dosya_url||null,
       })));
+    }}
+
+    if(rLog.ok){ const d=await rLog.json(); if(d?.length) {
+      // Supabase logları ile birleştir — yerel kayıtlarla çakışan ID'leri Supabase kazanır
+      const localLogs = get(LOG_KEY)||[];
+      const localIds = new Set(d.map(l=>l.id));
+      const sadeceLokalde = localLogs.filter(l=>!localIds.has(l.id));
+      const birlesik = [...d, ...sadeceLokalde].sort((a,b)=>b.zaman-a.zaman).slice(0, LOG_MAX);
+      set(LOG_KEY, birlesik);
     }}
 
     localStorage.setItem('tsx_son_sync', Date.now().toString());
@@ -256,7 +269,8 @@ export async function localdenSupabaseYukle(){
     await sbPost('satislar',{
       id:st.id, tip:st.tip||'listing', hedef_id:st.hedefId,
       adet:st.adet, gercek_fiyat:st.gercekFiyat||null, tarih:st.tarih,
-      stok_kombo: st.stokKombo ? JSON.stringify(st.stokKombo) : null
+      stok_kombo: st.stokKombo ? JSON.stringify(st.stokKombo) : null,
+      snapshot: st.snapshot ? JSON.stringify(st.snapshot) : null,
     });
     yuklenen++;
   }
@@ -480,12 +494,13 @@ export const satislarDB = {
                       : (obj.alisMaliyeti||0);
         if(f){
           const gercekFiyat = k.gercekFiyat || f.yuvarlak;
-          const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, f.platform, f.kargo);
+          const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat, desiH, ayarlar, kargoFU);
+          const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, f.platform, gercekKargo);
           snapshot = {
             alisMaliyeti: alisTop,
             komisyon: obj.komisyon||0.04,
             platform: f.platform,
-            kargo: f.kargo,
+            kargo: gercekKargo,
             netKar: kar.net,
             roi: kar.roi,
           };
@@ -500,9 +515,10 @@ export const satislarDB = {
         const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
         if(f){
           const gercekFiyat=k.gercekFiyat||f.yuvarlak;
-          const kar=hesapla.gercekKar(alisTop,gercekFiyat,0.04,f.platform,f.kargo);
+          const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat, maxDesi, ayarlar, kargoFU);
+          const kar=hesapla.gercekKar(alisTop,gercekFiyat,0.04,f.platform,gercekKargo);
           snapshot={alisMaliyeti:alisTop,komisyon:0.04,platform:f.platform,
-            kargo:f.kargo,netKar:kar.net,roi:kar.roi};
+            kargo:gercekKargo,netKar:kar.net,roi:kar.roi};
         }
       }
       return {
@@ -550,7 +566,8 @@ export const satislarDB = {
     sbPost('satislar',yeniler.map(k=>({
       id:k.id, tip:k.tip, hedef_id:k.hedefId,
       adet:k.adet, gercek_fiyat:k.gercekFiyat||null, tarih:k.tarih,
-      stok_kombo: k.stokKombo ? JSON.stringify(k.stokKombo) : null
+      stok_kombo: k.stokKombo ? JSON.stringify(k.stokKombo) : null,
+      snapshot: k.snapshot ? JSON.stringify(k.snapshot) : null,
     }))).then(()=>broadcastGonder());
     return yeniler;
   },
@@ -627,8 +644,16 @@ export const satislarDB = {
     let yeniSnapshot = k.snapshot;
     if(k.snapshot){
       const yeniFiyat = degisiklik.gercekFiyat!==undefined ? +degisiklik.gercekFiyat : k.gercekFiyat;
-      const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, k.snapshot.platform, k.snapshot.kargo);
-      yeniSnapshot = {...k.snapshot, netKar:yeniKar.net, roi:yeniKar.roi};
+      const ayarlar = ayarlarDB.oku();
+      let dsi = 1; let obj = null;
+      if(k.tip==='set') { obj=setlerDB.bul(k.hedefId); dsi=obj?.desi||2; }
+      else if(k.tip==='stok') { obj=stokDB.bul(k.hedefId); dsi=obj?.desi||1; }
+      else if(k.tip==='listing') { obj=listingDB.bul(k.hedefId); dsi=obj?.desi||1; }
+      else if(k.tip==='stok-combo') { dsi=Math.max(...(k.stokKombo||[]).map(x=>x.desi||1),1); }
+      const kFU = kargoUcreti(ayarlar.kargoFirma||'Aras', dsi);
+      const yeniKargo = hesapla.gercekKargoBedeli(yeniFiyat, dsi, ayarlar, kFU);
+      const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, k.snapshot.platform, yeniKargo);
+      yeniSnapshot = {...k.snapshot, kargo:yeniKargo, netKar:yeniKar.net, roi:yeniKar.roi};
     }
 
     const guncellendi = {...k, ...degisiklik, adet:yeniAdet, snapshot:yeniSnapshot};
@@ -644,6 +669,7 @@ export const satislarDB = {
     const v={};
     if(degisiklik.adet!==undefined)        v.adet=yeniAdet;
     if(degisiklik.gercekFiyat!==undefined) v.gercek_fiyat=+degisiklik.gercekFiyat;
+    if(yeniSnapshot!==k.snapshot)          v.snapshot=yeniSnapshot?JSON.stringify(yeniSnapshot):null;
     if(Object.keys(v).length) sbPatch('satislar',id,v).then(()=>broadcastGonder());
     return true;
   },
@@ -834,6 +860,13 @@ export const hesapla = {
     const basabas=(alis+platform+kargo+reklam)/(1-kom);
     const netKar=yuvarlak-alis-platform-kargo-reklam-yuvarlak*kom;
     return{onerilen,yuvarlak,basabas,kargo,platform,kom,netKar,roi:alis>0?netKar/alis:0,alis,reklam,hedef,payda};
+  },
+
+  gercekKargoBedeli(fiyat, desi, ayarlar, kargoFU) {
+    if ((desi||1) > 10) return kargoFU || 100.716;
+    if (fiyat < (ayarlar.kargoBaremEsik1 || 150)) return ayarlar.kargoBaremUcret1 || 51.492;
+    if (fiyat < (ayarlar.kargoBaremEsik2 || 300)) return ayarlar.kargoBaremUcret2 || 88.488;
+    return kargoFU || 100.716;
   },
 
   gercekKar(alisToplam,gercekFiyat,komisyon,platform,kargo,reklam=0){

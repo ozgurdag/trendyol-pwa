@@ -763,6 +763,13 @@ function renderSatisList(){
               <input class="form-input" type="date" id="edit-tarih-${s.id}" value="${s.tarih}">
             </div>
           </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 2px">
+            <label style="font-size:12px;color:var(--t2)">Aynı Gün Kargo</label>
+            <select class="form-select" id="edit-aynigun-${s.id}" style="width:130px;font-size:12px" onchange="editHesapGuncelle('${s.id}')">
+              <option value="0" ${(s.snapshot?s.snapshot.platform<11:false)?'':'selected'}>Normal Kargo</option>
+              <option value="1" ${(s.snapshot?s.snapshot.platform<11:false)?'selected':''}>Aynı Gün</option>
+            </select>
+          </div>
           <div id="edit-hesap-${s.id}" style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r-md);font-size:12px;display:none">
             <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--t3)">Alış Maliyeti</span><span id="eh-alis-${s.id}" style="font-family:var(--mono)">—</span></div>
             <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--t3)">Platform Hizm.</span><span id="eh-plat-${s.id}" style="font-family:var(--mono)">—</span></div>
@@ -835,11 +842,10 @@ window.editHesapGuncelle = id => {
     if(u){ if(!s.snapshot){alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;} desiH=u.desi||1; }
   }
 
-  if(!s.snapshot){
-    const obj = s.tip==='stok'?stokDB.bul(s.hedefId):s.tip==='set'?setlerDB.bul(s.hedefId):s.tip==='listing'?listingDB.bul(s.hedefId):null;
-    const ayniGun = obj?.ayniGunKargo??ayarlar.ayniGunKargo??false;
-    platform = ayniGun?(ayarlar.platformAyniGun||8.388):(ayarlar.platformNormal||13.188);
-  }
+  // Toggle'dan platform al — snapshot olsa bile kullanıcı değiştirebilir
+  const ayniGunEl = document.getElementById('edit-aynigun-'+id);
+  const ayniGun = ayniGunEl ? ayniGunEl.value === '1' : (s.snapshot ? s.snapshot.platform < 11 : false);
+  platform = ayniGun ? (ayarlar.platformAyniGun||8.388) : (ayarlar.platformNormal||13.188);
 
   const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
   const kargo   = hesapla.gercekKargoBedeli(yeniFiyat, desiH, ayarlar, kargoFU);
@@ -869,7 +875,9 @@ window.editKaydet = id => {
   if(!yeniAdet||yeniAdet<1){ toast('Geçerli adet girin','error'); return; }
   if(!yeniFiyat||yeniFiyat<=0){ toast('Geçerli fiyat girin','error'); return; }
   if(!yeniTarih){ toast('Geçerli tarih girin','error'); return; }
-  const ok = satislarDB.guncelle(id, {adet:yeniAdet, gercekFiyat:yeniFiyat, tarih:yeniTarih});
+  const ayniGunEl = document.getElementById('edit-aynigun-'+id);
+  const ayniGunKargo = ayniGunEl ? ayniGunEl.value === '1' : undefined;
+  const ok = satislarDB.guncelle(id, {adet:yeniAdet, gercekFiyat:yeniFiyat, tarih:yeniTarih, ayniGunKargo});
   if(ok){
     editKapat(id);
     doldurListingDropdown(); renderSatisList(); renderOzet();

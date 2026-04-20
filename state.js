@@ -640,7 +640,7 @@ export const satislarDB = {
       }
     }
 
-    // Snapshot'ı yeniden hesapla (fiyat değiştiyse)
+    // Snapshot'ı yeniden hesapla (fiyat veya ayniGunKargo değiştiyse)
     let yeniSnapshot = k.snapshot;
     if(k.snapshot){
       const yeniFiyat = degisiklik.gercekFiyat!==undefined ? +degisiklik.gercekFiyat : k.gercekFiyat;
@@ -652,8 +652,11 @@ export const satislarDB = {
       else if(k.tip==='stok-combo') { dsi=Math.max(...(k.stokKombo||[]).map(x=>x.desi||1),1); }
       const kFU = kargoUcreti(ayarlar.kargoFirma||'Aras', dsi);
       const yeniKargo = hesapla.gercekKargoBedeli(yeniFiyat, dsi, ayarlar, kFU);
-      const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, k.snapshot.platform, yeniKargo);
-      yeniSnapshot = {...k.snapshot, kargo:yeniKargo, netKar:yeniKar.net, roi:yeniKar.roi};
+      const yeniPlatform = degisiklik.ayniGunKargo !== undefined
+        ? (degisiklik.ayniGunKargo ? (ayarlar.platformAyniGun||8.388) : (ayarlar.platformNormal||13.188))
+        : k.snapshot.platform;
+      const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, yeniPlatform, yeniKargo);
+      yeniSnapshot = {...k.snapshot, platform:yeniPlatform, kargo:yeniKargo, netKar:yeniKar.net, roi:yeniKar.roi};
     }
 
     const guncellendi = {...k, ...degisiklik, adet:yeniAdet, snapshot:yeniSnapshot};

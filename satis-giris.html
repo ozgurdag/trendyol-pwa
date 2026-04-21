@@ -584,8 +584,9 @@ window.komboKaydet = () => {
     if(u && (u.stok||0) < it.adet && !confirm(`"${it.ad}" için stok yetersiz (mevcut ${u.stok||0}). Yine de kaydet?`)) return;
   }
 
+  const ayniGunKargo = document.getElementById('kombo-aynigun')?.value === '1';
   const stokKombo = komboUrunler.map(it=>({urunId:it.urunId, ad:it.ad, alisFiyati:it.alisFiyati, desi:it.desi, adet:it.adet}));
-  satislarDB.ekle([{tip:'stok-combo', hedefId:stokKombo[0].urunId, stokKombo, adet:1, gercekFiyat:fiyat, tarih}]);
+  satislarDB.ekle([{tip:'stok-combo', hedefId:stokKombo[0].urunId, stokKombo, adet:1, gercekFiyat:fiyat, tarih, ayniGunKargo}]);
 
   // Sıfırla
   komboUrunler = [];

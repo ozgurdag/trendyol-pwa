@@ -480,7 +480,8 @@ window.uKZ=()=>{
   const kargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
   const f=hesapla.satisFiyati({alisFiyati:alis,desi,komisyon:uSecKom||0.04,ayniGunKargo:aynigun,hedefKar:roi},{...ay},1,kargoFU);
   if(!f){el.style.display='none';return;}
-  const kar=hesapla.gercekKar(alis,satis,uSecKom||0.04,f.platform,f.kargo);
+  const gercekKargo = hesapla.gercekKargoBedeli(satis, desi, ay, kargoFU);
+  const kar=hesapla.gercekKar(alis,satis,uSecKom||0.04,f.platform,gercekKargo);
   _kzGoster(el,kar,document.getElementById('u-kz-d'),document.getElementById('u-kz-n'),document.getElementById('u-kz-r'));
 };
 window.uOlustur=()=>{
@@ -566,11 +567,13 @@ window.sOneri=()=>{
   sKZ();
 };
 window.sKZ=()=>{
-  const{toplam,maxKom,f}=sHesap();
+  const{toplam,maxKom,f,desi}=sHesap();
   const satis=toTL(document.getElementById('s-satis').value);
   const el=document.getElementById('s-kz');
   if(!satis||!f){el.style.display='none';return;}
-  const kar=hesapla.gercekKar(toplam,satis,maxKom,f.platform,f.kargo);
+  const kargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
+  const gercekKargo = hesapla.gercekKargoBedeli(satis, desi, ay, kargoFU);
+  const kar=hesapla.gercekKar(toplam,satis,maxKom,f.platform,gercekKargo);
   _kzGoster(el,kar,document.getElementById('s-kz-d'),document.getElementById('s-kz-n'),document.getElementById('s-kz-r'));
 };
 window.sOlustur=()=>{
@@ -749,7 +752,8 @@ window.renderKartlar=()=>{
       const kargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
       const f=alisTop>0?hesapla.satisFiyati({alisFiyati:alisTop,desi,komisyon:obj.komisyon||0.04,ayniGunKargo:obj.ayniGunKargo||false,hedefKar:obj.hedefKar},{...ay},1,kargoFU):null;
       const g=obj.satisFiyatiGercek;
-      const kar=g&&f&&alisTop>0?hesapla.gercekKar(alisTop,g,obj.komisyon||0.04,f.platform,f.kargo):null;
+      const gercekKargo=g?hesapla.gercekKargoBedeli(g,desi,ay,kargoFU):f?.kargo;
+      const kar=g&&f&&alisTop>0?hesapla.gercekKar(alisTop,g,obj.komisyon||0.04,f.platform,gercekKargo):null;
       const roiStr=obj.hedefKar!=null?'%'+Math.round(obj.hedefKar*100)+' hedef':'';
       let icerik='';
       if(tip==='set'&&obj.icindekiler?.length){
@@ -815,7 +819,8 @@ window.renderKartlar=()=>{
       const kargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
       const f=alisTop>0?hesapla.satisFiyati({alisFiyati:alisTop,desi,komisyon:obj.komisyon||0.04,ayniGunKargo:obj.ayniGunKargo||false,hedefKar:obj.hedefKar},{...ay},1,kargoFU):null;
       const g=obj.satisFiyatiGercek;
-      const kar=g&&f&&alisTop>0?hesapla.gercekKar(alisTop,g,obj.komisyon||0.04,f.platform,f.kargo):null;
+      const gercekKargo=g?hesapla.gercekKargoBedeli(g,desi,ay,kargoFU):f?.kargo;
+      const kar=g&&f&&alisTop>0?hesapla.gercekKar(alisTop,g,obj.komisyon||0.04,f.platform,gercekKargo):null;
 
       const bilesenHtml=bilesenler.length
         ?bilesenler.map(b=>{const u=stokDB.bul(b.urunId);if(!u)return'';const stokRenk=(u.stok||0)===0?'var(--red)':(u.stok||0)<5?'#f59e0b':'var(--green)';return`<div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:var(--r-md);padding:7px 10px;margin-bottom:5px;font-size:12px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.ad}${b.adet>1?` <b>×${b.adet}</b>`:''}</span><span style="color:${stokRenk};flex-shrink:0">● ${u.stok||0} adet</span></div>`;}).join('')
@@ -917,7 +922,8 @@ window.edKar=()=>{
   const kargoFU=kargoUcreti(ay.kargoFirma||'Aras',desi);
   const f=hesapla.satisFiyati({alisFiyati:alisI,desi,komisyon:obj.komisyon||0.04,ayniGunKargo:aynigun,hedefKar:roi},{...ay},1,kargoFU);
   if(!f){el.style.display='none';return;}
-  const kar=hesapla.gercekKar(alisI,g,obj.komisyon||0.04,f.platform,f.kargo);
+  const gercekKargo = hesapla.gercekKargoBedeli(g, desi, ay, kargoFU);
+  const kar=hesapla.gercekKar(alisI,g,obj.komisyon||0.04,f.platform,gercekKargo);
   el.style.display='';el.style.background=kar.kararli?'var(--green-l)':'var(--red-l)';el.style.borderColor=kar.kararli?'var(--green)':'var(--red)';
   el.innerHTML=`<div style="display:flex;justify-content:space-between"><span style="color:${kar.kararli?'var(--green)':'var(--red)'}">${kar.kararli?'✅ Karlı':'❌ Zararlı'}</span><span style="font-weight:700;font-family:var(--mono);color:${kar.kararli?'var(--green)':'var(--red)'}">${p(kar.net)}</span></div><div style="font-size:11px;color:var(--t3);margin-top:3px">ROI: %${Math.round(kar.roi*100)}</div>`;
 };

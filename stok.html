@@ -140,6 +140,17 @@
         <span id="sm-kom-g" style="font-weight:700;color:var(--accent)">—</span>
       </div>
     </div>
+    <!-- Trendyol bağlantısı -->
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Trendyol Barkodu</label>
+        <input class="form-input" id="sm-barcode" placeholder="8680012345678">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Satıcı SKU</label>
+        <input class="form-input" id="sm-sku" placeholder="SKU001">
+      </div>
+    </div>
     <button class="btn btn-ghost btn-sm mb-8" onclick="stokModalKatToggle()" id="sm-kat-btn" style="width:100%">
       ✏️ Kategori Bilgisini Düzenle
     </button>
@@ -172,6 +183,16 @@
     <div class="form-group">
         <label class="form-label">Desi</label>
         <input class="form-input" type="number" inputmode="decimal" id="ne-desi" value="1" min="1">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Trendyol Barkodu <span style="font-size:10px;color:var(--t3)">(opsiyonel)</span></label>
+        <input class="form-input" id="ne-barcode" placeholder="8680012345678">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Satıcı SKU <span style="font-size:10px;color:var(--t3)">(opsiyonel)</span></label>
+        <input class="form-input" id="ne-sku" placeholder="SKU001">
+      </div>
     </div>
     <!-- komisyon kategoriden otomatik gelir -->
     <input type="hidden" id="ne-kom-inp" value="4">
@@ -211,7 +232,7 @@
     <div style="background:var(--bg3);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3);line-height:1.6">
       📋 Önce şablonu indirin, doldurun ve buraya yükleyin.<br>
       <b>CSV veya Excel</b> (.csv, .xlsx) desteklenir<br>
-      Zorunlu: <b>Ürün Adı</b>, <b>Alış Fiyatı</b> · Opsiyonel: Stok, Desi, Kategori1, Kategori2, Ürün Grubu
+      Zorunlu: <b>Ürün Adı</b>, <b>Alış Fiyatı</b> · Opsiyonel: Stok, Desi, <b>Trendyol Barkodu</b>, Satıcı SKU, Kategori
     </div>
     <div style="border:2px dashed var(--border2);border-radius:var(--r-md);padding:20px;text-align:center;margin-bottom:12px;cursor:pointer" onclick="document.getElementById('excel-file').click()">
       <div style="font-size:28px;margin-bottom:8px">📂</div>
@@ -234,7 +255,7 @@
     <div class="modal-title">Stok Yükle (CSV)</div>
     <div style="background:var(--bg3);border-radius:var(--r-md);padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--t3);line-height:1.6">
       📋 Şablonu indirip doldurun, CSV olarak kaydedin.<br>
-      <b>Zorunlu:</b> Ürün Adı, Alış Fiyatı<br>
+      <b>Zorunlu:</b> Ürün Adı, Alış Fiyatı · <b>Opsiyonel:</b> Trendyol Barkodu, Satıcı SKU<br>
       <b>Opsiyonel:</b> Stok, Desi, Kategori1, Kategori2, Ürün Grubu
     </div>
     <div style="border:2px dashed var(--border2);border-radius:var(--r-md);padding:20px;text-align:center;margin-bottom:12px;cursor:pointer" onclick="document.getElementById('csv-dosya-input').click()">
@@ -400,6 +421,8 @@ window.stokModalAc = (id) => {
   // Tedarik süresi ve manuel eşik
   document.getElementById('stok-tedarik').value = u.tedarikSuresi || 5;
   document.getElementById('stok-esik-manuel').value = u.kritikEsikManuel || '';
+  document.getElementById('sm-barcode').value = u.tyBarcode || '';
+  document.getElementById('sm-sku').value     = u.tyMerchantSku || '';
   esikGuncelle();
   document.getElementById('stok-modal').classList.add('open');
 };
@@ -430,6 +453,10 @@ window.stokKaydet = () => {
   if(k2) guncelleme.kategori2=k2;
   if(k3) guncelleme.urunGrubu=k3;
   if(komV) guncelleme.komisyon=komV;
+  const smBarcode = document.getElementById('sm-barcode').value.trim();
+  const smSku     = document.getElementById('sm-sku').value.trim();
+  guncelleme.tyBarcode     = smBarcode || null;
+  guncelleme.tyMerchantSku = smSku     || null;
   stokDB.guncelle(aktifId, guncelleme);
   document.getElementById('stok-modal').classList.remove('open');
   render();
@@ -523,11 +550,13 @@ window.stokUrunEkle = () => {
   const k1 = document.getElementById('ne-k1').value;
   const k2 = document.getElementById('ne-k2').value;
   const k3 = document.getElementById('ne-k3').value;
+  const tyBarcode     = document.getElementById('ne-barcode').value.trim() || null;
+  const tyMerchantSku = document.getElementById('ne-sku').value.trim()     || null;
   if (!ad || !alis) { toast('Ad ve alış fiyatı zorunlu', 'error'); return; }
   stokDB.ekle({ ad, alisFiyati: alis, stok, desi, komisyon: kom, tip:'stok',
                    kategori1: k1||undefined, kategori2: k2||undefined, urunGrubu: k3||undefined,
-                   tip: 'stok' });
-  ['ne-ad','ne-alis'].forEach(id => document.getElementById(id).value = '');
+                   tyBarcode, tyMerchantSku });
+  ['ne-ad','ne-alis','ne-barcode','ne-sku'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('ne-stok').value = '0';
   document.getElementById('ne-desi').value = '1';
   if(komEl) komEl.value = '4';
@@ -615,11 +644,11 @@ window.stokUrunSil = () => {
 window.excelSablon = async () => {
   const {utils, writeFile} = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
   const ws = utils.aoa_to_sheet([
-    ['Ürün Adı','Alış Fiyatı (₺)','Stok Adedi','Desi','Kategori1','Kategori2','Ürün Grubu'],
-    ['Örnek Ürün 1', 50, 10, 1, 'Süpermarket', 'Bebek Bakım', 'Bebek Şampuanı'],
-    ['Örnek Ürün 2', 120, 5, 2, 'Kozmetik', 'Cilt Bakım', 'Nemlendirici Krem'],
+    ['Ürün Adı','Alış Fiyatı (₺)','Stok Adedi','Desi','Trendyol Barkodu','Satıcı SKU','Kategori1','Kategori2','Ürün Grubu'],
+    ['Örnek Ürün 1', 50, 10, 1, '8680012345678', 'SKU001', 'Süpermarket', 'Bebek Bakım', 'Bebek Şampuanı'],
+    ['Örnek Ürün 2', 120, 5, 2, '', '', 'Kozmetik', 'Cilt Bakım', 'Nemlendirici Krem'],
   ]);
-  ws['!cols'] = [{wch:30},{wch:16},{wch:12},{wch:8},{wch:18},{wch:18},{wch:20}];
+  ws['!cols'] = [{wch:30},{wch:16},{wch:12},{wch:8},{wch:20},{wch:14},{wch:18},{wch:18},{wch:20}];
   const wb = utils.book_new();
   utils.book_append_sheet(wb, ws, 'Stok');
   writeFile(wb, 'stok_sablonu.xlsx');
@@ -674,6 +703,8 @@ window.excelOku = async (input) => {
     alisFiyati: +r['Alış Fiyatı (₺)'] || +r['Alış Fiyatı'] || +r['alis_fiyati'] || 0,
     stok: +r['Stok Adedi'] || +r['stok'] || 0,
     desi: +r['Desi'] || +r['desi'] || 1,
+    tyBarcode:     (r['Trendyol Barkodu'] || r['ty_barcode'] || '').trim() || null,
+    tyMerchantSku: (r['Satıcı SKU']       || r['ty_merchant_sku'] || '').trim() || null,
     kategori1: r['Kategori1'] || r['kategori1'] || '',
     kategori2: r['Kategori2'] || r['kategori2'] || '',
     urunGrubu: r['Ürün Grubu'] || r['urun_grubu'] || '',
@@ -692,6 +723,7 @@ window.excelKaydet = () => {
   if (!importData.length) return;
   importData.forEach(u => stokDB.ekle({
     ad: u.ad, alisFiyati: u.alisFiyati, stok: u.stok, desi: u.desi,
+    tyBarcode: u.tyBarcode||null, tyMerchantSku: u.tyMerchantSku||null,
     kategori1: u.kategori1||undefined, kategori2: u.kategori2||undefined,
     urunGrubu: u.urunGrubu||undefined, tip: 'stok',
     komisyon: u.urunGrubu ? komisyonOrani(u.urunGrubu, ayarlarDB.oku().saticiTipiKey||'KadinGir') : 0.04,
@@ -703,9 +735,9 @@ window.excelKaydet = () => {
 };
 
 window.csvSablonIndir = () => {
-  const icerik = 'Ürün Adı,Alış Fiyatı (₺),Stok Adedi,Desi,Kategori1,Kategori2,Ürün Grubu\n' +
-    'Örnek Ürün 1,50,10,1,Süpermarket,Bebek Bakım,Bebek Şampuanı\n' +
-    'Örnek Ürün 2,120,5,2,Kozmetik,Cilt Bakım,Nemlendirici Krem\n';
+  const icerik = 'Ürün Adı,Alış Fiyatı (₺),Stok Adedi,Desi,Trendyol Barkodu,Satıcı SKU,Kategori1,Kategori2,Ürün Grubu\n' +
+    'Örnek Ürün 1,50,10,1,8680012345678,SKU001,Süpermarket,Bebek Bakım,Bebek Şampuanı\n' +
+    'Örnek Ürün 2,120,5,2,,,Kozmetik,Cilt Bakım,Nemlendirici Krem\n';
   const blob = new Blob([new Uint8Array([0xEF,0xBB,0xBF]), icerik], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -764,6 +796,8 @@ window.csvOku = async (input) => {
           alisFiyati:parseNum(obj['Alış Fiyatı (₺)'] || obj['Alış Fiyatı'] || obj['alis_fiyati']),
           stok:      parseInt(obj['Stok Adedi'] || obj['stok']) || 0,
           desi:      parseInt(obj['Desi']       || obj['desi']) || 1,
+          tyBarcode:     (obj['Trendyol Barkodu'] || obj['ty_barcode'] || '').trim() || null,
+          tyMerchantSku: (obj['Satıcı SKU']       || obj['ty_merchant_sku'] || '').trim() || null,
           kategori1: obj['Kategori1']   || obj['kategori1'] || '',
           kategori2: obj['Kategori2']   || obj['kategori2'] || '',
           urunGrubu: obj['Ürün Grubu']  || obj['urun_grubu'] || '',
@@ -794,6 +828,7 @@ window.csvKaydet = () => {
     stokDB.ekle({
       ad:u.ad, alisFiyati:u.alisFiyati, stok:u.stok||0, desi:u.desi||1,
       komisyon:kom,
+      tyBarcode:u.tyBarcode||null, tyMerchantSku:u.tyMerchantSku||null,
       kategori1:u.kategori1||undefined, kategori2:u.kategori2||undefined,
       urunGrubu:u.urunGrubu||undefined, tip:'stok',
     });

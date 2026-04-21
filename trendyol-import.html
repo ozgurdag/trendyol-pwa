@@ -110,8 +110,9 @@
 <script type="module">
 import { auth, ayarlarDB, satislarDB, stokDB, listingDB, setlerDB } from './state.js';
 
-const SB_URL = 'https://zburwdqwpoxpocymkutk.supabase.co';
-const PROXY  = `${SB_URL}/functions/v1/trendyol-proxy`;
+const SB_URL  = 'https://zburwdqwpoxpocymkutk.supabase.co';
+const SB_KEY  = 'sb_publishable_XipAv4wzmw8iTx6k942DkA_A8CkKh_X';
+const PROXY   = `${SB_URL}/functions/v1/bright-api`;
 
 const o = auth.oturum();
 if (!o) { window.location.href = 'index.html'; }
@@ -219,7 +220,7 @@ window.siparisleriCek = async () => {
     while(page < totalPages && page < 10){
       const res = await fetch(PROXY, {
         method: 'POST',
-        headers: { 'Content-Type':'application/json', 'apikey': SB_URL.includes('supabase') ? 'sb_publishable_XipAv4wzmw8iTx6k942DkA_A8CkKh_X' : '' },
+        headers: { 'Content-Type':'application/json', 'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}` },
         body: JSON.stringify({
           sellerId:  ay2.tySellerId,
           apiKey:    ay2.tyApiKey,

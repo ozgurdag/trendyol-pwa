@@ -17,7 +17,7 @@
 
   <div class="topbar">
     <div class="topbar-title">📦 Stok Durumu</div>
-    <div class="topbar-action admin-only" onclick="csvSablonIndir()" title="CSV Şablon İndir">📋</div>
+    <div class="topbar-action admin-only" onclick="excelSablon()" title="Excel Şablon İndir">📋</div>
     <div class="topbar-action admin-only" onclick="csvImportAc()" title="CSV Yükle">📥</div>
     <div class="topbar-action" onclick="excelIndir()" title="Excel İndir">⬇</div>
     <div class="topbar-action admin-only" id="btn-urun-ekle" onclick="urunEkleModalAc()" title="Ürün Ekle">＋</div>
@@ -643,16 +643,78 @@ window.stokUrunSil = () => {
 // ── EXCEL ŞABLON & IMPORT ─────────────────────────────────────
 window.excelSablon = async () => {
   const {utils, writeFile} = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
-  const ws = utils.aoa_to_sheet([
-    ['Ürün Adı','Alış Fiyatı (₺)','Stok Adedi','Desi','Trendyol Barkodu','Satıcı SKU','Kategori1','Kategori2','Ürün Grubu'],
-    ['Örnek Ürün 1', 50, 10, 1, '8680012345678', 'SKU001', 'Süpermarket', 'Bebek Bakım', 'Bebek Şampuanı'],
-    ['Örnek Ürün 2', 120, 5, 2, '', '', 'Kozmetik', 'Cilt Bakım', 'Nemlendirici Krem'],
-  ]);
-  ws['!cols'] = [{wch:30},{wch:16},{wch:12},{wch:8},{wch:20},{wch:14},{wch:18},{wch:18},{wch:20}];
+
+  // Satır 1: Sütun başlıkları
+  // Satır 2: Açıklamalar (ne girileceği)
+  // Satır 3-4: Dolu örnekler
+  // Satır 5: Boş şablon satırı
+  const rows = [
+    // Başlıklar
+    ['Ürün Adı', 'Alış Fiyatı (₺)', 'Stok Adedi', 'Desi', 'Trendyol Barkodu', 'Satıcı SKU', 'Kategori1', 'Kategori2', 'Ürün Grubu'],
+    // Açıklamalar
+    ['Ürünün tam adı (zorunlu)', 'Alış/maliyet fiyatı (zorunlu)', 'Mevcut stok adedi', 'Kargo desi ağırlığı (1-10)', 'Trendyol barkod no.', 'Kendi stok kodunuz', 'Ana kategori', 'Alt kategori', 'Ürün grubu (komisyon)'],
+    // Örnek 1 — barkodlu
+    ['Bebek Şampuanı 400ml', 45.50, 20, 1, '8680012345678', 'BS-400', 'Süpermarket', 'Bebek Bakım', 'Bebek Şampuanı'],
+    // Örnek 2 — barkodsuz
+    ['Nemlendirici Krem 50ml', 120, 8, 1, '', '', 'Kozmetik', 'Cilt Bakım', 'Nemlendirici Krem'],
+    // Boş veri satırları
+    ['', '', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', '', ''],
+  ];
+
+  const ws = utils.aoa_to_sheet(rows);
+  ws['!cols'] = [
+    {wch:32}, // Ürün Adı
+    {wch:18}, // Alış Fiyatı
+    {wch:14}, // Stok
+    {wch:8},  // Desi
+    {wch:22}, // Barkod
+    {wch:14}, // SKU
+    {wch:18}, // Kategori1
+    {wch:18}, // Kategori2
+    {wch:22}, // Ürün Grubu
+  ];
+
+  // Açıklama satırını italik göster (SheetJS free - sadece format hint)
+  // Açıklama satırı 2. satır — yorum olarak ekle
+  ws['A2'].c = [{a:'Sistem', t:'Ürün adı — Trendyol veya kendi isminiz. Zorunlu alan.'}];
+  ws['B2'].c = [{a:'Sistem', t:'Satın alma maliyeti. Kar hesabı buradan yapılır.'}];
+  ws['E2'].c = [{a:'Sistem', t:'Trendyol Entegrasyon Paneli → Ürün Yönetimi → Barkod. Sipariş eşleştirmede kullanılır.'}];
+  ws['F2'].c = [{a:'Sistem', t:'Kendi belirlediğiniz stok kodu (merchantSku). Opsiyonel.'}];
+
   const wb = utils.book_new();
-  utils.book_append_sheet(wb, ws, 'Stok');
+  utils.book_append_sheet(wb, ws, 'Stok Şablonu');
+
+  // Talimatlar sekmesi
+  const talimatRows = [
+    ['STOK YÜKLEME TALİMATLARI'],
+    [''],
+    ['ZORUNLU ALANLAR', ''],
+    ['Ürün Adı', 'Ürünün adı. Sistemdeki ürünle aynı adsa stok güncellenir, yoksa yeni ürün eklenir.'],
+    ['Alış Fiyatı (₺)', 'Ürünü satın aldığınız maliyet fiyatı. Kar hesabı bu değerden yapılır.'],
+    [''],
+    ['OPSİYONEL ALANLAR', ''],
+    ['Stok Adedi', 'Mevcut stok miktarı. Boş bırakılırsa 0 olarak girilir.'],
+    ['Desi', 'Kargo desi ağırlığı (1-10 arası). Boş bırakılırsa 1 alınır.'],
+    ['Trendyol Barkodu', 'Trendyol panelindeki ürün barkodu. Sipariş aktarımında otomatik eşleştirme için kullanılır.'],
+    ['Satıcı SKU', 'Kendi stok kodunuz (isteğe bağlı). Trendyol merchantSku ile aynı olabilir.'],
+    ['Kategori1', 'Ana kategori. Örnek: Kozmetik, Süpermarket, Elektronik'],
+    ['Kategori2', 'Alt kategori. Örnek: Cilt Bakım, Bebek Bakım'],
+    ['Ürün Grubu', 'Komisyon oranını belirler. Örnek: Nemlendirici Krem, Bebek Şampuanı'],
+    [''],
+    ['NASIL YÜKLENİR?', ''],
+    ['1', '"Stok Şablonu" sekmesini doldurun (bu sekmeyi silmeyin)'],
+    ['2', 'Açıklama satırını (2. satır) silmeyin — sistem otomatik atlar'],
+    ['3', 'Dosyayı kaydedin (.xlsx olarak)'],
+    ['4', 'Stok sayfasında 📥 butonuna tıklayın ve bu dosyayı seçin'],
+  ];
+  const ws2 = utils.aoa_to_sheet(talimatRows);
+  ws2['!cols'] = [{wch:26},{wch:70}];
+  utils.book_append_sheet(wb, ws2, 'Talimatlar');
+
   writeFile(wb, 'stok_sablonu.xlsx');
-  toast('Şablon indirildi','success');
+  toast('Excel şablonu indirildi','success');
 };
 
 window.excelImportAc = () => {
@@ -691,8 +753,14 @@ window.excelOku = async (input) => {
       const {read, utils} = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
       const buf = await file.arrayBuffer();
       const wb = read(buf);
-      const ws = wb.Sheets[wb.SheetNames[0]];
+      // "Stok Şablonu" sekmesi varsa onu kullan, yoksa ilk sekme
+      const sheetName = wb.SheetNames.find(n=>n.includes('Stok')||n.includes('stok')) || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
       rows = utils.sheet_to_json(ws, {defval:''});
+      // Açıklama satırını atla: ilk satır anahtar kelime içeriyorsa skip
+      if(rows.length && (rows[0]['Ürün Adı']||'').toString().includes('zorunlu')){
+        rows = rows.slice(1);
+      }
     } catch(e){
       alert('Excel yüklenemedi. Lütfen dosyayı CSV olarak kaydedin:\nExcel → Farklı Kaydet → CSV (UTF-8)');
       return;

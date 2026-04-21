@@ -233,7 +233,9 @@ window.siparisleriCek = async () => {
       });
       if(!res.ok){ const t=await res.text(); throw new Error(`HTTP ${res.status}: ${t}`); }
       const data = await res.json();
+      console.log('Trendyol yanıt:', res.status, data);
       if(data.errors||data.error){ throw new Error(JSON.stringify(data.errors||data.error)); }
+      if(!res.ok){ throw new Error(`HTTP ${res.status}: ${JSON.stringify(data)}`); }
       totalPages = data.totalPages || 1;
       allContent = allContent.concat(data.content || []);
       page++;

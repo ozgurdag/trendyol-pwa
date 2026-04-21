@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<title>Trendyol Sipariş Aktarımı · Satış Yönetim</title>
+<link rel="stylesheet" href="./app.css">
+<style>
+.order-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:12px;margin-bottom:8px}
+.order-row.matched{border-color:var(--green)}
+.order-row.no-match{border-color:var(--yellow)}
+.order-row.skip{opacity:0.45}
+.order-row.imported{border-color:var(--accent);opacity:0.6}
+.match-badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600}
+.match-badge.ok{background:var(--green-l,rgba(0,200,100,.15));color:var(--green)}
+.match-badge.warn{background:rgba(255,200,0,.15);color:#f5c518}
+.match-badge.none{background:var(--red-l);color:var(--red)}
+.match-select{font-size:12px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--t1);width:100%}
+.prog-bar{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px}
+.prog-fill{height:100%;background:var(--accent);transition:width .3s}
+.stat-row{display:flex;gap:12px;margin-bottom:12px}
+.stat-box{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px;text-align:center}
+.stat-box .val{font-size:22px;font-weight:700;color:var(--accent)}
+.stat-box .lbl{font-size:11px;color:var(--t3);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="app-shell">
+
+  <div class="topbar">
+    <a href="./ayarlar.html" class="btn btn-ghost btn-icon" style="margin-right:4px">←</a>
+    <div class="topbar-title">🛒 Trendyol Siparişler</div>
+  </div>
+
+  <div class="page-content">
+
+    <!-- API DURUM -->
+    <div id="api-uyari" class="card mb-16" style="border-color:var(--yellow);display:none">
+      <div style="font-size:13px;color:var(--yellow)">⚠️ Trendyol API bilgileri eksik.</div>
+      <div style="font-size:12px;color:var(--t3);margin-top:4px">Ayarlar sayfasından Satıcı ID, API Key ve API Secret girin.</div>
+      <a href="./ayarlar.html" class="btn btn-secondary btn-full mt-8" style="text-decoration:none;display:flex;align-items:center;justify-content:center">⚙️ Ayarlara Git</a>
+    </div>
+
+    <!-- TARİH FORMU -->
+    <div class="card mb-16" id="form-card">
+      <div class="section-title" style="margin:0 0 12px">Tarih Aralığı</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">Başlangıç</div>
+          <input class="form-input" type="date" id="dt-start" style="width:100%">
+        </div>
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">Bitiş</div>
+          <input class="form-input" type="date" id="dt-end" style="width:100%">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="hizliTarih(7)">Son 7 gün</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="hizliTarih(30)">Son 30 gün</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:12px" onclick="hizliTarih(90)">Son 90 gün</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:4px">Durum Filtresi</div>
+          <select class="form-select" id="durum-filtre" style="width:100%">
+            <option value="teslim">Teslim Edilenler (Delivered)</option>
+            <option value="hepsi">Tüm Aktif Siparişler</option>
+            <option value="iptal">İptaller Dahil</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="cek-btn" onclick="siparisleriCek()">🔄 Siparişleri Getir</button>
+      <div class="prog-bar" id="prog-bar" style="display:none"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+    </div>
+
+    <!-- İSTATİSTİKLER -->
+    <div class="stat-row" id="stats-row" style="display:none">
+      <div class="stat-box"><div class="val" id="st-toplam">0</div><div class="lbl">Sipariş Satırı</div></div>
+      <div class="stat-box"><div class="val" id="st-esles">0</div><div class="lbl">Eşleşti</div></div>
+      <div class="stat-box"><div class="val" id="st-aktarildi">0</div><div class="lbl">Aktarıldı</div></div>
+    </div>
+
+    <!-- SONUÇ LİSTESİ -->
+    <div id="sonuc-list"></div>
+
+    <!-- İÇE AKTAR BUTONU -->
+    <div id="import-bar" style="display:none;position:sticky;bottom:72px;z-index:10;padding:8px 0">
+      <button class="btn btn-primary btn-full" onclick="secilenleriAktar()" id="aktar-btn">
+        ✅ Eşleşenleri Satış Olarak Kaydet
+      </button>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="./dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="nav-label">Panel</span></a>
+    <a class="nav-item" href="./fiyatlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><span class="nav-label">Ürün/Set</span></a>
+    <a class="nav-item" href="./satis-giris.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg><span class="nav-label">Satış</span></a>
+    <a class="nav-item" href="./stok.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><span class="nav-label">Stok</span></a>
+    <a class="nav-item" href="./alis-hesap.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg><span class="nav-label">Max Alış</span></a>
+    <a class="nav-item" href="./finans.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span class="nav-label">Finans</span></a>
+    <a class="nav-item" href="./rapor.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-label">Rapor</span></a>
+    <a class="nav-item active" href="./ayarlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="nav-label">Ayarlar</span></a>
+  </nav>
+
+</div>
+<div class="toast-container" id="toastCont"></div>
+
+<script type="module">
+import { auth, ayarlarDB, satislarDB, stokDB, listingDB, setlerDB } from './state.js';
+
+const SB_URL = 'https://zburwdqwpoxpocymkutk.supabase.co';
+const PROXY  = `${SB_URL}/functions/v1/trendyol-proxy`;
+
+const o = auth.oturum();
+if (!o) { window.location.href = 'index.html'; }
+
+// Durum filtreleme
+const TESLIM_DURUMLAR = ['Delivered','UnPacked','Invoiced','Shipped'];
+const AKTIF_DURUMLAR  = ['Created','Picking','Invoiced','Shipped','UnPacked','Delivered'];
+
+// Sayfa state
+let satirlar = []; // {id, sipNo, urunAd, adet, fiyat, tarih, durum, eslesti:{tip,hedefId,ad}, aktarildi}
+
+// Varsayılan tarih
+const bugun = new Date();
+const otuzGunOnce = new Date(bugun - 30 * 86400000);
+document.getElementById('dt-end').value   = bugun.toISOString().slice(0,10);
+document.getElementById('dt-start').value = otuzGunOnce.toISOString().slice(0,10);
+
+// API kontrol
+const ay = ayarlarDB.oku();
+if(!ay.tySellerId || !ay.tyApiKey || !ay.tyApiSecret){
+  document.getElementById('api-uyari').style.display = 'block';
+  document.getElementById('form-card').style.opacity = '0.5';
+  document.getElementById('cek-btn').disabled = true;
+}
+
+window.hizliTarih = (gun) => {
+  const bitis = new Date();
+  const baslangic = new Date(bitis - gun * 86400000);
+  document.getElementById('dt-end').value   = bitis.toISOString().slice(0,10);
+  document.getElementById('dt-start').value = baslangic.toISOString().slice(0,10);
+};
+
+// Normalize et — eşleştirme için
+function norm(s){
+  return (s||'').toLowerCase()
+    .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
+    .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
+    .replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+}
+
+// Ürünleri birleştir: stok + listing + set
+function tumUrunler(){
+  const stoklar   = stokDB.hepsini().map(u=>({tip:'stok',   hedefId:u.id, ad:u.ad}));
+  const listinglar= listingDB.hepsini().map(u=>({tip:'listing',hedefId:u.id, ad:u.ad}));
+  const setler    = setlerDB.hepsini().map(u=>({tip:'set',   hedefId:u.id, ad:u.ad}));
+  return [...stoklar,...listinglar,...setler];
+}
+
+// Benzerlik skoru (0-1)
+function skor(a, b){
+  const na = norm(a), nb = norm(b);
+  if(!na || !nb) return 0;
+  if(na === nb) return 1;
+  if(na.includes(nb) || nb.includes(na)) return 0.85;
+  // kelime örtüşmesi
+  const wa = new Set(na.split(' ').filter(w=>w.length>2));
+  const wb = new Set(nb.split(' ').filter(w=>w.length>2));
+  if(!wa.size || !wb.size) return 0;
+  let ortusma = 0;
+  wa.forEach(w=>{ if(wb.has(w)) ortusma++; });
+  return ortusma / Math.max(wa.size, wb.size);
+}
+
+function esles(urunAd){
+  const urunler = tumUrunler();
+  let enIyi = null, enSkor = 0;
+  urunler.forEach(u=>{
+    const s = skor(urunAd, u.ad);
+    if(s > enSkor){ enSkor = s; enIyi = u; }
+  });
+  return enSkor >= 0.5 ? {...enIyi, skor:enSkor} : null;
+}
+
+// Trendyol durum etiketi
+function durumEtiket(d){
+  const m={Created:'Oluşturuldu',Picking:'Hazırlanıyor',Invoiced:'Faturalandı',
+    Shipped:'Kargoda',UnPacked:'Teslim Noktasında',Delivered:'Teslim Edildi',
+    Cancelled:'İptal',UnDelivered:'Teslim Edilemedi',Returned:'İade'};
+  return m[d]||d;
+}
+
+window.siparisleriCek = async () => {
+  const ay2 = ayarlarDB.oku();
+  if(!ay2.tySellerId||!ay2.tyApiKey||!ay2.tyApiSecret){
+    toast('Trendyol API bilgileri eksik','error'); return;
+  }
+  const startStr = document.getElementById('dt-start').value;
+  const endStr   = document.getElementById('dt-end').value;
+  if(!startStr||!endStr){ toast('Tarih seçin','error'); return; }
+
+  const startMs = new Date(startStr).getTime();
+  const endMs   = new Date(endStr  ).getTime() + 86399999; // gün sonu
+
+  document.getElementById('cek-btn').disabled = true;
+  document.getElementById('prog-bar').style.display = 'block';
+  document.getElementById('prog-fill').style.width = '10%';
+  document.getElementById('sonuc-list').innerHTML = '';
+  document.getElementById('import-bar').style.display = 'none';
+  document.getElementById('stats-row').style.display = 'none';
+  satirlar = [];
+
+  try {
+    // Tüm sayfaları çek
+    let page = 0, totalPages = 1, allContent = [];
+    while(page < totalPages && page < 10){
+      const res = await fetch(PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'apikey': SB_URL.includes('supabase') ? 'sb_publishable_XipAv4wzmw8iTx6k942DkA_A8CkKh_X' : '' },
+        body: JSON.stringify({
+          sellerId:  ay2.tySellerId,
+          apiKey:    ay2.tyApiKey,
+          apiSecret: ay2.tyApiSecret,
+          startDate: startMs,
+          endDate:   endMs,
+          page,
+          size: 200,
+        }),
+      });
+      if(!res.ok){ const t=await res.text(); throw new Error(`HTTP ${res.status}: ${t}`); }
+      const data = await res.json();
+      if(data.errors||data.error){ throw new Error(JSON.stringify(data.errors||data.error)); }
+      totalPages = data.totalPages || 1;
+      allContent = allContent.concat(data.content || []);
+      page++;
+      document.getElementById('prog-fill').style.width = `${10+80*(page/totalPages)}%`;
+    }
+
+    // Filtrele
+    const filtre = document.getElementById('durum-filtre').value;
+    const filtreli = allContent.filter(p=>{
+      if(filtre==='teslim') return TESLIM_DURUMLAR.includes(p.status);
+      if(filtre==='hepsi')  return AKTIF_DURUMLAR.includes(p.status);
+      return true;
+    });
+
+    // Sipariş satırlarına düzleştir
+    filtreli.forEach(paket=>{
+      const tarihMs = paket.orderDate || paket.packageLastModifiedDate || Date.now();
+      const tarih   = new Date(tarihMs).toISOString().slice(0,10);
+      (paket.lines||[]).forEach(line=>{
+        const id = `${paket.orderNumber}_${line.lineId||line.id||Math.random()}`;
+        satirlar.push({
+          id,
+          sipNo:  paket.orderNumber,
+          urunAd: line.productName || '—',
+          barcode: line.barcode || line.productCode || '',
+          merchantSku: line.merchantSku || '',
+          adet:   line.quantity || 1,
+          fiyat:  line.amount || line.price || 0,
+          tarih,
+          durum:  paket.status,
+          eslesti: esles(line.productName),
+          aktarildi: false,
+        });
+      });
+    });
+
+    document.getElementById('prog-fill').style.width = '100%';
+    setTimeout(()=>document.getElementById('prog-bar').style.display='none', 500);
+
+    renderList();
+    guncelleStat();
+
+    if(satirlar.length===0){
+      toast('Bu tarih aralığında sipariş bulunamadı','info');
+    } else {
+      toast(`${satirlar.length} sipariş satırı getirildi`,'success');
+    }
+
+  } catch(e){
+    document.getElementById('prog-bar').style.display = 'none';
+    toast('Hata: ' + e.message,'error');
+    console.error(e);
+  } finally {
+    document.getElementById('cek-btn').disabled = false;
+  }
+};
+
+function guncelleStat(){
+  const eslesme = satirlar.filter(s=>s.eslesti && !s.aktarildi).length;
+  const aktarilan = satirlar.filter(s=>s.aktarildi).length;
+  document.getElementById('st-toplam').textContent  = satirlar.length;
+  document.getElementById('st-esles').textContent   = eslesme;
+  document.getElementById('st-aktarildi').textContent = aktarilan;
+  document.getElementById('stats-row').style.display = satirlar.length ? 'flex' : 'none';
+  const bekleyenEslesme = satirlar.filter(s=>s.eslesti && !s.aktarildi).length;
+  document.getElementById('import-bar').style.display = bekleyenEslesme ? 'block' : 'none';
+  document.getElementById('aktar-btn').textContent =
+    `✅ ${bekleyenEslesme} Satışı Kaydet`;
+}
+
+function renderList(){
+  const urunler = tumUrunler();
+  const cont = document.getElementById('sonuc-list');
+  if(!satirlar.length){ cont.innerHTML=''; return; }
+
+  cont.innerHTML = satirlar.map(s=>{
+    const match = s.eslesti;
+    let badgeHtml, matchInfo;
+    if(s.aktarildi){
+      badgeHtml = '<span class="match-badge ok">Aktarıldı ✓</span>';
+      matchInfo = `<div style="font-size:11px;color:var(--t3);margin-top:4px">→ ${s.eslesti?.ad||'?'}</div>`;
+    } else if(match){
+      const pct = Math.round((match.skor||0)*100);
+      badgeHtml = `<span class="match-badge ok">Eşleşti %${pct}</span>`;
+      matchInfo = `
+        <div style="margin-top:6px">
+          <select class="match-select" id="sel-${s.id}" onchange="eslesmeDegistir('${s.id}',this.value)">
+            <option value="">— Eşleşme seç —</option>
+            ${urunler.map(u=>`<option value="${u.tip}|${u.hedefId}" ${u.tip===match.tip&&u.hedefId===match.hedefId?'selected':''}>${u.ad} (${u.tip})</option>`).join('')}
+          </select>
+        </div>`;
+    } else {
+      badgeHtml = '<span class="match-badge warn">Manuel Seç</span>';
+      matchInfo = `
+        <div style="margin-top:6px">
+          <select class="match-select" id="sel-${s.id}" onchange="eslesmeDegistir('${s.id}',this.value)">
+            <option value="">— Eşleşme seç —</option>
+            ${urunler.map(u=>`<option value="${u.tip}|${u.hedefId}">${u.ad} (${u.tip})</option>`).join('')}
+          </select>
+        </div>`;
+    }
+    return `
+    <div class="order-row ${s.aktarildi?'imported':match?'matched':'no-match'}" id="row-${s.id}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${s.urunAd}">${s.urunAd}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px">
+            Sipariş: ${s.sipNo} · ${s.tarih} · ${durumEtiket(s.durum)}
+          </div>
+          ${matchInfo}
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          ${badgeHtml}
+          <div style="font-size:14px;font-weight:700;color:var(--accent);margin-top:4px">${(+s.fiyat).toFixed(2)}₺</div>
+          <div style="font-size:11px;color:var(--t3)">×${s.adet}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.eslesmeDegistir = (id, val) => {
+  const s = satirlar.find(x=>x.id===id);
+  if(!s) return;
+  if(!val){ s.eslesti = null; }
+  else {
+    const [tip, hedefId] = val.split('|');
+    const urunler = tumUrunler();
+    const bulunan = urunler.find(u=>u.tip===tip && u.hedefId===hedefId);
+    s.eslesti = bulunan ? {...bulunan, skor:1} : null;
+  }
+  // satır sınıfı güncelle
+  const row = document.getElementById(`row-${id}`);
+  if(row){
+    row.className = `order-row ${s.eslesti?'matched':'no-match'}`;
+  }
+  guncelleStat();
+};
+
+window.secilenleriAktar = () => {
+  const bekleyenler = satirlar.filter(s=>s.eslesti && !s.aktarildi);
+  if(!bekleyenler.length){ toast('Aktarılacak eşleşme yok','info'); return; }
+
+  const kayitlar = bekleyenler.map(s=>({
+    tip:      s.eslesti.tip,
+    hedefId:  s.eslesti.hedefId,
+    adet:     s.adet,
+    gercekFiyat: +s.fiyat,
+    tarih:    s.tarih,
+  }));
+
+  satislarDB.ekle(kayitlar);
+
+  bekleyenler.forEach(s=>{
+    s.aktarildi = true;
+    const row = document.getElementById(`row-${s.id}`);
+    if(row) row.className = 'order-row imported';
+    // badge güncelle
+    const badge = row?.querySelector('.match-badge');
+    if(badge){ badge.className='match-badge ok'; badge.textContent='Aktarıldı ✓'; }
+  });
+
+  guncelleStat();
+  toast(`✅ ${bekleyenler.length} satış kaydedildi`,'success');
+};
+
+window.toast = (msg, tip='info') => {
+  const cont = document.getElementById('toastCont');
+  const el = document.createElement('div'); el.className=`toast ${tip}`; el.textContent=msg;
+  cont.appendChild(el); setTimeout(()=>el.remove(),3500);
+};
+</script>
+</body>
+</html>

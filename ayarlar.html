@@ -74,6 +74,30 @@
       </div>
     </div>
 
+    <!-- TRENDYOL API -->
+    <div id="sec-trendyol-title" class="section-title">Trendyol API</div>
+    <div class="card mb-16" id="sec-trendyol-card">
+      <div style="font-size:12px;color:var(--t3);margin-bottom:12px;line-height:1.6">
+        Siparişleri otomatik içe aktarmak için Trendyol Entegrasyon Paneli'nden bilgileri girin.
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">Satıcı ID</div></div>
+        <input class="form-input" type="text" id="ay-ty-seller" placeholder="12345678" style="width:140px" autocomplete="off" onchange="trendyolAyarKaydet()">
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">API Key</div></div>
+        <input class="form-input" type="password" id="ay-ty-key" placeholder="API Key" style="width:140px" autocomplete="off" onchange="trendyolAyarKaydet()">
+      </div>
+      <div class="toggle-row">
+        <div><div class="toggle-label">API Secret</div></div>
+        <input class="form-input" type="password" id="ay-ty-secret" placeholder="API Secret" style="width:140px" autocomplete="off" onchange="trendyolAyarKaydet()">
+      </div>
+      <div id="ty-durum" style="font-size:11px;margin-top:8px;display:none;color:var(--green)"></div>
+      <a href="./trendyol-import.html" class="btn btn-secondary btn-full mt-8" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none">
+        🛒 Siparişleri İçe Aktar
+      </a>
+    </div>
+
     <!-- FİNANS & API AYARLARI -->
     <div class="section-title">Finans & API Ayarları</div>
     <div class="card mb-16">
@@ -209,6 +233,16 @@ if(ay.claudeApiKey) {
 }
 document.getElementById('ay-sirket-tipi').value = ay.sirketTipi || 'sahis';
 
+// Trendyol API
+document.getElementById('ay-ty-seller').value = ay.tySellerId || '';
+document.getElementById('ay-ty-key').value    = ay.tyApiKey   || '';
+document.getElementById('ay-ty-secret').value = ay.tyApiSecret|| '';
+if(ay.tySellerId && ay.tyApiKey && ay.tyApiSecret){
+  const d = document.getElementById('ty-durum');
+  d.textContent = '✅ Trendyol API bilgileri kayıtlı.';
+  d.style.display = 'block';
+}
+
 window.ayarKaydet = () => {
   if(!auth.adminMi()){toast('Bu işlem için admin yetkisi gerekli','error');return;}
   ayarlarDB.kaydet({
@@ -295,6 +329,21 @@ window.veriSifirla = () => {
   window.location.href='index.html';
 };
 
+window.trendyolAyarKaydet = () => {
+  const seller = document.getElementById('ay-ty-seller').value.trim();
+  const key    = document.getElementById('ay-ty-key').value.trim();
+  const secret = document.getElementById('ay-ty-secret').value.trim();
+  ayarlarDB.kaydet({ tySellerId: seller, tyApiKey: key, tyApiSecret: secret });
+  const d = document.getElementById('ty-durum');
+  if(seller && key && secret){
+    d.textContent = '✅ Trendyol API bilgileri kaydedildi.';
+    d.style.display = 'block';
+  } else {
+    d.style.display = 'none';
+  }
+  toast('Trendyol bilgileri kaydedildi','success');
+};
+
 window.cikis = () => { logDB.ekle('cikis', 'Çıkış yapıldı'); auth.cikis(); window.location.href='index.html'; };
 
 // Ortak kısıtlamaları
@@ -302,7 +351,7 @@ if(!_isAdmin){
   // Ortak bağlantısı, kargo barem ve log bölümlerini gizle
   ['sec-ortak-baglanti-title','sec-ortak-baglanti-card',
    'sec-kargo-barem-title','sec-kargo-barem-card',
-   'sec-log-link'].forEach(id=>{
+   'sec-log-link','sec-trendyol-title','sec-trendyol-card'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display='none';
   });

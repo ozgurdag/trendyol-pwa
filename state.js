@@ -164,6 +164,7 @@ export async function supabasedenYukle(){
       komisyon:u.komisyon||0.04, kategori:u.kategori||'',
       kategori1:u.kategori1||null, kategori2:u.kategori2||null, urunGrubu:u.urun_grubu||null,
       tedarikSuresi:u.tedarik_suresi||5, kritikEsikManuel:u.kritik_esik_manuel||null,
+      tyBarcode:u.ty_barcode||null, tyMerchantSku:u.ty_merchant_sku||null,
       tarih:u.created_at?.slice(0,10),
     }))); }
 
@@ -182,6 +183,7 @@ export async function supabasedenYukle(){
           desi:l.desi||1, hedefKar:l.hedef_kar||0.30,
           stokBilesenleri:bilesenler, onaylandi:l.onaylandi||false,
           alisFiyati: alisFiyati,
+          tyBarcode:l.ty_barcode||null, tyMerchantSku:l.ty_merchant_sku||null,
           tarih:l.created_at?.slice(0,10),
         };
       }));
@@ -192,6 +194,7 @@ export async function supabasedenYukle(){
       alisMaliyeti:s.alis_maliyeti||0, hedefKar:s.hedef_kar||0.30,
       ayniGunKargo:s.ayni_gun_kargo||false, satisFiyatiGercek:s.satis_fiyati||null,
       icindekiler:s.icindekiler||[], onaylandi:s.onaylandi||false,
+      tyBarcode:s.ty_barcode||null, tyMerchantSku:s.ty_merchant_sku||null,
       tarih:s.created_at?.slice(0,10),
     }))); }
 
@@ -207,6 +210,9 @@ export async function supabasedenYukle(){
           tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
           snapshot: sbSnapshot || localMap[s.id]?.snapshot || null,
           stokKombo: s.stok_kombo ? (typeof s.stok_kombo==='string'?JSON.parse(s.stok_kombo):s.stok_kombo) : (localMap[s.id]?.stokKombo||null),
+          tyOrderId:     s.ty_order_id||null,
+          tyOrderNumber: s.ty_order_number||null,
+          tyStatus:      s.ty_status||null,
         };
       }));
     }}
@@ -233,6 +239,19 @@ export async function supabasedenYukle(){
   } catch(e){ console.warn('supabasedenYukle hata:',e.message); return false; }
 }
 
+/* ── TRENDYOL YARDIMCI: Tüm ürünlerde barcode/SKU ile ara ── */
+export function bulBarcodeUrun(barcode){
+  if(!barcode) return null;
+  const nb = (barcode+'').trim().toLowerCase();
+  const stok = stokDB.hepsini().find(u=>(u.tyBarcode||'').toLowerCase()===nb||(u.tyMerchantSku||'').toLowerCase()===nb);
+  if(stok) return {tip:'stok', hedefId:stok.id, ad:stok.ad, urun:stok};
+  const listing = listingDB.hepsini().find(l=>(l.tyBarcode||'').toLowerCase()===nb||(l.tyMerchantSku||'').toLowerCase()===nb);
+  if(listing) return {tip:'listing', hedefId:listing.id, ad:listing.ad, urun:listing};
+  const set_ = setlerDB.hepsini().find(s=>(s.tyBarcode||'').toLowerCase()===nb||(s.tyMerchantSku||'').toLowerCase()===nb);
+  if(set_) return {tip:'set', hedefId:set_.id, ad:set_.ad, urun:set_};
+  return null;
+}
+
 /* ── MİGRASYON: localStorage → Supabase ── */
 export async function localdenSupabaseYukle(){
   let yuklenen=0;
@@ -243,6 +262,7 @@ export async function localdenSupabaseYukle(){
       desi:u.desi||1, komisyon:u.komisyon||0.04, kategori:u.kategori||'',
       kategori1:u.kategori1||null, kategori2:u.kategori2||null, urun_grubu:u.urunGrubu||null,
       tedarik_suresi:u.tedarikSuresi||5, kritik_esik_manuel:u.kritikEsikManuel||null,
+      ty_barcode:u.tyBarcode||null, ty_merchant_sku:u.tyMerchantSku||null,
     });
     yuklenen++;
   }
@@ -253,6 +273,7 @@ export async function localdenSupabaseYukle(){
       ayni_gun_kargo:l.ayniGunKargo||false, desi:l.desi||1,
       hedef_kar:l.hedefKar||0.30, stok_bilesenleri:l.stokBilesenleri||[],
       onaylandi:l.onaylandi||false,
+      ty_barcode:l.tyBarcode||null, ty_merchant_sku:l.tyMerchantSku||null,
     });
     yuklenen++;
   }
@@ -262,6 +283,7 @@ export async function localdenSupabaseYukle(){
       alis_maliyeti:s.alisMaliyeti||0, hedef_kar:s.hedefKar||0.30,
       ayni_gun_kargo:s.ayniGunKargo||false, satis_fiyati:s.satisFiyatiGercek||null,
       icindekiler:s.icindekiler||[], onaylandi:s.onaylandi||false,
+      ty_barcode:s.tyBarcode||null, ty_merchant_sku:s.tyMerchantSku||null,
     });
     yuklenen++;
   }
@@ -271,6 +293,9 @@ export async function localdenSupabaseYukle(){
       adet:st.adet, gercek_fiyat:st.gercekFiyat||null, tarih:st.tarih,
       stok_kombo: st.stokKombo ? JSON.stringify(st.stokKombo) : null,
       snapshot: st.snapshot ? JSON.stringify(st.snapshot) : null,
+      ty_order_id:     st.tyOrderId||null,
+      ty_order_number: st.tyOrderNumber||null,
+      ty_status:       st.tyStatus||null,
     });
     yuklenen++;
   }
@@ -311,6 +336,7 @@ export const stokDB = {
       kategori:yeni.kategori||'', kategori1:yeni.kategori1||null,
       kategori2:yeni.kategori2||null, urun_grubu:yeni.urunGrubu||null,
       tedarik_suresi:yeni.tedarikSuresi||5, kritik_esik_manuel:yeni.kritikEsikManuel||null,
+      ty_barcode:yeni.tyBarcode||null, ty_merchant_sku:yeni.tyMerchantSku||null,
     }).then(()=>broadcastGonder());
     return yeni;
   },
@@ -327,12 +353,22 @@ export const stokDB = {
     if(d.urunGrubu!==undefined)         v.urun_grubu=d.urunGrubu;
     if(d.tedarikSuresi!==undefined)     v.tedarik_suresi=d.tedarikSuresi;
     if(d.kritikEsikManuel!==undefined)  v.kritik_esik_manuel=d.kritikEsikManuel;
+    if(d.tyBarcode!==undefined)         v.ty_barcode=d.tyBarcode;
+    if(d.tyMerchantSku!==undefined)     v.ty_merchant_sku=d.tyMerchantSku;
     if(Object.keys(v).length) sbPatch('stok_kalemleri',id,v).then(()=>broadcastGonder());
   },
 
   sil(id){
     set(DB_KEYS.stok, this.hepsini().filter(u=>u.id!==id));
     sbDelete('stok_kalemleri',id).then(()=>broadcastGonder());
+  },
+
+  bulBarcode(barcode){
+    if(!barcode) return null;
+    const nb = (barcode+'').trim().toLowerCase();
+    return this.hepsini().find(u=>
+      (u.tyBarcode||'').toLowerCase()===nb || (u.tyMerchantSku||'').toLowerCase()===nb
+    ) || null;
   },
 };
 
@@ -378,6 +414,7 @@ export const listingDB = {
       ayni_gun_kargo:yeni.ayniGunKargo||false, desi:yeni.desi||1,
       hedef_kar:yeni.hedefKar||0.30, stok_bilesenleri:yeni.stokBilesenleri||[],
       onaylandi:yeni.onaylandi||false,
+      ty_barcode:yeni.tyBarcode||null, ty_merchant_sku:yeni.tyMerchantSku||null,
     }).then(()=>broadcastGonder());
     return yeni;
   },
@@ -393,6 +430,8 @@ export const listingDB = {
     if(d.hedefKar!==undefined)          v.hedef_kar=d.hedefKar;
     if(d.stokBilesenleri!==undefined)   v.stok_bilesenleri=d.stokBilesenleri;
     if(d.onaylandi!==undefined)         v.onaylandi=d.onaylandi;
+    if(d.tyBarcode!==undefined)         v.ty_barcode=d.tyBarcode;
+    if(d.tyMerchantSku!==undefined)     v.ty_merchant_sku=d.tyMerchantSku;
     // alisFiyati localStorage'da tutulur, stok_bilesenleri üzerinden hesaplanır
     if(Object.keys(v).length) sbPatch('listingler',id,v).then(()=>broadcastGonder());
   },
@@ -400,6 +439,14 @@ export const listingDB = {
   sil(id){
     set(DB_KEYS.listing, this.hepsini().filter(l=>l.id!==id));
     sbDelete('listingler',id).then(()=>broadcastGonder());
+  },
+
+  bulBarcode(barcode){
+    if(!barcode) return null;
+    const nb = (barcode+'').trim().toLowerCase();
+    return this.hepsini().find(l=>
+      (l.tyBarcode||'').toLowerCase()===nb || (l.tyMerchantSku||'').toLowerCase()===nb
+    ) || null;
   },
 };
 
@@ -429,6 +476,7 @@ export const setlerDB = {
       hedef_kar:yeni.hedefKar||0.30, ayni_gun_kargo:yeni.ayniGunKargo||false,
       satis_fiyati:yeni.satisFiyatiGercek||null,
       icindekiler:yeni.icindekiler||[], onaylandi:yeni.onaylandi||false,
+      ty_barcode:yeni.tyBarcode||null, ty_merchant_sku:yeni.tyMerchantSku||null,
     }).then(()=>broadcastGonder());
     return yeni;
   },
@@ -444,12 +492,22 @@ export const setlerDB = {
     if(d.satisFiyatiGercek!==undefined) v.satis_fiyati=d.satisFiyatiGercek;
     if(d.icindekiler!==undefined)       v.icindekiler=d.icindekiler;
     if(d.onaylandi!==undefined)         v.onaylandi=d.onaylandi;
+    if(d.tyBarcode!==undefined)         v.ty_barcode=d.tyBarcode;
+    if(d.tyMerchantSku!==undefined)     v.ty_merchant_sku=d.tyMerchantSku;
     if(Object.keys(v).length) sbPatch('setler',id,v).then(()=>broadcastGonder());
   },
 
   sil(id){
     set(DB_KEYS.setler,this.hepsini().filter(s=>s.id!==id));
     sbDelete('setler',id).then(()=>broadcastGonder());
+  },
+
+  bulBarcode(barcode){
+    if(!barcode) return null;
+    const nb = (barcode+'').trim().toLowerCase();
+    return this.hepsini().find(s=>
+      (s.tyBarcode||'').toLowerCase()===nb || (s.tyMerchantSku||'').toLowerCase()===nb
+    ) || null;
   },
 
   alisMaliyeti(id){
@@ -527,6 +585,9 @@ export const satislarDB = {
         stokKombo:k.stokKombo||null,
         tarih:k.tarih||today(), kayitTarih:Date.now(),
         snapshot,
+        tyOrderId:     k.tyOrderId||null,
+        tyOrderNumber: k.tyOrderNumber||null,
+        tyStatus:      k.tyStatus||null,
       };
     });
     set(DB_KEYS.satislar,[...this.hepsini(),...yeniler]);
@@ -568,6 +629,9 @@ export const satislarDB = {
       adet:k.adet, gercek_fiyat:k.gercekFiyat||null, tarih:k.tarih,
       stok_kombo: k.stokKombo ? JSON.stringify(k.stokKombo) : null,
       snapshot: k.snapshot ? JSON.stringify(k.snapshot) : null,
+      ty_order_id:     k.tyOrderId||null,
+      ty_order_number: k.tyOrderNumber||null,
+      ty_status:       k.tyStatus||null,
     }))).then(()=>broadcastGonder());
     return yeniler;
   },
@@ -696,6 +760,15 @@ export const satislarDB = {
 
   guneBGore(t){ return this.hepsini().filter(s=>s.tarih===t); },
   aralik(b,e){ return this.hepsini().filter(s=>s.tarih>=b&&s.tarih<=e); },
+
+  tyIdleri(){ return new Set(this.hepsini().filter(s=>s.tyOrderId).map(s=>s.tyOrderId)); },
+
+  async temizle(){
+    set(DB_KEYS.satislar, []);
+    await sbDeleteAll('satislar').catch(e=>console.warn('sbDeleteAll:',e.message));
+    logDB.ekle('satislar_temizlendi', 'Tüm satış kayıtları silindi (Trendyol yeniden yükleme)');
+    broadcastGonder();
+  },
 };
 
 /* ── FATURALAR DB ── */

@@ -173,11 +173,17 @@ export async function supabasedenYukle(){
       const stoklar = get(DB_KEYS.stok)||[];
       set(DB_KEYS.listing, d.map(l=>{
         const bilesenler = l.stok_bilesenleri||[];
-        // alisFiyati: stok kalemlerinden hesapla
-        const alisFiyati = bilesenler.reduce((t,b)=>{
+        // alisFiyati: önce bileşenlerden hesapla, yoksa barkod eşleşmesine bak
+        const alisFromBilesenleri = bilesenler.reduce((t,b)=>{
           const u=stoklar.find(s=>s.id===b.urunId);
           return t+(u?(u.alisFiyati||0)*b.adet:0);
         },0);
+        let alisFiyati = alisFromBilesenleri;
+        if(!alisFiyati && (l.ty_barcode||l.ty_merchant_sku)){
+          const nb=(l.ty_barcode||'').toLowerCase(), nm=(l.ty_merchant_sku||'').toLowerCase();
+          const esles=stoklar.find(s=>(nb&&(s.tyBarcode||'').toLowerCase()===nb)||(nm&&(s.tyMerchantSku||'').toLowerCase()===nm));
+          if(esles) alisFiyati=esles.alisFiyati||0;
+        }
         return {
           id:l.id, ad:l.ad, satisFiyatiGercek:l.satis_fiyati, komisyon:l.komisyon||0.04,
           kategori1:l.kategori1||null, ayniGunKargo:l.ayni_gun_kargo||false,
@@ -251,6 +257,31 @@ export function bulBarcodeUrun(barcode){
   const set_ = setlerDB.hepsini().find(s=>(s.tyBarcode||'').toLowerCase()===nb||(s.tyMerchantSku||'').toLowerCase()===nb);
   if(set_) return {tip:'set', hedefId:set_.id, ad:set_.ad, urun:set_};
   return null;
+}
+
+/* ── STOK BARKOD → ALİŞ FİYATI YARDIMCISI ── */
+function barcodedenAlisFiyati(barcode, sku){
+  if(!barcode && !sku) return 0;
+  const nb=(barcode||'').trim().toLowerCase(), nm=(sku||'').trim().toLowerCase();
+  const stok=stokDB.hepsini().find(u=>
+    (nb&&(u.tyBarcode||'').toLowerCase()===nb)||(nm&&(u.tyMerchantSku||'').toLowerCase()===nm)
+  );
+  return stok ? (stok.alisFiyati||0) : 0;
+}
+
+/* Tüm listing'lerin alisFiyati'sini stokDB barkod eşleşmesinden günceller */
+export function stokAlisBarkodEsle(){
+  let guncellendi=0;
+  const listeler=listingDB.hepsini();
+  const guncellenmis=listeler.map(l=>{
+    if((l.stokBilesenleri||[]).length) return l; // bileşen bazlı, dokunma
+    if(!l.tyBarcode && !l.tyMerchantSku) return l;
+    const alis=barcodedenAlisFiyati(l.tyBarcode, l.tyMerchantSku);
+    if(alis>0 && alis!==l.alisFiyati){ guncellendi++; return {...l, alisFiyati:alis}; }
+    return l;
+  });
+  if(guncellendi) set(DB_KEYS.listing, guncellenmis);
+  return guncellendi;
 }
 
 /* ── OTOMATİK TRENDYOL SENKRONIZASYONU ── */
@@ -395,25 +426,34 @@ export async function otomatikFiyatSync(zorla=false){
       );
 
       if(listing){
+        const guncellemeler = {};
         if(listing.satisFiyatiGercek !== tyFiyat){
           const eskiFiyat = listing.satisFiyatiGercek;
-          listingDB.guncelle(listing.id, {satisFiyatiGercek: tyFiyat});
+          guncellemeler.satisFiyatiGercek = tyFiyat;
           fiyatLogDB.ekle({urunId:listing.id, urunAd:listing.ad, eskiFiyat, yeniFiyat:tyFiyat});
           guncellendi.push({ad:listing.ad, eskiFiyat, yeniFiyat:tyFiyat});
         }
+        // alisFiyati 0 ise stokDB barkod eşleşmesine bak
+        if((!listing.alisFiyati||listing.alisFiyati===0) && !(listing.stokBilesenleri||[]).length){
+          const stokAlis = barcodedenAlisFiyati(barcode, merchantSku);
+          if(stokAlis>0) guncellemeler.alisFiyati = stokAlis;
+        }
+        if(Object.keys(guncellemeler).length) listingDB.guncelle(listing.id, guncellemeler);
       } else {
         const ad = tyU.title||tyU.productName||barcode;
-        const yeni = listingDB.ekle({
+        const stokAlis = barcodedenAlisFiyati(barcode, merchantSku);
+        listingDB.ekle({
           ad, satisFiyatiGercek:tyFiyat, komisyon:0.04,
           tyBarcode:barcode, tyMerchantSku:merchantSku,
-          alisFiyati:0, stok:0, desi:1, stokBilesenleri:[], onaylandi:true,
+          alisFiyati:stokAlis, stok:0, desi:1, stokBilesenleri:[], onaylandi:true,
         });
         fiyatLogDB.ekle({urunAd:ad, eskiFiyat:null, yeniFiyat:tyFiyat, yeniUrun:true});
         yeniEklendi.push({ad, fiyat:tyFiyat});
       }
     });
+    const alisGuncellendi = stokAlisBarkodEsle();
     localStorage.setItem(TY_FIYAT_SYNC_KEY, Date.now().toString());
-    return {guncellendi, yeniEklendi};
+    return {guncellendi, yeniEklendi, alisGuncellendi};
   } catch(e){
     console.warn('otomatikFiyatSync hata:', e.message);
     return {hata:e.message};

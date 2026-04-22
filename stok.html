@@ -274,7 +274,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
+import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla, stokAlisBarkodEsle } from './state.js';
 import { KATEGORILER, ALT_KATEGORILER, URUN_GRUPLARI, komisyonOrani } from './kategoriler.js';
 import { kargoUcreti } from './kargo.js';
 if (!auth.oturum()) window.location.href='index.html';
@@ -797,8 +797,9 @@ window.excelKaydet = () => {
     komisyon: u.urunGrubu ? komisyonOrani(u.urunGrubu, ayarlarDB.oku().saticiTipiKey||'KadinGir') : 0.04,
   }));
   document.getElementById('import-modal').classList.remove('open');
+  const eslesti = stokAlisBarkodEsle();
   render();
-  toast(`${importData.length} ürün stoka eklendi`, 'success');
+  toast(`${importData.length} ürün stoka eklendi${eslesti?` · ${eslesti} katalog fiyatı güncellendi`:''}`, 'success');
   importData = [];
 };
 

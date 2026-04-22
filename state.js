@@ -252,6 +252,103 @@ export function bulBarcodeUrun(barcode){
   return null;
 }
 
+/* ── OTOMATİK TRENDYOL SENKRONIZASYONU ── */
+const TY_PROXY      = `${SB_URL}/functions/v1/bright-api`;
+const TY_SYNC_KEY   = 'tsx_ty_son_sync';
+const TY_BEKLEYEN_KEY = 'tsx_ty_eslesme_bekleyen';
+const TY_ESLESME_KEY  = 'tsx_ty_eslesme';
+const TY_TESLIM = ['Delivered','UnPacked','Invoiced','Shipped'];
+
+function tyEslesmeMap(){ try{ return JSON.parse(localStorage.getItem(TY_ESLESME_KEY)||'{}'); }catch{ return {}; } }
+
+async function tyProxyCall(body){
+  const ay = ayarlarDB.oku();
+  const res = await fetch(TY_PROXY, {
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
+    body: JSON.stringify({...body, sellerId:ay.tySellerId, apiKey:ay.tyApiKey, apiSecret:ay.tyApiSecret}),
+  });
+  const data = await res.json();
+  if(!res.ok || data.errors || data.error) throw new Error(JSON.stringify(data.errors||data.error||`HTTP ${res.status}`));
+  return data;
+}
+
+async function tyFetchRange(startMs, endMs){
+  const CHUNK = 30 * 86400000;
+  const chunks = [];
+  let cur = startMs;
+  while(cur < endMs){ chunks.push({s:cur, e:Math.min(cur+CHUNK, endMs)}); cur+=CHUNK; }
+  let all = [];
+  for(const c of chunks){
+    let page=0, totalPages=1;
+    while(page < totalPages && page < 20){
+      const data = await tyProxyCall({type:'orders', startDate:c.s, endDate:c.e, page, size:200});
+      totalPages = data.totalPages||1;
+      all = all.concat(data.content||[]);
+      page++;
+    }
+  }
+  return all;
+}
+
+export async function otomatikTySenkronize(){
+  const ay = ayarlarDB.oku();
+  if(!ay.tySellerId||!ay.tyApiKey||!ay.tyApiSecret) return {atlandi:true, sebep:'api_eksik'};
+  const sonSync = localStorage.getItem(TY_SYNC_KEY);
+  if(sonSync && Date.now() - +sonSync < 3600000) return {atlandi:true, sebep:'henuz_erken'};
+
+  const ilkSync = !sonSync;
+  const endMs   = Date.now();
+  const startMs = endMs - (ilkSync ? 90 : 7) * 86400000;
+
+  let paketler;
+  try{ paketler = await tyFetchRange(startMs, endMs); }
+  catch(e){ console.warn('otomatikTySenkronize hata:', e.message); return {hata:e.message}; }
+
+  const teslimPaketler = paketler.filter(p=>TY_TESLIM.includes(p.status));
+  const mevcutTyIds    = satislarDB.tyIdleri();
+  const kayitliEslesmeler = tyEslesmeMap();
+
+  const yeniSatislar   = [];
+  const yeniBekleyenler = [];
+
+  teslimPaketler.forEach(paket=>{
+    const tarih = new Date(paket.orderDate||paket.packageLastModifiedDate||Date.now()).toISOString().slice(0,10);
+    (paket.lines||[]).forEach(line=>{
+      const lineId = `${paket.orderNumber}_${line.lineId||line.id||line.barcode||Math.random()}`;
+      if(mevcutTyIds.has(lineId)) return;
+      const barcode = line.barcode||line.productCode||'';
+      let eslesti = barcode ? bulBarcodeUrun(barcode) : null;
+      if(!eslesti && kayitliEslesmeler[barcode]){
+        const k = kayitliEslesmeler[barcode];
+        const arr = k.tip==='stok'?stokDB.hepsini():k.tip==='listing'?listingDB.hepsini():setlerDB.hepsini();
+        const u = arr.find(x=>x.id===k.hedefId);
+        if(u) eslesti = {tip:k.tip, hedefId:k.hedefId, ad:u.ad};
+      }
+      if(eslesti){
+        yeniSatislar.push({tip:eslesti.tip, hedefId:eslesti.hedefId, adet:line.quantity||1,
+          gercekFiyat:+(line.amount||line.price||0), tarih,
+          tyOrderId:lineId, tyOrderNumber:paket.orderNumber, tyStatus:paket.status});
+      } else {
+        yeniBekleyenler.push({id:lineId, sipNo:paket.orderNumber,
+          urunAd:line.productName||'—', barcode,
+          merchantSku:line.merchantSku||'', adet:line.quantity||1,
+          fiyat:+(line.amount||line.price||0), tarih, durum:paket.status});
+      }
+    });
+  });
+
+  if(yeniSatislar.length) satislarDB.ekle(yeniSatislar);
+
+  const eskiBekleyenler = JSON.parse(localStorage.getItem(TY_BEKLEYEN_KEY)||'[]');
+  const eskiIds = new Set(eskiBekleyenler.map(b=>b.id));
+  localStorage.setItem(TY_BEKLEYEN_KEY, JSON.stringify(
+    [...eskiBekleyenler, ...yeniBekleyenler.filter(b=>!eskiIds.has(b.id))]
+  ));
+  localStorage.setItem(TY_SYNC_KEY, Date.now().toString());
+  return {yeniEklenen:yeniSatislar.length, eslesmeyen:yeniBekleyenler.length};
+}
+
 /* ── MİGRASYON: localStorage → Supabase ── */
 export async function localdenSupabaseYukle(){
   let yuklenen=0;

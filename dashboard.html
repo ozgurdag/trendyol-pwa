@@ -20,6 +20,12 @@
 
   <div class="page-content">
 
+    <!-- TRENDYOL BEKLEYEN EŞLEŞMELERİ BANNER -->
+    <div id="ty-sync-banner" style="display:none;background:var(--bg2);border:1px solid #f5c518;border-radius:var(--r-md);padding:12px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:#f5c518">🔄 <span id="ty-sync-mesaj"></span></div>
+      <a href="./trendyol-import.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center;margin-top:8px;padding:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;color:var(--t1);font-weight:600">Eşleşmeleri Tamamla →</a>
+    </div>
+
     <!-- HOŞ GELDİN -->
     <div style="margin-bottom:20px">
       <div style="font-size:22px;font-weight:700;color:var(--t1)" id="hosgeldin">Merhaba 👋</div>
@@ -143,7 +149,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
+import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla, otomatikTySenkronize } from './state.js';
 import { kargoUcreti } from './kargo.js';
 
 const o = auth.oturum();
@@ -167,6 +173,18 @@ window.cikisYap = () => { auth.cikis(); window.location.href='index.html'; };
     badge.textContent='⬤ Canlı';
     badge.className='badge badge-green';
     badge.style.fontSize='10px';
+  }
+})();
+
+// Otomatik Trendyol sync
+(async()=>{
+  try{
+    await otomatikTySenkronize();
+  } catch(e){ console.warn('Otomatik TY sync hata:', e.message); }
+  const bekleyen = JSON.parse(localStorage.getItem('tsx_ty_eslesme_bekleyen')||'[]');
+  if(bekleyen.length > 0){
+    document.getElementById('ty-sync-mesaj').textContent = `${bekleyen.length} sipariş eşleştirilmeyi bekliyor`;
+    document.getElementById('ty-sync-banner').style.display = 'block';
   }
 })();
 

@@ -83,11 +83,11 @@
             <input class="form-input" type="date" id="s-end" style="width:100%">
           </div>
         </div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(7,'s')">7 gün</button>
-          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(30,'s')">30 gün</button>
-          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(90,'s')">90 gün</button>
-          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(365,'s')">1 yıl</button>
+        <div style="display:flex;gap:6px;margin-bottom:10px" id="s-hizli-tarih-btns">
+          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(7,'s',this)">7 gün</button>
+          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(30,'s',this)">30 gün</button>
+          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(90,'s',this)">90 gün</button>
+          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(365,'s',this)">1 yıl</button>
         </div>
         <div style="margin-bottom:10px">
           <div style="font-size:11px;color:var(--t3);margin-bottom:4px">Durum</div>
@@ -110,7 +110,7 @@
 
       <div id="s-list"></div>
 
-      <div id="s-import-bar" style="display:none;position:sticky;bottom:72px;z-index:10;padding:8px 0;gap:8px;display:none;flex-direction:column">
+      <div id="s-import-bar" style="display:none;position:sticky;bottom:72px;z-index:10;padding:8px 0;flex-direction:column;gap:8px">
         <button class="btn btn-primary btn-full" onclick="secilenleriAktar(false)" id="s-aktar-btn">✅ Eşleşenleri Satış Olarak Kaydet</button>
         <button class="btn btn-danger btn-full" onclick="sifirlaVeAktar()" style="font-size:12px">🗑 Tüm Satışları Sil → Yeniden Yükle</button>
       </div>
@@ -132,9 +132,9 @@
             <input class="form-input" type="date" id="m-end" style="width:100%">
           </div>
         </div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(30,'m')">30 gün</button>
-          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(90,'m')">90 gün</button>
+        <div style="display:flex;gap:6px;margin-bottom:10px" id="m-hizli-tarih-btns">
+          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(30,'m',this)">30 gün</button>
+          <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(90,'m',this)">90 gün</button>
         </div>
         <button class="btn btn-primary btn-full" id="m-cek-btn" onclick="mutabakatCek()">💳 Ödemeleri Getir</button>
         <div class="prog-bar" id="m-prog"><div class="prog-fill" id="m-prog-fill" style="width:0%"></div></div>
@@ -284,10 +284,16 @@ const otuzOnce = new Date(bugun - 30*86400000);
   document.getElementById(`${p}-end`).value   = bugun.toISOString().slice(0,10);
 });
 
-window.hizliTarih = (gun, p) => {
+window.hizliTarih = (gun, p, btn) => {
   const b = new Date(), s = new Date(b - gun*86400000);
   document.getElementById(`${p}-end`).value   = b.toISOString().slice(0,10);
   document.getElementById(`${p}-start`).value = s.toISOString().slice(0,10);
+  if(btn){
+    const par = document.getElementById(`${p}-hizli-tarih-btns`);
+    if(par) par.querySelectorAll('button').forEach(el=>{ el.style.background=''; el.style.color=''; });
+    btn.style.background = 'var(--accent)';
+    btn.style.color = '#fff';
+  }
 };
 
 window.sekme = (id, btn) => {
@@ -358,7 +364,11 @@ window.siparisleriCek = async () => {
   satirlar = [];
 
   try {
-    const content = await fetchDateRange('orders', startMs, endMs, fillEl);
+    const raw = await fetchDateRange('orders', startMs, endMs, fillEl);
+    // Deduplicate packages by orderNumber (chunk boundaries can return same package twice)
+    const seenPkgs = new Set();
+    const content = raw.filter(p=>{ if(seenPkgs.has(p.orderNumber)) return false; seenPkgs.add(p.orderNumber); return true; });
+    console.log(`[TY] Ham: ${raw.length} paket, tekrarsız: ${content.length}`);
     fillEl.style.width = '100%';
 
     const filtre = document.getElementById('s-durum').value;
@@ -459,11 +469,14 @@ function guncelleSiperisStat(){
   document.getElementById('s-stats').style.display = satirlar.length?'flex':'none';
   const bekleyen = satirlar.filter(s=>s.eslesti&&!s.aktarildi&&!s.iade).length;
   const bar = document.getElementById('s-import-bar');
+  const list = document.getElementById('s-list');
   if(bekleyen>0){
     bar.style.display='flex';
     document.getElementById('s-aktar-btn').textContent = `✅ ${bekleyen} Satışı Kaydet`;
+    list.style.paddingBottom = '110px';
   } else {
     bar.style.display='none';
+    list.style.paddingBottom = '';
   }
 }
 

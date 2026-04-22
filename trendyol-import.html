@@ -247,7 +247,8 @@ window.bekleyenleriAktar = () => {
       const [tip, hedefId] = val.split('|');
       if(b.barcode) eslesmeKaydet(b.barcode, tip, hedefId);
       yeniSatislar.push({tip, hedefId, adet:b.adet, gercekFiyat:b.fiyat, tarih:b.tarih,
-        tyOrderId:b.id, tyOrderNumber:b.sipNo, tyStatus:b.durum||'Delivered'});
+        tyOrderId:b.id, tyOrderNumber:b.sipNo, tyStatus:b.durum||'Delivered',
+        tyKomisyon:b.komisyon!=null ? b.komisyon : null});
     } else {
       kalanlar.push(b);
     }
@@ -396,6 +397,7 @@ window.siparisleriCek = async () => {
           merchantSku: line.merchantSku||'',
           adet: line.quantity||1,
           fiyat: line.amount||line.price||0,
+          komisyon: line.commissionAmount!=null ? +line.commissionAmount : null,
           tarih, durum: paket.status, iade,
           eslesti,
           aktarildi: mevcutTyIds.has(lineId),
@@ -546,6 +548,7 @@ window.secilenleriAktar = (sifirla=false) => {
     tyOrderId:     s.id,
     tyOrderNumber: s.sipNo,
     tyStatus:      s.durum,
+    tyKomisyon:    s.komisyon!=null ? s.komisyon : null,
   })));
   bekleyenler.forEach(s=>{
     s.aktarildi = true;

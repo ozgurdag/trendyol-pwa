@@ -26,6 +26,12 @@
       <a href="./trendyol-import.html" style="text-decoration:none;display:flex;align-items:center;justify-content:center;margin-top:8px;padding:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-sm);font-size:12px;color:var(--t1);font-weight:600">Eşleşmeleri Tamamla →</a>
     </div>
 
+    <!-- FİYAT GÜNCELLEME BANNER -->
+    <div id="fiyat-banner" style="display:none;background:var(--bg2);border:1px solid var(--accent);border-radius:var(--r-md);padding:12px;margin-bottom:16px">
+      <div style="font-size:13px;font-weight:600;color:var(--accent)">🏷️ <span id="fiyat-banner-mesaj"></span></div>
+      <div id="fiyat-banner-liste" style="margin-top:8px;font-size:11px;color:var(--t3);line-height:1.8"></div>
+    </div>
+
     <!-- HOŞ GELDİN -->
     <div style="margin-bottom:20px">
       <div style="font-size:22px;font-weight:700;color:var(--t1)" id="hosgeldin">Merhaba 👋</div>
@@ -149,7 +155,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla, otomatikTySenkronize } from './state.js';
+import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla, otomatikTySenkronize, otomatikFiyatSync, fiyatLogDB } from './state.js';
 import { kargoUcreti } from './kargo.js';
 
 const o = auth.oturum();
@@ -176,16 +182,29 @@ window.cikisYap = () => { auth.cikis(); window.location.href='index.html'; };
   }
 })();
 
-// Otomatik Trendyol sync
+// Otomatik Trendyol sipariş sync
 (async()=>{
-  try{
-    await otomatikTySenkronize();
-  } catch(e){ console.warn('Otomatik TY sync hata:', e.message); }
+  try{ await otomatikTySenkronize(); } catch(e){ console.warn('TY sipariş sync hata:', e.message); }
   const bekleyen = JSON.parse(localStorage.getItem('tsx_ty_eslesme_bekleyen')||'[]');
   if(bekleyen.length > 0){
     document.getElementById('ty-sync-mesaj').textContent = `${bekleyen.length} sipariş eşleştirilmeyi bekliyor`;
     document.getElementById('ty-sync-banner').style.display = 'block';
   }
+})();
+
+// Otomatik fiyat sync
+(async()=>{
+  try{
+    const sonuc = await otomatikFiyatSync();
+    if(sonuc?.guncellendi?.length > 0){
+      const g = sonuc.guncellendi;
+      document.getElementById('fiyat-banner-mesaj').textContent = `${g.length} ürün fiyatı Trendyol'dan güncellendi`;
+      document.getElementById('fiyat-banner-liste').innerHTML = g.map(u=>
+        `${u.ad}: <b>${u.eskiFiyat?.toFixed(2)||'?'}₺</b> → <b style="color:var(--accent)">${u.yeniFiyat?.toFixed(2)}₺</b>`
+      ).join('<br>');
+      document.getElementById('fiyat-banner').style.display = 'block';
+    }
+  } catch(e){ console.warn('Fiyat sync hata:', e.message); }
 })();
 
 function para(n) { return n.toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:0})+'₺'; }

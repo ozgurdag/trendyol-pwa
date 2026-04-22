@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     if (type === 'orders') {
       const { startDate, endDate } = body;
       const params = new URLSearchParams({
-        orderByField: 'PackageLastModifiedDate',
+        orderByField: 'CreatedDate',
         orderByDirection: 'DESC',
         page: String(page),
         size: String(size),

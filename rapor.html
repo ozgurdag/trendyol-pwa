@@ -7,31 +7,29 @@
 <title>Raporlar · Satış Yönetim</title>
 <link rel="stylesheet" href="./app.css">
 <style>
-.rapor-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
-.rapor-tab{padding:8px 16px;border-radius:var(--r-md);font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid var(--border2);color:var(--t3);background:var(--bg2)}
-.rapor-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.rapor-tabs{display:flex;gap:4px;background:var(--bg2);border-radius:var(--r-md);padding:4px;margin-bottom:16px;overflow-x:auto}
+.rapor-tab{flex:1;padding:8px 6px;text-align:center;font-size:12px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:none;background:transparent;color:var(--t3);white-space:nowrap;transition:all .15s}
+.rapor-tab.active{background:var(--accent);color:#fff}
+.nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.nav-btn{width:36px;height:36px;border-radius:var(--r-md);border:1px solid var(--border2);background:var(--bg2);color:var(--t1);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.nav-lbl{font-size:14px;font-weight:700;color:var(--t1)}
+.ozet-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.ozet-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:12px}
+.ozet-card .lbl{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px}
+.ozet-card .val{font-size:18px;font-weight:700;margin-top:4px;font-family:var(--mono)}
+.ozet-card.full{grid-column:1/-1}
 .chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:12px}
 .chart-title{font-size:13px;font-weight:600;color:var(--t2);margin-bottom:12px}
-.bar-chart{display:flex;align-items:flex-end;gap:6px;height:120px}
-.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
-.bar{width:100%;border-radius:4px 4px 0 0;background:var(--accent);min-height:2px;transition:height .3s}
-.bar-lbl{font-size:9px;color:var(--t3);text-align:center}
-.bar-val{font-size:9px;color:var(--t2);font-weight:600;text-align:center}
-.ozet-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
-.ozet-row:last-child{border:none}
-.ozet-lbl{font-size:13px;color:var(--t2)}
-.ozet-val{font-size:14px;font-weight:700;font-family:var(--mono)}
-.tablo-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
-.tablo-row:last-child{border:none}
-.tablo-ikon{width:36px;height:36px;background:var(--bg3);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.tablo-bilgi{flex:1;min-width:0}
-.tablo-ad{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tablo-meta{font-size:11px;color:var(--t3);margin-top:2px}
-.tablo-kar{text-align:right;flex-shrink:0}
-.kar-poz{color:var(--green)}
-.kar-neg{color:var(--red)}
-.ay-sec{display:flex;gap:8px;margin-bottom:12px;align-items:center}
-.ay-sec select{flex:1}
+.satis-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:12px;margin-bottom:8px}
+.satis-row .sr-baslik{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.satis-row .sr-ad{font-size:13px;font-weight:600;color:var(--t1);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:8px}
+.satis-row .sr-net{font-size:14px;font-weight:700;font-family:var(--mono);flex-shrink:0}
+.satis-row .sr-meta{font-size:11px;color:var(--t3);margin-bottom:6px}
+.satis-row .sr-detay{display:flex;flex-wrap:wrap;gap:8px}
+.sr-item{font-size:11px;color:var(--t3)}
+.sr-item b{color:var(--t2)}
+.gercek-badge{font-size:9px;padding:1px 5px;border-radius:10px;background:rgba(0,200,100,.15);color:var(--green);font-weight:600;margin-left:4px}
+.empty-state{text-align:center;color:var(--t3);padding:32px;font-size:13px}
 </style>
 </head>
 <body>
@@ -42,77 +40,84 @@
   </div>
   <div class="page-content">
 
-    <!-- SEKME SEÇİCİ -->
     <div class="rapor-tabs">
-      <div class="rapor-tab active" onclick="sekme('ozet')">Aylık Özet</div>
-      <div class="rapor-tab" onclick="sekme('yillik')">Yıllık Özet</div>
-      <div class="rapor-tab" onclick="sekme('grafik')">7 Günlük</div>
-      <div class="rapor-tab" onclick="sekme('urun')">Ürün Karlılık</div>
+      <button class="rapor-tab active" onclick="sekme('gunluk',this)">Günlük</button>
+      <button class="rapor-tab" onclick="sekme('haftalik',this)">Haftalık</button>
+      <button class="rapor-tab" onclick="sekme('aylik',this)">Aylık</button>
+      <button class="rapor-tab" onclick="sekme('yillik',this)">Yıllık</button>
+      <button class="rapor-tab" onclick="sekme('tumu',this)">Tümü</button>
     </div>
 
-    <!-- AYLIK ÖZET -->
-    <div id="pnl-ozet">
-      <div class="ay-sec">
-        <select class="form-select" id="ay-select" onchange="renderOzet()"></select>
+    <!-- GÜNLÜK -->
+    <div id="pane-gunluk">
+      <div class="nav-row">
+        <button class="nav-btn" onclick="navGun(-1)">‹</button>
+        <span class="nav-lbl" id="gunluk-lbl"></span>
+        <button class="nav-btn" onclick="navGun(+1)">›</button>
       </div>
+      <div class="ozet-grid" id="gunluk-ozet"></div>
       <div class="chart-wrap">
-        <div class="chart-title">Özet</div>
-        <div id="ozet-icerik"></div>
-      </div>
-      <div class="chart-wrap">
-        <div class="chart-title">Günlük Satış Dağılımı</div>
-        <div class="bar-chart" id="ozet-bar"></div>
-      </div>
-      <!-- Satış Listesi container -->
-      <div class="chart-wrap">
-        <div class="chart-title">Bu Ay Satılanlar</div>
-        <div id="ozet-liste"></div>
+        <div class="chart-title">Günlük Satışlar</div>
+        <div id="gunluk-liste"></div>
       </div>
     </div>
 
-    <!-- YILLIK ÖZET -->
-    <div id="pnl-yillik" style="display:none">
-      <div class="ay-sec">
-        <select class="form-select" id="yil-select" onchange="renderYillik()"></select>
+    <!-- HAFTALIK -->
+    <div id="pane-haftalik" style="display:none">
+      <div class="nav-row">
+        <button class="nav-btn" onclick="navHafta(-1)">‹</button>
+        <span class="nav-lbl" id="haftalik-lbl"></span>
+        <button class="nav-btn" onclick="navHafta(+1)">›</button>
+      </div>
+      <div class="ozet-grid" id="haftalik-ozet"></div>
+      <div class="chart-wrap">
+        <div class="chart-title">Bu Hafta Satışlar</div>
+        <div id="haftalik-liste"></div>
+      </div>
+    </div>
+
+    <!-- AYLIK -->
+    <div id="pane-aylik" style="display:none">
+      <div class="nav-row">
+        <button class="nav-btn" onclick="navAy(-1)">‹</button>
+        <span class="nav-lbl" id="aylik-lbl"></span>
+        <button class="nav-btn" onclick="navAy(+1)">›</button>
+      </div>
+      <div class="ozet-grid" id="aylik-ozet"></div>
+      <div class="chart-wrap">
+        <div class="chart-title" style="margin-bottom:0">Günlük Net Kar</div>
+        <div id="aylik-chart"></div>
       </div>
       <div class="chart-wrap">
-        <div class="chart-title">Yıllık Özet</div>
-        <div id="yillik-icerik"></div>
+        <div class="chart-title">Bu Ay Satışlar</div>
+        <div id="aylik-liste"></div>
+      </div>
+    </div>
+
+    <!-- YILLIK -->
+    <div id="pane-yillik" style="display:none">
+      <div class="nav-row">
+        <button class="nav-btn" onclick="navYil(-1)">‹</button>
+        <span class="nav-lbl" id="yillik-lbl"></span>
+        <button class="nav-btn" onclick="navYil(+1)">›</button>
+      </div>
+      <div class="ozet-grid" id="yillik-ozet"></div>
+      <div class="chart-wrap">
+        <div class="chart-title" style="margin-bottom:0">Aylık Net Kar</div>
+        <div id="yillik-chart"></div>
       </div>
       <div class="chart-wrap">
-        <div class="chart-title">Aylık Satış Dağılımı</div>
-        <div class="bar-chart" id="yillik-bar"></div>
-      </div>
-      <div class="chart-wrap">
-        <div class="chart-title">Yıllık Satılanlar</div>
+        <div class="chart-title">Bu Yıl Satışlar</div>
         <div id="yillik-liste"></div>
       </div>
     </div>
 
-    <!-- 7 GÜNLÜK GRAFİK -->
-    <div id="pnl-grafik" style="display:none">
+    <!-- TÜMÜ -->
+    <div id="pane-tumu" style="display:none">
+      <div class="ozet-grid" id="tumu-ozet"></div>
       <div class="chart-wrap">
-        <div class="chart-title">Son 7 Gün — Satış Adedi</div>
-        <div class="bar-chart" id="grafik-adet"></div>
-      </div>
-      <div class="chart-wrap">
-        <div class="chart-title">Son 7 Gün — Net Kar (₺)</div>
-        <div class="bar-chart" id="grafik-kar"></div>
-      </div>
-      <div class="chart-wrap">
-        <div class="chart-title">Son 7 Günlük Satışlar</div>
-        <div id="grafik-liste"></div>
-      </div>
-    </div>
-
-    <!-- ÜRÜN KARLILIK -->
-    <div id="pnl-urun" style="display:none">
-      <div class="ay-sec">
-        <select class="form-select" id="urun-ay-select" onchange="renderUrun()"></select>
-      </div>
-      <div class="chart-wrap" id="urun-tablo">
-        <div class="chart-title">Ürün Bazlı Karlılık</div>
-        <div id="urun-icerik"></div>
+        <div class="chart-title">Tüm Satışlar</div>
+        <div id="tumu-liste"></div>
       </div>
     </div>
 
@@ -130,457 +135,320 @@
   </nav>
 </div>
 
-<div class="toast-container" id="toast"></div>
+<div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import{auth,stokDB,listingDB,setlerDB,satislarDB,ayarlarDB,hesapla}from'./state.js';
-import{kargoUcreti}from'./kargo.js';
+import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
+import { kargoUcreti } from './kargo.js';
+
 if(!auth.oturum()?.token) window.location.href='./index.html';
 
-const ay=ayarlarDB.oku();
-const p=n=>(+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
-const gun=['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'];
+const aylar=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const p = n => (+(n||0)).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
+const ay_s = ayarlarDB.oku();
 
-// Satış kar hesabı
+// ─── satisKar ─────────────────────────────────────────────────────
 function satisKar(s){
-  let ad = '?';
-  let alisBirim = 0;
-  let gf = s.gercekFiyat || 0;
-  let komOrani = 0.04;
-  let kargo = 0;
-  let platform = 0;
-  let net = 0;
-  let roi = 0;
+  let ad='?', alisBirim=0, gf=+(s.gercekFiyat||0), komOrani=0.04, kargo=0, platform=0, net=0, roi=0;
+  let komisyonTL = null; // gerçek Trendyol komisyonu (TL)
 
-  if (s.tip === 'stok-combo') {
-    ad = (s.stokKombo || []).map(it => it.ad).join(' + ') || 'Kombo';
-    alisBirim = (s.stokKombo || []).reduce((t, it) => t + (it.alisFiyati || 0) * (it.adet || 1), 0);
-  } else if (s.tip === 'stok') {
-    const u = stokDB.bul(s.hedefId);
-    if (u) { ad = u.ad; alisBirim = u.alisFiyati || 0; komOrani = u.komisyon || 0.04; }
-  } else if (s.tip === 'set') {
-    const u = setlerDB.bul(s.hedefId);
-    if (u) { ad = u.ad; alisBirim = u.alisMaliyeti || 0; komOrani = u.komisyon || 0.04; }
+  if(s.tip==='stok-combo'){
+    ad = (s.stokKombo||[]).map(it=>it.ad).join(' + ')||'Kombo';
+    alisBirim = (s.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
+  } else if(s.tip==='stok'){
+    const u=stokDB.bul(s.hedefId);
+    if(u){ad=u.ad;alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;}
+  } else if(s.tip==='set'){
+    const u=setlerDB.bul(s.hedefId);
+    if(u){ad=u.ad;alisBirim=u.alisMaliyeti||0;komOrani=u.komisyon||0.04;}
   } else {
-    // listing
-    const u = listingDB.bul(s.hedefId);
-    if (u) { ad = u.ad; alisBirim = u.alisFiyati || 0; komOrani = u.komisyon || 0.04; }
+    const u=listingDB.bul(s.hedefId);
+    if(u){ad=u.ad;alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;}
   }
 
-  // Snapshot varsa kesin verileri kullan
-  if (s.snapshot) {
-    alisBirim = s.snapshot.alisMaliyeti;
-    komOrani = s.snapshot.komisyon;
-    platform = s.snapshot.platform;
-    kargo = s.snapshot.kargo;
-    net = s.snapshot.netKar * s.adet;
-    roi = s.snapshot.roi;
+  if(s.snapshot){
+    alisBirim  = s.snapshot.alisMaliyeti;
+    komOrani   = s.snapshot.komisyon;
+    platform   = s.snapshot.platform||0;
+    kargo      = s.snapshot.kargo||0;
+    komisyonTL = s.snapshot.tyKomisyon!=null ? s.snapshot.tyKomisyon : null;
+    net        = s.snapshot.netKar * s.adet;
+    roi        = s.snapshot.roi;
   } else {
-    // Eski/anlık satış kayıtları için fallback hesaplama
-    if (s.tip === 'stok-combo') {
-      const maxDesi = Math.max(...(s.stokKombo || []).map(it => it.desi || 1), 1);
-      const synth = { alisFiyati: alisBirim, desi: maxDesi, komisyon: komOrani, hedefKar: ay.hedefKarROI || 0.30, ayniGunKargo: ay.ayniGunKargo || false };
-      const f = hesapla.satisFiyati(synth, ay, 1, kargoUcreti(ay.kargoFirma || 'Aras', maxDesi));
-      if (f) {
-        if (!gf) gf = f.yuvarlak;
-        platform = f.platform; 
-        kargo = hesapla.gercekKargoBedeli(gf, maxDesi, ay, kargoUcreti(ay.kargoFirma || 'Aras', maxDesi));
-        const kr = hesapla.gercekKar(alisBirim, gf, komOrani, platform, kargo);
-        net = kr.net * s.adet; roi = kr.roi;
+    if(s.tip==='stok-combo'){
+      const maxDesi=Math.max(...(s.stokKombo||[]).map(it=>it.desi||1),1);
+      const synth={alisFiyati:alisBirim,desi:maxDesi,komisyon:0.04,hedefKar:ay_s.hedefKarROI||0.30,ayniGunKargo:ay_s.ayniGunKargo||false};
+      const kFU=kargoUcreti(ay_s.kargoFirma||'Aras',maxDesi);
+      const f=hesapla.satisFiyati(synth,ay_s,1,kFU);
+      if(f){
+        if(!gf)gf=f.yuvarlak;
+        platform=f.platform;
+        kargo=hesapla.gercekKargoBedeli(gf,maxDesi,ay_s,kFU);
+        const kr=hesapla.gercekKar(alisBirim,gf,0.04,platform,kargo);
+        net=kr.net*s.adet;roi=kr.roi;
       }
     } else {
-      const obj = s.tip === 'stok' ? stokDB.bul(s.hedefId) : (s.tip === 'set' ? setlerDB.bul(s.hedefId) : listingDB.bul(s.hedefId));
-      if (obj) {
-        const kFU = kargoUcreti(ay.kargoFirma || 'Aras', obj.desi || (s.tip === 'set' ? 2 : 1));
-        const f = hesapla.satisFiyati(s.tip === 'set' ? { alisFiyati: alisBirim, desi: obj.desi || 2, komisyon: komOrani } : obj, ay, 1, kFU);
-        if (f) {
-          if (!gf) gf = f.yuvarlak;
-          platform = f.platform; 
-          const desiH = obj.desi || (s.tip === 'set' ? 2 : 1);
-          kargo = hesapla.gercekKargoBedeli(gf, desiH, ay, kFU);
-          const kr = hesapla.gercekKar(alisBirim, gf, komOrani, platform, kargo);
-          net = kr.net * s.adet; roi = kr.roi;
+      const obj=s.tip==='stok'?stokDB.bul(s.hedefId):s.tip==='set'?setlerDB.bul(s.hedefId):listingDB.bul(s.hedefId);
+      if(obj){
+        const desi=obj.desi||(s.tip==='set'?2:1);
+        const kFU=kargoUcreti(ay_s.kargoFirma||'Aras',desi);
+        const f=hesapla.satisFiyati(s.tip==='set'?{alisFiyati:alisBirim,desi,komisyon:komOrani}:obj,ay_s,1,kFU);
+        if(f){
+          if(!gf)gf=f.yuvarlak;
+          platform=f.platform;
+          kargo=hesapla.gercekKargoBedeli(gf,desi,ay_s,kFU);
+          const kr=hesapla.gercekKar(alisBirim,gf,komOrani,platform,kargo);
+          net=kr.net*s.adet;roi=kr.roi;
         }
       }
     }
   }
 
+  const komTLToplam = komisyonTL!=null ? komisyonTL*s.adet : gf*s.adet*komOrani;
+
   return {
-    net: net,
-    roi: roi,
-    kararli: net >= 0,
-    ad: ad,
-    tip: s.tip,
-    adet: s.adet,
-    gelir: gf * s.adet,
-    alis: alisBirim * s.adet,
-    kargo: kargo * s.adet,
-    platform: platform * s.adet,
-    komisyon: gf * s.adet * komOrani
+    net, roi, kararli:net>=0, ad, tip:s.tip, adet:s.adet,
+    gelir:   gf*s.adet,
+    alis:    alisBirim*s.adet,
+    kargo:   kargo*s.adet,
+    platform:platform*s.adet,
+    komisyon:komTLToplam,
+    komisyonGercek: komisyonTL!=null,
   };
 }
 
-// Ay listesi oluştur
-function ayListesi(){
-  const satislar=satislarDB.hepsini();
-  const aylar=new Set();
-  const bugun=new Date().toISOString().slice(0,7);
-  aylar.add(bugun);
-  satislar.forEach(s=>aylar.add(s.tarih?.slice(0,7)));
-  return [...aylar].filter(Boolean).sort().reverse();
+// ─── Özet hesapla ─────────────────────────────────────────────────
+function ozetHesapla(satislar){
+  let adet=0,gelir=0,alis=0,komisyon=0,kargo=0,platform=0,net=0;
+  satislar.forEach(s=>{
+    const k=satisKar(s);if(!k)return;
+    adet+=s.adet;gelir+=k.gelir;alis+=k.alis;komisyon+=k.komisyon;
+    kargo+=k.kargo;platform+=k.platform;net+=k.net;
+  });
+  return {adet,gelir,alis,komisyon,kargo,platform,net,roi:alis>0?net/alis:0};
 }
 
-function aySelectDoldur(id){
-  const el=document.getElementById(id);
-  const aylar=ayListesi();
-  el.innerHTML=aylar.map(a=>`<option value="${a}">${a}</option>`).join('');
+// ─── Özet kartları ────────────────────────────────────────────────
+function renderOzet(ozet, targetId){
+  const el=document.getElementById(targetId);
+  if(!el)return;
+  const netRenk=ozet.net>=0?'var(--green)':'var(--red)';
+  el.innerHTML=`
+    <div class="ozet-card">
+      <div class="lbl">Satış Adedi</div>
+      <div class="val accent">${ozet.adet}</div>
+    </div>
+    <div class="ozet-card">
+      <div class="lbl">Toplam Gelir</div>
+      <div class="val">${p(ozet.gelir)}</div>
+    </div>
+    <div class="ozet-card">
+      <div class="lbl">Komisyon</div>
+      <div class="val" style="color:var(--red)">-${p(ozet.komisyon)}</div>
+    </div>
+    <div class="ozet-card">
+      <div class="lbl">Kargo</div>
+      <div class="val" style="color:var(--red)">-${p(ozet.kargo)}</div>
+    </div>
+    <div class="ozet-card">
+      <div class="lbl">Alış Maliyeti</div>
+      <div class="val" style="color:var(--red)">-${p(ozet.alis)}</div>
+    </div>
+    <div class="ozet-card">
+      <div class="lbl">ROI</div>
+      <div class="val accent">${ozet.roi>0?'+':''}${(ozet.roi*100).toFixed(1)}%</div>
+    </div>
+    <div class="ozet-card full" style="border-color:${netRenk}">
+      <div class="lbl">Net Kar</div>
+      <div class="val" style="color:${netRenk};font-size:24px">${ozet.net>=0?'+':''}${p(ozet.net)}</div>
+    </div>
+  `;
 }
 
-// Yıl listesi oluştur
-function yilListesi(){
-  const satislar=satislarDB.hepsini();
-  const yillar=new Set();
-  const buYil=new Date().getFullYear().toString();
-  yillar.add(buYil);
-  satislar.forEach(s=>yillar.add(s.tarih?.slice(0,4)));
-  return [...yillar].filter(Boolean).sort().reverse();
-}
-
-function yilSelectDoldur(id){
-  const el=document.getElementById(id);
-  if(!el) return;
-  const yillar=yilListesi();
-  el.innerHTML=yillar.map(y=>`<option value="${y}">${y}</option>`).join('');
-}
-
-// SATIŞ LİSTESİ render
-function renderSatisListesi(satislar, targetId){
-  const el = document.getElementById(targetId);
-  if(!el) return;
-  satislar = satislar.sort((a,b) => b.tarih.localeCompare(a.tarih));
-  if(!satislar.length){
-    el.innerHTML='<div style="text-align:center;color:var(--t3);padding:20px">Kayıt bulunamadı.</div>';
+// ─── Satış listesi ─────────────────────────────────────────────────
+function renderListe(satislar, targetId){
+  const el=document.getElementById(targetId);
+  if(!el)return;
+  const siralı=[...satislar].sort((a,b)=>(b.tarih||'').localeCompare(a.tarih||''));
+  if(!siralı.length){
+    el.innerHTML='<div class="empty-state">Bu dönemde satış kaydı yok.</div>';
     return;
   }
-  el.innerHTML = satislar.map(s=>{
-    const k = satisKar(s);
-    if(!k) return '';
-    return `
-    <div class="tablo-row">
-      <div class="tablo-ikon">${k.tip==='set'?'📦':k.tip==='stok-combo'?'🎁':'🏷️'}</div>
-      <div class="tablo-bilgi">
-        <div class="tablo-ad">${k.ad} <span style="font-size:11px;color:var(--t3)">(${s.adet} adet)</span></div>
-        <div class="tablo-meta">${s.tarih} · Gelir: ${p(k.gelir)}</div>
+  el.innerHTML=siralı.map(s=>{
+    const k=satisKar(s);if(!k)return'';
+    return `<div class="satis-row">
+      <div class="sr-baslik">
+        <div class="sr-ad">${k.ad}${k.adet>1?` <span style="color:var(--accent)">×${k.adet}</span>`:''}</div>
+        <div class="sr-net" style="color:${k.kararli?'var(--green)':'var(--red)'}">${k.net>=0?'+':''}${p(k.net)}</div>
       </div>
-      <div class="tablo-kar">
-        <div style="font-size:14px;font-weight:700;font-family:var(--mono)" class="${k.kararli?'kar-poz':'kar-neg'}">${(k.kararli?'+':'')}${p(k.net)}</div>
-        <div style="font-size:10px;color:var(--t3)">%${k.alis>0?Math.round(k.net/k.alis*100):0} ROI</div>
+      <div class="sr-meta">${s.tarih||''}${s.tyOrderNumber?` · #${s.tyOrderNumber}`:''}</div>
+      <div class="sr-detay">
+        <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
+        <span class="sr-item">Kom: <b>${p(k.komisyon)}</b>${k.komisyonGercek?'<span class="gercek-badge">TY</span>':''}</span>
+        <span class="sr-item">Kargo: <b>${p(k.kargo)}</b></span>
+        <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
+        <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
       </div>
-    </div>
-    `;
+    </div>`;
   }).join('');
 }
 
-// BAR CHART helper
-// LINE CHART helper (replaces barChart)
+// ─── Line chart ────────────────────────────────────────────────────
 function lineChart(el,data,renk='var(--accent)'){
-  if(!data || !data.length){ el.innerHTML=''; return; }
-  const vMax = Math.max(...data.map(d=>d.val), 1);
-  const vMin = Math.min(...data.map(d=>d.val), 0);
-  const range = (vMax - vMin) || 1;
-  
-  const points = data.map((d,i) => {
-    const pctX = data.length>1 ? (i / (data.length - 1)) * 100 : 50;
-    const pctY = 85 - ((d.val - vMin) / range) * 70;
-    return { ...d, x: pctX, y: pctY };
-  });
-
-  const zeroY = 85 - ((0 - vMin) / range) * 70;
-  const pathD = `M ${points.map(p => `${p.x},${p.y}`).join(' L ')}`;
-  const gId = 'gFill_' + Math.random().toString(36).substr(2,5);
-
-  el.innerHTML = `
-    <div style="position:relative; width:100%; height:150px; margin-top:20px; font-family:var(--font); user-select:none;">
-      <!-- Background SVG -->
-      <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute; left:0; top:0; overflow:visible;">
-        <line x1="0" y1="${zeroY}" x2="100" y2="${zeroY}" stroke="var(--border)" vector-effect="non-scaling-stroke" stroke-width="1" stroke-dasharray="4"/>
-        
-        <linearGradient id="${gId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${renk}" stop-opacity="0.3"/>
-          <stop offset="100%" stop-color="${renk}" stop-opacity="0"/>
-        </linearGradient>
-        <path d="${pathD} L 100,100 L 0,100 Z" fill="url(#${gId})" vector-effect="non-scaling-stroke"/>
-        
-        <path d="${pathD}" fill="none" stroke="${renk}" vector-effect="non-scaling-stroke" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      
-      <!-- Overlay Labels and Dots -->
-      ${points.map(p => {
-        const hasVal = p.val !== 0;
-        const showLbl = p.label || p.label2; 
-        if(!hasVal && !p.label) return '';
-        
-        return `
-        ${p.label ? `<div style="position:absolute; left:${p.x}%; bottom:0; transform:translateX(-50%); font-size:10px; font-weight:600; color:var(--t3); white-space:nowrap;">${p.label}</div>` : ''}
-        ${hasVal ? `
-        <div style="position:absolute; left:${p.x}%; top:${p.y}%; transform:translate(-50%, -50%); width:${showLbl?8:4}px; height:${showLbl?8:4}px; background:var(--bg); border:2px solid ${p.val>=0?renk:'var(--red)'}; border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.1); z-index:2;"></div>
-        ${showLbl ? `<div style="position:absolute; left:${p.x}%; top:${p.y}%; transform:translate(-50%, -15px); font-size:10px; font-weight:${showLbl?'700':'500'}; color:${p.val>=0?'var(--t1)':'var(--red)'}; white-space:nowrap; text-shadow:0 0 3px var(--bg); z-index:3;">${p.label2 || p.val}</div>` : ''}
-        ` : ''}
-      `}).join('')}
-    </div>
-  `;
+  if(!el||!data||!data.length){if(el)el.innerHTML='';return;}
+  const vMax=Math.max(...data.map(d=>d.val),1);
+  const vMin=Math.min(...data.map(d=>d.val),0);
+  const range=(vMax-vMin)||1;
+  const pts=data.map((d,i)=>({...d,x:data.length>1?(i/(data.length-1))*100:50,y:85-((d.val-vMin)/range)*70}));
+  const zY=85-((0-vMin)/range)*70;
+  const pathD=`M ${pts.map(pt=>`${pt.x},${pt.y}`).join(' L ')}`;
+  const gId='g_'+Math.random().toString(36).substr(2,5);
+  el.innerHTML=`<div style="position:relative;width:100%;height:130px;margin-top:16px">
+    <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;left:0;top:0;overflow:visible">
+      <line x1="0" y1="${zY}" x2="100" y2="${zY}" stroke="var(--border)" vector-effect="non-scaling-stroke" stroke-width="1" stroke-dasharray="4"/>
+      <linearGradient id="${gId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${renk}" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="${renk}" stop-opacity="0"/>
+      </linearGradient>
+      <path d="${pathD} L 100,100 L 0,100 Z" fill="url(#${gId})" vector-effect="non-scaling-stroke"/>
+      <path d="${pathD}" fill="none" stroke="${renk}" vector-effect="non-scaling-stroke" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    ${pts.map(pt=>`
+      ${pt.label?`<div style="position:absolute;left:${pt.x}%;bottom:0;transform:translateX(-50%);font-size:9px;color:var(--t3);white-space:nowrap">${pt.label}</div>`:''}
+      ${pt.val!==0?`<div style="position:absolute;left:${pt.x}%;top:${pt.y}%;transform:translate(-50%,-50%);width:6px;height:6px;background:var(--bg);border:2px solid ${renk};border-radius:50%"></div>`:''}
+    `).join('')}
+  </div>`;
 }
 
-/* ── AYLIK ÖZET ── */
-window.renderOzet=()=>{
-  const secAy=document.getElementById('ay-select').value;
-  if(!secAy) return;
-  const [yil,ayNo]=secAy.split('-').map(Number);
-  const ayBas=`${secAy}-01`;
-  const ayBit=`${secAy}-31`;
-  const satislar=satislarDB.aralik(ayBas,ayBit);
-  let topAdet=0,topGelir=0,topKar=0,topAlis=0,topKarGetiren=0,topZararEttiren=0;
-  satislar.forEach(s=>{
-    const k=satisKar(s);if(!k)return;
-    topAdet+=s.adet;topGelir+=k.gelir;topKar+=k.net;topAlis+=k.alis;
-    if(k.net >= 0) topKarGetiren += k.net;
-    else topZararEttiren += k.net;
-  });
-  // Masraf hesabı - satisKar'dan al
-  let topKom=0, topKargo=0, topPlat=0;
-  satislar.forEach(s=>{
-    const k=satisKar(s);if(!k)return;
-    topKom+=k.komisyon||0;
-    topKargo+=k.kargo||0;
-    topPlat+=k.platform||0;
-  });
+// ─── GÜNLÜK ────────────────────────────────────────────────────────
+let curGun = new Date().toISOString().slice(0,10);
+function renderGunluk(){
+  const d=new Date(curGun+'T12:00:00');
+  const gunler=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+  document.getElementById('gunluk-lbl').textContent=
+    `${gunler[d.getDay()]} ${d.getDate()} ${aylar[d.getMonth()]} ${d.getFullYear()}`;
+  const satislar=satislarDB.guneBGore(curGun);
+  renderOzet(ozetHesapla(satislar),'gunluk-ozet');
+  renderListe(satislar,'gunluk-liste');
+}
+window.navGun=delta=>{ const d=new Date(curGun+'T12:00:00'); d.setDate(d.getDate()+delta); curGun=d.toISOString().slice(0,10); renderGunluk(); };
 
-  document.getElementById('ozet-icerik').innerHTML=`
-    <div class="ozet-row"><span class="ozet-lbl">Toplam Satış</span><span class="ozet-val accent">${topAdet} adet</span></div>
-    <div class="ozet-row"><span class="ozet-lbl">Toplam Gelir</span><span class="ozet-val">${p(topGelir)}</span></div>
-    <div style="height:1px;background:var(--border);margin:4px 0"></div>
-    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Alış Maliyeti</span><span class="ozet-val" style="color:var(--red)">-${p(topAlis)}</span></div>
-    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Trendyol Komisyonu</span><span class="ozet-val" style="color:var(--red)">-${p(topKom)}</span></div>
-    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Kargo</span><span class="ozet-val" style="color:var(--red)">-${p(topKargo)}</span></div>
-    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Platform Hizmeti</span><span class="ozet-val" style="color:var(--red)">-${p(topPlat)}</span></div>
-    <div style="height:1px;background:var(--border);margin:4px 0"></div>
-    <div class="ozet-row"><span class="ozet-lbl" style="font-size:13px;color:var(--green)">+ Karlı Satışlar Toplamı</span><span class="ozet-val" style="color:var(--green)">+${p(topKarGetiren)}</span></div>
-    <div class="ozet-row"><span class="ozet-lbl" style="font-size:13px;color:var(--red)">- Zararına Satışlar Toplamı</span><span class="ozet-val" style="color:var(--red)">${p(topZararEttiren)}</span></div>
-    <div style="height:1px;background:var(--border);margin:4px 0"></div>
-    <div class="ozet-row"><span class="ozet-lbl" style="font-weight:700">Net Kar</span><span class="ozet-val ${topKar>=0?'kar-poz':'kar-neg'}" style="font-size:18px">${p(topKar)}</span></div>
-    <div class="ozet-row"><span class="ozet-lbl">Ortalama ROI</span><span class="ozet-val accent">${topAlis>0?'%'+Math.round(topKar/topAlis*100):'—'}</span></div>
-  `;
-  // Günlük bar
-  const gunSayisi=new Date(yil,ayNo,0).getDate();
-  const gunData=[];
-  for(let g=1;g<=Math.min(gunSayisi,31);g++){
-    const tarih=`${secAy}-${String(g).padStart(2,'0')}`;
-    const gSatis=satislar.filter(s=>s.tarih===tarih);
-    let gKar=0;gSatis.forEach(s=>{const k=satisKar(s);if(k)gKar+=k.net*s.adet;});
-    if(g%3===1||gunSayisi<=15) gunData.push({label:String(g),val:Math.round(gKar)});
-    else gunData.push({label:'',val:Math.round(gKar)});
-  }
-  lineChart(document.getElementById('ozet-bar'),gunData);
-  renderSatisListesi(satislar, 'ozet-liste');
+// ─── HAFTALIK ──────────────────────────────────────────────────────
+function monOfWeek(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  const day=d.getDay();
+  const diff=day===0?-6:1-day;
+  d.setDate(d.getDate()+diff);
+  return d.toISOString().slice(0,10);
+}
+let curHaftaBaslangic = monOfWeek(new Date().toISOString().slice(0,10));
+function renderHaftalik(){
+  const bas=curHaftaBaslangic;
+  const bitD=new Date(bas+'T12:00:00'); bitD.setDate(bitD.getDate()+6);
+  const bit=bitD.toISOString().slice(0,10);
+  const basD=new Date(bas+'T12:00:00');
+  document.getElementById('haftalik-lbl').textContent=
+    `${basD.getDate()} ${aylar[basD.getMonth()]} — ${bitD.getDate()} ${aylar[bitD.getMonth()]}`;
+  const satislar=satislarDB.aralik(bas,bit);
+  renderOzet(ozetHesapla(satislar),'haftalik-ozet');
+  renderListe(satislar,'haftalik-liste');
+}
+window.navHafta=delta=>{
+  const d=new Date(curHaftaBaslangic+'T12:00:00'); d.setDate(d.getDate()+delta*7); curHaftaBaslangic=d.toISOString().slice(0,10); renderHaftalik();
 };
 
-/* ── YILLIK ÖZET ── */
-window.renderYillik=()=>{
-  const secYil=document.getElementById('yil-select').value;
-  if(!secYil) return;
-  const satislar=satislarDB.hepsini().filter(s=>s.tarih?.startsWith(secYil));
-  let topAdet=0,topGelir=0,topKar=0,topAlis=0,topKarGetiren=0,topZararEttiren=0;
-  let topKom=0, topKargo=0, topPlat=0;
+// ─── AYLIK ─────────────────────────────────────────────────────────
+const _now=new Date();
+let curAy={y:_now.getFullYear(), m:_now.getMonth()};
+function renderAylik(){
+  const {y,m}=curAy;
+  const bas=`${y}-${String(m+1).padStart(2,'0')}-01`;
+  const bit=`${y}-${String(m+1).padStart(2,'0')}-31`;
+  document.getElementById('aylik-lbl').textContent=`${aylar[m]} ${y}`;
+  const satislar=satislarDB.aralik(bas,bit);
+  renderOzet(ozetHesapla(satislar),'aylik-ozet');
+  const gunSayisi=new Date(y,m+1,0).getDate();
+  const chartData=[];
+  for(let g=1;g<=gunSayisi;g++){
+    const tarih=`${y}-${String(m+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+    const gSat=satislar.filter(s=>s.tarih===tarih);
+    let gKar=0; gSat.forEach(s=>{const k=satisKar(s);if(k)gKar+=k.net;});
+    chartData.push({label:g%5===1||gunSayisi<=10?String(g):'',val:Math.round(gKar)});
+  }
+  lineChart(document.getElementById('aylik-chart'),chartData);
+  renderListe(satislar,'aylik-liste');
+}
+window.navAy=delta=>{
+  curAy.m+=delta;
+  if(curAy.m<0){curAy.m=11;curAy.y--;}
+  if(curAy.m>11){curAy.m=0;curAy.y++;}
+  renderAylik();
+};
 
-  satislar.forEach(s=>{
-    const k=satisKar(s);if(!k)return;
-    topAdet+=s.adet;topGelir+=k.gelir;topKar+=k.net;topAlis+=k.alis;
-    if(k.net >= 0) topKarGetiren += k.net; else topZararEttiren += k.net;
-    topKom+=k.komisyon||0; topKargo+=k.kargo||0; topPlat+=k.platform||0;
-  });
-
-  document.getElementById('yillik-icerik').innerHTML=`
-    <div class="ozet-row"><span class="ozet-lbl">Toplam Satış</span><span class="ozet-val accent">${topAdet} adet</span></div>
-    <div class="ozet-row"><span class="ozet-lbl">Toplam Gelir</span><span class="ozet-val">${p(topGelir)}</span></div>
-    <div style="height:1px;background:var(--border);margin:4px 0"></div>
-    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Alış Maliyeti</span><span class="ozet-val" style="color:var(--red)">-${p(topAlis)}</span></div>
-    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Trendyol Komisyonu</span><span class="ozet-val" style="color:var(--red)">-${p(topKom)}</span></div>
-    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Kargo</span><span class="ozet-val" style="color:var(--red)">-${p(topKargo)}</span></div>
-    <div class="ozet-row" style="opacity:.75"><span class="ozet-lbl">— Platform Hizmeti</span><span class="ozet-val" style="color:var(--red)">-${p(topPlat)}</span></div>
-    <div style="height:1px;background:var(--border);margin:4px 0"></div>
-    <div class="ozet-row"><span class="ozet-lbl" style="font-weight:700">Net Kar</span><span class="ozet-val ${topKar>=0?'kar-poz':'kar-neg'}" style="font-size:18px">${p(topKar)}</span></div>
-  `;
-
-  // Bar chart - aylık
-  const ayData=[];
+// ─── YILLIK ────────────────────────────────────────────────────────
+let curYil=new Date().getFullYear();
+function renderYillik(){
+  document.getElementById('yillik-lbl').textContent=String(curYil);
+  const satislar=satislarDB.hepsini().filter(s=>s.tarih?.startsWith(String(curYil)));
+  renderOzet(ozetHesapla(satislar),'yillik-ozet');
+  const chartData=[];
   for(let i=1;i<=12;i++){
-    const ayStr=`${secYil}-${String(i).padStart(2,'0')}`;
-    const aySatis=satislar.filter(s=>s.tarih?.startsWith(ayStr));
-    let aKar=0; aySatis.forEach(s=>{const k=satisKar(s);if(k)aKar+=k.net;});
-    ayData.push({label:String(i),val:Math.round(aKar)});
+    const ayStr=`${curYil}-${String(i).padStart(2,'0')}`;
+    const aySat=satislar.filter(s=>s.tarih?.startsWith(ayStr));
+    let aKar=0; aySat.forEach(s=>{const k=satisKar(s);if(k)aKar+=k.net;});
+    chartData.push({label:aylar[i-1].slice(0,3),val:Math.round(aKar)});
   }
-  lineChart(document.getElementById('yillik-bar'),ayData);
-  renderSatisListesi(satislar, 'yillik-liste');
-};
+  lineChart(document.getElementById('yillik-chart'),chartData);
+  renderListe(satislar,'yillik-liste');
+}
+window.navYil=delta=>{ curYil+=delta; renderYillik(); };
 
-/* ── 7 GÜNLÜK ── */
-function renderGrafik(){
-  const bugun=new Date();
-  const data7=[];
-  let haftalikSatislar=[];
-  for(let i=6;i>=0;i--){
-    const d=new Date(bugun);d.setDate(d.getDate()-i);
-    const tarih=d.toISOString().slice(0,10);
-    const gSatis=satislarDB.guneBGore(tarih);
-    haftalikSatislar.push(...gSatis);
-    let adet=0,kar=0;
-    gSatis.forEach(s=>{const k=satisKar(s);if(k){adet+=s.adet;kar+=k.net;}}); // net zaten adet ile çarpılmış
-    const lbl=gun[d.getDay()===0?6:d.getDay()-1];
-    data7.push({label:lbl,val:adet,label2:adet>0?adet:''});
-    data7.push&&(data7[data7.length-1]._kar=Math.round(kar));
-  }
-  lineChart(document.getElementById('grafik-adet'),data7);
-  const karData=data7.map(d=>({label:d.label,val:d._kar||0,label2:d._kar>0?Math.round(d._kar)+'₺':''}));
-  lineChart(document.getElementById('grafik-kar'),karData,`var(--green)`);
-  renderSatisListesi(haftalikSatislar, 'grafik-liste');
+// ─── TÜMÜ ──────────────────────────────────────────────────────────
+function renderTumu(){
+  const satislar=satislarDB.hepsini();
+  renderOzet(ozetHesapla(satislar),'tumu-ozet');
+  renderListe(satislar,'tumu-liste');
 }
 
-/* ── ÜRÜN KARLILIK ── */
-window.renderUrun=()=>{
-  const secAy=document.getElementById('urun-ay-select').value;
-  if(!secAy) return;
-  const satislar=satislarDB.aralik(`${secAy}-01`,`${secAy}-31`);
-  const urunMap={};
-  satislar.forEach(s=>{
-    const k=satisKar(s);if(!k)return;
-    
-    if(s.tip === 'stok-combo') {
-      const komboUrunler = s.stokKombo || [];
-      const gercekBirimAlisTop = komboUrunler.reduce((t,it)=>t + (it.alisFiyati||0)*(it.adet||1), 0);
-      
-      komboUrunler.forEach(it => {
-        const oran = gercekBirimAlisTop > 0 ? ((it.alisFiyati||0)*(it.adet||1)) / gercekBirimAlisTop : (1/komboUrunler.length);
-        const hId = it.urunId;
-        if(!urunMap[hId]) urunMap[hId]={ad:it.ad, tip:'stok', adet:0, kar:0, alis:0, gelir:0};
-        
-        urunMap[hId].adet += ((it.adet||1) * s.adet);
-        urunMap[hId].kar += (k.net * oran);
-        urunMap[hId].alis += (k.alis * oran);
-        urunMap[hId].gelir += (k.gelir * oran);
-      });
-    } else {
-      const hId=s.hedefId||s.urunId;
-      if(!urunMap[hId]) urunMap[hId]={ad:k.ad,tip:k.tip,adet:0,kar:0,alis:0,gelir:0};
-      urunMap[hId].adet+=s.adet;
-      urunMap[hId].kar+=k.net;
-      urunMap[hId].alis+=k.alis;
-      urunMap[hId].gelir+=k.gelir;
-    }
+// ─── SEKME ─────────────────────────────────────────────────────────
+const PANELER=['gunluk','haftalik','aylik','yillik','tumu'];
+window.sekme=(id,btn)=>{
+  PANELER.forEach(p=>{
+    document.getElementById('pane-'+p).style.display=p===id?'':'none';
   });
-  const sirali=Object.values(urunMap).sort((a,b)=>b.kar-a.kar);
-  if(!sirali.length){
-    document.getElementById('urun-icerik').innerHTML='<div style="text-align:center;color:var(--t3);padding:20px">Bu ay satış yok</div>';
-    return;
-  }
-  document.getElementById('urun-icerik').innerHTML=sirali.map(u=>`
-    <div class="tablo-row">
-      <div class="tablo-ikon">${u.tip==='set'?'📦':'🏷️'}</div>
-      <div class="tablo-bilgi">
-        <div class="tablo-ad">${u.ad}</div>
-        <div class="tablo-meta">${u.adet} adet · Gelir: ${p(u.gelir)}</div>
-      </div>
-      <div class="tablo-kar">
-        <div style="font-size:14px;font-weight:700;font-family:var(--mono)" class="${u.kar>=0?'kar-poz':'kar-neg'}">${p(u.kar)}</div>
-        <div style="font-size:10px;color:var(--t3)">%${u.alis>0?Math.round(u.kar/u.alis*100):0} ROI</div>
-      </div>
-    </div>`).join('');
+  document.querySelectorAll('.rapor-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(id==='gunluk')   renderGunluk();
+  if(id==='haftalik') renderHaftalik();
+  if(id==='aylik')    renderAylik();
+  if(id==='yillik')   renderYillik();
+  if(id==='tumu')     renderTumu();
 };
 
-/* ── SEKME ── */
-window.sekme=s=>{
-  ['ozet','yillik','grafik','urun'].forEach(id=>{
-    document.getElementById('pnl-'+id).style.display=s===id?'':'none';
-    document.querySelector(`.rapor-tab:nth-child(${['ozet','yillik','grafik','urun'].indexOf(id)+1})`).classList.toggle('active',s===id);
-  });
-  if(s==='yillik') window.renderYillik();
-  if(s==='grafik') renderGrafik();
-  if(s==='urun') renderUrun();
-};
-
-/* ── EXCEL ── */
+// ─── EXCEL ─────────────────────────────────────────────────────────
 window.excelIndir=async()=>{
-  const{utils,writeFile}=await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
-  const aylar=ayListesi();
-  const wb=utils.book_new();
-  aylar.forEach(ay=>{
-    const satislar=satislarDB.aralik(`${ay}-01`,`${ay}-31`);
-    const rows=[];
-    satislar.forEach(s=>{
-      const k=satisKar(s);if(!k)return;
-      
-      if(s.tip === 'stok-combo') {
-        const komboUrunler = s.stokKombo || [];
-        const gercekBirimAlisTop = komboUrunler.reduce((t,it)=>t + (it.alisFiyati||0)*(it.adet||1), 0);
-        komboUrunler.forEach(it => {
-          const oran = gercekBirimAlisTop > 0 ? ((it.alisFiyati||0)*(it.adet||1)) / gercekBirimAlisTop : (1/komboUrunler.length);
-          rows.push({'Tarih':s.tarih, 'Ürün':it.ad, 'Tip':'Ürün (K)', 'Adet': (it.adet||1) * s.adet,
-            'Gelir': Math.round(k.gelir * oran), 'Net Kar': Math.round(k.net * oran),
-            'ROI %': (k.alis * oran) > 0 ? Math.round((k.net * oran) / (k.alis * oran) * 100) : 0});
-        });
-      } else {
-        rows.push({'Tarih':s.tarih,'Ürün':k.ad,'Tip':k.tip==='set'?'Set':'Ürün','Adet':s.adet,
-          'Gelir':Math.round(k.gelir),'Net Kar':Math.round(k.net),'ROI %':k.alis>0?Math.round(k.net/k.alis*100):0});
-      }
-    });
-    if(rows.length){const ws=utils.json_to_sheet(rows);utils.book_append_sheet(wb,ws,ay);}
-  });
-  writeFile(wb,'rapor_'+new Date().toISOString().slice(0,10)+'.xlsx');
-  showToast('Excel indirildi','success');
+  try{
+    const {utils,writeFile}=await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs');
+    const satislar=satislarDB.hepsini().sort((a,b)=>(b.tarih||'').localeCompare(a.tarih||''));
+    const rows=satislar.map(s=>{
+      const k=satisKar(s);if(!k)return null;
+      return {Tarih:s.tarih,Ürün:k.ad,Tip:s.tip,Adet:s.adet,
+        'Gelir (₺)':+k.gelir.toFixed(2),
+        'Komisyon (₺)':+k.komisyon.toFixed(2),'TY Gerçek':k.komisyonGercek?'Evet':'Hayır',
+        'Kargo (₺)':+k.kargo.toFixed(2),'Alış (₺)':+k.alis.toFixed(2),
+        'Net Kar (₺)':+k.net.toFixed(2),'ROI %':k.alis>0?+((k.net/k.alis)*100).toFixed(1):0,
+        'Sipariş No':s.tyOrderNumber||''};
+    }).filter(Boolean);
+    const ws=utils.json_to_sheet(rows);
+    const wb=utils.book_new();
+    utils.book_append_sheet(wb,ws,'Satışlar');
+    writeFile(wb,`satis-rapor-${new Date().toISOString().slice(0,10)}.xlsx`);
+  } catch(e){ alert('Excel hatası: '+e.message); }
 };
 
-window.showToast=(msg,tip='info')=>{
-  const c=document.getElementById('toast');const el=document.createElement('div');
-  el.className='toast '+tip;el.textContent=msg;c.appendChild(el);setTimeout(()=>el.remove(),3000);
-};
+// ─── İLK YÜKLEMEleme ───────────────────────────────────────────────
+renderGunluk();
 
-// Realtime / Multi-tab Sync
-function sayfaYenile() {
-  const aySec = document.getElementById('ay-select').value;
-  aySelectDoldur('ay-select');
-  if(aySec && [...document.getElementById('ay-select').options].some(o => o.value === aySec)) {
-    document.getElementById('ay-select').value = aySec;
-  }
-  const yilSec = document.getElementById('yil-select')?.value;
-  if(document.getElementById('yil-select')){
-      yilSelectDoldur('yil-select');
-      if(yilSec && [...document.getElementById('yil-select').options].some(o => o.value === yilSec)) {
-        document.getElementById('yil-select').value = yilSec;
-      }
-  }
-  const urunAySec = document.getElementById('urun-ay-select').value;
-  aySelectDoldur('urun-ay-select');
-  if(urunAySec && [...document.getElementById('urun-ay-select').options].some(o => o.value === urunAySec)) {
-    document.getElementById('urun-ay-select').value = urunAySec;
-  }
-  
-  if (document.getElementById('pnl-ozet').style.display !== 'none') renderOzet();
-  if (document.getElementById('pnl-yillik') && document.getElementById('pnl-yillik').style.display !== 'none') window.renderYillik();
-  if (document.getElementById('pnl-grafik').style.display !== 'none') renderGrafik();
-  if (document.getElementById('pnl-urun').style.display !== 'none') renderUrun();
-}
-
-window.addEventListener('tsx_render', sayfaYenile);
-window.addEventListener('storage', (e) => {
-  if (e.key === 'tsx_satislar' || e.key === 'tsx_son_sync') {
-    sayfaYenile();
-  }
-});
-
-// İlk yükleme
-aySelectDoldur('ay-select');
-aySelectDoldur('urun-ay-select');
-if(document.getElementById('yil-select')) yilSelectDoldur('yil-select');
-renderOzet();
 </script>
 </body>
 </html>

@@ -15,6 +15,7 @@ const DB_KEYS = {
   satislar:'tsx_satislar',
   ayarlar: 'tsx_ayarlar',
   faturalar:'tsx_faturalar',
+  fiyatLog:'tsx_fiyat_log',
 };
 
 const get  = k=>{try{return JSON.parse(localStorage.getItem(k))??null;}catch{return null;}};
@@ -328,7 +329,8 @@ export async function otomatikTySenkronize(){
       if(eslesti){
         yeniSatislar.push({tip:eslesti.tip, hedefId:eslesti.hedefId, adet:line.quantity||1,
           gercekFiyat:+(line.amount||line.price||0), tarih,
-          tyOrderId:lineId, tyOrderNumber:paket.orderNumber, tyStatus:paket.status});
+          tyOrderId:lineId, tyOrderNumber:paket.orderNumber, tyStatus:paket.status,
+          tyKomisyon:line.commissionAmount!=null ? +line.commissionAmount : null});
       } else {
         yeniBekleyenler.push({id:lineId, sipNo:paket.orderNumber,
           urunAd:line.productName||'—', barcode,
@@ -347,6 +349,58 @@ export async function otomatikTySenkronize(){
   ));
   localStorage.setItem(TY_SYNC_KEY, Date.now().toString());
   return {yeniEklenen:yeniSatislar.length, eslesmeyen:yeniBekleyenler.length};
+}
+
+/* ── FİYAT LOG DB ── */
+export const fiyatLogDB = {
+  hepsini(){ return get(DB_KEYS.fiyatLog)||[]; },
+  ekle(kayit){
+    const mevcut = this.hepsini();
+    mevcut.unshift({id:uid(), tarih:new Date().toISOString(), ...kayit});
+    if(mevcut.length>1000) mevcut.length=1000;
+    set(DB_KEYS.fiyatLog, mevcut);
+  },
+  temizle(){ set(DB_KEYS.fiyatLog, []); },
+};
+
+/* ── OTOMATİK FİYAT SYNC ── */
+const TY_FIYAT_SYNC_KEY = 'tsx_fiyat_son_sync';
+
+export async function otomatikFiyatSync(){
+  const ay = ayarlarDB.oku();
+  if(!ay.tySellerId||!ay.tyApiKey||!ay.tyApiSecret) return {atlandi:true};
+  const sonSync = localStorage.getItem(TY_FIYAT_SYNC_KEY);
+  if(sonSync && Date.now()-+sonSync < 30*60*1000) return {atlandi:true};
+  try{
+    let page=0, totalPages=1, tumUrunler=[];
+    while(page < totalPages && page < 50){
+      const data = await tyProxyCall({type:'products', approved:true, page});
+      totalPages = data.totalPages||1;
+      tumUrunler = tumUrunler.concat(data.content||[]);
+      page++;
+    }
+    const guncellendi = [];
+    tumUrunler.forEach(tyU=>{
+      const barcode   = tyU.barcode||tyU.stockCode||'';
+      const tyFiyat   = tyU.salePrice!=null ? +tyU.salePrice : (tyU.listPrice!=null ? +tyU.listPrice : null);
+      if(!tyFiyat) return;
+      const listing = listingDB.hepsini().find(l=>
+        (l.tyBarcode && l.tyBarcode===barcode)||
+        (l.tyMerchantSku && l.tyMerchantSku===(tyU.stockCode||''))
+      );
+      if(listing && listing.satisFiyatiGercek !== tyFiyat){
+        const eskiFiyat = listing.satisFiyatiGercek;
+        listingDB.guncelle(listing.id, {satisFiyatiGercek: tyFiyat});
+        fiyatLogDB.ekle({urunId:listing.id, urunAd:listing.ad, eskiFiyat, yeniFiyat:tyFiyat});
+        guncellendi.push({ad:listing.ad, eskiFiyat, yeniFiyat:tyFiyat});
+      }
+    });
+    localStorage.setItem(TY_FIYAT_SYNC_KEY, Date.now().toString());
+    return {guncellendi};
+  } catch(e){
+    console.warn('otomatikFiyatSync hata:', e.message);
+    return {hata:e.message};
+  }
 }
 
 /* ── MİGRASYON: localStorage → Supabase ── */
@@ -650,10 +704,12 @@ export const satislarDB = {
         if(f){
           const gercekFiyat = k.gercekFiyat || f.yuvarlak;
           const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat, desiH, ayarlar, kargoFU);
-          const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, f.platform, gercekKargo);
+          const tyKom = k.tyKomisyon!=null ? +k.tyKomisyon : null;
+          const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, f.platform, gercekKargo, 0, tyKom);
           snapshot = {
             alisMaliyeti: alisTop,
             komisyon: obj.komisyon||0.04,
+            tyKomisyon: tyKom,
             platform: f.platform,
             kargo: gercekKargo,
             netKar: kar.net,
@@ -671,8 +727,9 @@ export const satislarDB = {
         if(f){
           const gercekFiyat=k.gercekFiyat||f.yuvarlak;
           const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat, maxDesi, ayarlar, kargoFU);
-          const kar=hesapla.gercekKar(alisTop,gercekFiyat,0.04,f.platform,gercekKargo);
-          snapshot={alisMaliyeti:alisTop,komisyon:0.04,platform:f.platform,
+          const tyKom2 = k.tyKomisyon!=null ? +k.tyKomisyon : null;
+          const kar=hesapla.gercekKar(alisTop,gercekFiyat,0.04,f.platform,gercekKargo,0,tyKom2);
+          snapshot={alisMaliyeti:alisTop,komisyon:0.04,tyKomisyon:tyKom2,platform:f.platform,
             kargo:gercekKargo,netKar:kar.net,roi:kar.roi};
         }
       }
@@ -685,6 +742,7 @@ export const satislarDB = {
         tyOrderId:     k.tyOrderId||null,
         tyOrderNumber: k.tyOrderNumber||null,
         tyStatus:      k.tyStatus||null,
+        tyKomisyon:    k.tyKomisyon!=null ? +k.tyKomisyon : null,
       };
     });
     set(DB_KEYS.satislar,[...this.hepsini(),...yeniler]);
@@ -818,7 +876,7 @@ export const satislarDB = {
       const yeniPlatform = degisiklik.ayniGunKargo !== undefined
         ? (degisiklik.ayniGunKargo ? (ayarlarG.platformAyniGun||8.388) : (ayarlarG.platformNormal||13.188))
         : k.snapshot.platform;
-      const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, yeniPlatform, yeniKargo);
+      const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, yeniPlatform, yeniKargo, 0, k.snapshot.tyKomisyon||null);
       yeniSnapshot = {...k.snapshot, platform:yeniPlatform, kargo:yeniKargo, netKar:yeniKar.net, roi:yeniKar.roi};
     } else {
       // Snapshot yok (anlık satış) — mevcut ürün verisinden oluştur
@@ -1059,8 +1117,9 @@ export const hesapla = {
     return kargoFU || 100.716;
   },
 
-  gercekKar(alisToplam,gercekFiyat,komisyon,platform,kargo,reklam=0){
-    const net=gercekFiyat-alisToplam-platform-kargo-reklam-gercekFiyat*komisyon;
+  gercekKar(alisToplam,gercekFiyat,komisyon,platform,kargo,reklam=0,komisyonTL=null){
+    const komTL = komisyonTL!=null ? komisyonTL : gercekFiyat*komisyon;
+    const net=gercekFiyat-alisToplam-platform-kargo-reklam-komTL;
     return{net,roi:alisToplam>0?net/alisToplam:0,kararli:net>=0};
   },
 

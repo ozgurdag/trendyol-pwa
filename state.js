@@ -366,11 +366,11 @@ export const fiyatLogDB = {
 /* ── OTOMATİK FİYAT SYNC ── */
 const TY_FIYAT_SYNC_KEY = 'tsx_fiyat_son_sync';
 
-export async function otomatikFiyatSync(){
+export async function otomatikFiyatSync(zorla=false){
   const ay = ayarlarDB.oku();
   if(!ay.tySellerId||!ay.tyApiKey||!ay.tyApiSecret) return {atlandi:true};
   const sonSync = localStorage.getItem(TY_FIYAT_SYNC_KEY);
-  if(sonSync && Date.now()-+sonSync < 30*60*1000) return {atlandi:true};
+  if(!zorla && sonSync && Date.now()-+sonSync < 30*60*1000) return {atlandi:true};
   try{
     let page=0, totalPages=1, tumUrunler=[];
     while(page < totalPages && page < 50){
@@ -380,23 +380,40 @@ export async function otomatikFiyatSync(){
       page++;
     }
     const guncellendi = [];
+    const yeniEklendi = [];
+    const mevcutListings = listingDB.hepsini();
+
     tumUrunler.forEach(tyU=>{
-      const barcode   = tyU.barcode||tyU.stockCode||'';
-      const tyFiyat   = tyU.salePrice!=null ? +tyU.salePrice : (tyU.listPrice!=null ? +tyU.listPrice : null);
-      if(!tyFiyat) return;
-      const listing = listingDB.hepsini().find(l=>
+      const barcode    = tyU.barcode||tyU.stockCode||'';
+      const merchantSku= tyU.stockCode||'';
+      const tyFiyat    = tyU.salePrice!=null ? +tyU.salePrice : (tyU.listPrice!=null ? +tyU.listPrice : null);
+      if(!barcode || !tyFiyat) return;
+
+      const listing = mevcutListings.find(l=>
         (l.tyBarcode && l.tyBarcode===barcode)||
-        (l.tyMerchantSku && l.tyMerchantSku===(tyU.stockCode||''))
+        (l.tyMerchantSku && l.tyMerchantSku===merchantSku)
       );
-      if(listing && listing.satisFiyatiGercek !== tyFiyat){
-        const eskiFiyat = listing.satisFiyatiGercek;
-        listingDB.guncelle(listing.id, {satisFiyatiGercek: tyFiyat});
-        fiyatLogDB.ekle({urunId:listing.id, urunAd:listing.ad, eskiFiyat, yeniFiyat:tyFiyat});
-        guncellendi.push({ad:listing.ad, eskiFiyat, yeniFiyat:tyFiyat});
+
+      if(listing){
+        if(listing.satisFiyatiGercek !== tyFiyat){
+          const eskiFiyat = listing.satisFiyatiGercek;
+          listingDB.guncelle(listing.id, {satisFiyatiGercek: tyFiyat});
+          fiyatLogDB.ekle({urunId:listing.id, urunAd:listing.ad, eskiFiyat, yeniFiyat:tyFiyat});
+          guncellendi.push({ad:listing.ad, eskiFiyat, yeniFiyat:tyFiyat});
+        }
+      } else {
+        const ad = tyU.title||tyU.productName||barcode;
+        const yeni = listingDB.ekle({
+          ad, satisFiyatiGercek:tyFiyat, komisyon:0.04,
+          tyBarcode:barcode, tyMerchantSku:merchantSku,
+          alisFiyati:0, stok:0, desi:1, stokBilesenleri:[], onaylandi:true,
+        });
+        fiyatLogDB.ekle({urunAd:ad, eskiFiyat:null, yeniFiyat:tyFiyat, yeniUrun:true});
+        yeniEklendi.push({ad, fiyat:tyFiyat});
       }
     });
     localStorage.setItem(TY_FIYAT_SYNC_KEY, Date.now().toString());
-    return {guncellendi};
+    return {guncellendi, yeniEklendi};
   } catch(e){
     console.warn('otomatikFiyatSync hata:', e.message);
     return {hata:e.message};

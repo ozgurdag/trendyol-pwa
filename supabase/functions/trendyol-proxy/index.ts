@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       if (startDate)       params.set('startDate',       String(startDate));
       if (endDate)         params.set('endDate',         String(endDate));
       if (transactionType) params.set('transactionType', transactionType);
-      url = `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/settlements?${params}`;
+      url = `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/settlements?${params}`;
 
     } else if (type === 'products') {
       const { barcode, approved, page: p = 0 } = body;
@@ -75,7 +75,13 @@ Deno.serve(async (req) => {
     }
 
     const res = await fetch(url, { headers });
-    const data = await res.json();
+    const text = await res.text();
+    let data: unknown;
+    try { data = JSON.parse(text); } catch { data = { error: text.slice(0, 500) }; }
+
+    if (!res.ok) {
+      console.error(`[proxy] ${type} ${res.status} — url: ${url} — body: ${text.slice(0,300)}`);
+    }
 
     return new Response(JSON.stringify(data), {
       status: res.status,

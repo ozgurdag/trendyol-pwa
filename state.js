@@ -760,14 +760,17 @@ export const satislarDB = {
                       : (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0);
         if(f){
           const gercekFiyat = k.gercekFiyat || f.yuvarlak;
-          const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat, desiH, ayarlar, kargoFU);
+          const adet = k.adet || 1;
+          // Kargo ve platform sipariş başına sabit ücret → birim başına böl
+          const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat * adet, desiH, ayarlar, kargoFU) / adet;
+          const platformBirim = f.platform / adet;
           const tyKom = k.tyKomisyon!=null ? +k.tyKomisyon : null;
-          const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, f.platform, gercekKargo, 0, tyKom);
+          const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, platformBirim, gercekKargo, 0, tyKom);
           snapshot = {
             alisMaliyeti: alisTop,
             komisyon: obj.komisyon||0.04,
             tyKomisyon: tyKom,
-            platform: f.platform,
+            platform: platformBirim,
             kargo: gercekKargo,
             netKar: kar.net,
             roi: kar.roi,
@@ -783,10 +786,12 @@ export const satislarDB = {
         const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
         if(f){
           const gercekFiyat=k.gercekFiyat||f.yuvarlak;
-          const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat, maxDesi, ayarlar, kargoFU);
+          const adet = k.adet || 1;
+          const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat * adet, maxDesi, ayarlar, kargoFU) / adet;
+          const platformBirim = f.platform / adet;
           const tyKom2 = k.tyKomisyon!=null ? +k.tyKomisyon : null;
-          const kar=hesapla.gercekKar(alisTop,gercekFiyat,0.04,f.platform,gercekKargo,0,tyKom2);
-          snapshot={alisMaliyeti:alisTop,komisyon:0.04,tyKomisyon:tyKom2,platform:f.platform,
+          const kar=hesapla.gercekKar(alisTop,gercekFiyat,0.04,platformBirim,gercekKargo,0,tyKom2);
+          snapshot={alisMaliyeti:alisTop,komisyon:0.04,tyKomisyon:tyKom2,platform:platformBirim,
             kargo:gercekKargo,netKar:kar.net,roi:kar.roi};
         }
       }
@@ -924,15 +929,17 @@ export const satislarDB = {
     else if(k.tip==='stok')  { obj=stokDB.bul(k.hedefId);   dsi=obj?.desi||1; }
     else if(k.tip==='listing'){ obj=listingDB.bul(k.hedefId); dsi=obj?.desi||1; }
     else if(k.tip==='stok-combo'){ dsi=Math.max(...(k.stokKombo||[]).map(x=>x.desi||1),1); }
-    const kFU       = kargoUcreti(ayarlarG.kargoFirma||'Aras', dsi);
-    const yeniKargo = hesapla.gercekKargoBedeli(yeniFiyat, dsi, ayarlarG, kFU);
+    const kFU = kargoUcreti(ayarlarG.kargoFirma||'Aras', dsi);
+    // Kargo ve platform sipariş başına sabit → birim başına böl
+    const yeniKargo = hesapla.gercekKargoBedeli(yeniFiyat * yeniAdet, dsi, ayarlarG, kFU) / yeniAdet;
 
     let yeniSnapshot;
     if(k.snapshot){
       // Mevcut snapshot: tarihi alisMaliyeti/komisyon koru, platform/kargo/kar güncelle
-      const yeniPlatform = degisiklik.ayniGunKargo !== undefined
+      const platformToplam = degisiklik.ayniGunKargo !== undefined
         ? (degisiklik.ayniGunKargo ? (ayarlarG.platformAyniGun||8.388) : (ayarlarG.platformNormal||13.188))
-        : k.snapshot.platform;
+        : k.snapshot.platform * yeniAdet; // eski birim değerden toplama çevir
+      const yeniPlatform = platformToplam / yeniAdet;
       const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, yeniPlatform, yeniKargo, 0, k.snapshot.tyKomisyon||null);
       yeniSnapshot = {...k.snapshot, platform:yeniPlatform, kargo:yeniKargo, netKar:yeniKar.net, roi:yeniKar.roi};
     } else {
@@ -947,7 +954,8 @@ export const satislarDB = {
       const ayniGun = degisiklik.ayniGunKargo !== undefined
         ? degisiklik.ayniGunKargo
         : (obj?.ayniGunKargo ?? ayarlarG.ayniGunKargo ?? false);
-      const yeniPlatform = ayniGun ? (ayarlarG.platformAyniGun||8.388) : (ayarlarG.platformNormal||13.188);
+      const platformToplam = ayniGun ? (ayarlarG.platformAyniGun||8.388) : (ayarlarG.platformNormal||13.188);
+      const yeniPlatform = platformToplam / yeniAdet;
       const yeniKar = hesapla.gercekKar(alisMaliyeti, yeniFiyat, komisyon, yeniPlatform, yeniKargo);
       yeniSnapshot = {alisMaliyeti, komisyon, platform:yeniPlatform, kargo:yeniKargo, netKar:yeniKar.net, roi:yeniKar.roi};
     }

@@ -182,8 +182,8 @@ function satisKar(s){
       const f=hesapla.satisFiyati(synth,ay_s,1,kFU);
       if(f){
         if(!gf)gf=f.yuvarlak;
-        platform=f.platform;
-        kargo=hesapla.gercekKargoBedeli(gf,maxDesi,ay_s,kFU);
+        platform=f.platform/s.adet;
+        kargo=hesapla.gercekKargoBedeli(gf*s.adet,maxDesi,ay_s,kFU)/s.adet;
         const kr=hesapla.gercekKar(alisBirim,gf,0.04,platform,kargo);
         net=kr.net*s.adet;roi=kr.roi;
       }
@@ -195,8 +195,8 @@ function satisKar(s){
         const f=hesapla.satisFiyati(s.tip==='set'?{alisFiyati:alisBirim,desi,komisyon:komOrani}:obj,ay_s,1,kFU);
         if(f){
           if(!gf)gf=f.yuvarlak;
-          platform=f.platform;
-          kargo=hesapla.gercekKargoBedeli(gf,desi,ay_s,kFU);
+          platform=f.platform/s.adet;
+          kargo=hesapla.gercekKargoBedeli(gf*s.adet,desi,ay_s,kFU)/s.adet;
           const kr=hesapla.gercekKar(alisBirim,gf,komOrani,platform,kargo);
           net=kr.net*s.adet;roi=kr.roi;
         }
@@ -290,6 +290,7 @@ function renderListe(satislar, targetId){
         <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
         <span class="sr-item">Kom: <b>${p(k.komisyon)}</b>${k.komisyonGercek?'<span class="gercek-badge">TY</span>':''}</span>
         <span class="sr-item">Kargo: <b>${p(k.kargo)}</b></span>
+        ${k.platform>0?`<span class="sr-item">Platform: <b>${p(k.platform)}</b></span>`:''}
         <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
         <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
       </div>

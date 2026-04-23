@@ -378,6 +378,7 @@ window.siparisleriCek = async () => {
     const seenPkgs = new Set();
     const content = raw.filter(p=>{ if(seenPkgs.has(p.orderNumber)) return false; seenPkgs.add(p.orderNumber); return true; });
     console.log(`[TY] Ham: ${raw.length} paket, tekrarsız: ${content.length}`);
+    if(content.length) window._lastPaket = content[0]; // debug: paket alanlarını görmek için
     fillEl.style.width = '100%';
 
     const filtre = document.getElementById('s-durum').value;

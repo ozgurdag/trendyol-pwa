@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     }
 
     const credentials = btoa(`${apiKey}:${apiSecret}`);
-    const headers = {
+    const basicHeaders = {
       'Authorization': `Basic ${credentials}`,
       'User-Agent': `${sellerId} - Self Integration`,
       'Content-Type': 'application/json',
@@ -47,15 +47,49 @@ Deno.serve(async (req) => {
       url = `https://apigw.trendyol.com/integration/order/sellers/${sellerId}/orders?${params}`;
 
     } else if (type === 'settlements') {
-      const { startDate, endDate, transactionType } = body;
-      const params = new URLSearchParams({
-        page: String(page),
-        size: String(size),
-      });
+      const { startDate, endDate, transactionType, token } = body;
+      const params = new URLSearchParams({ page: String(page), size: String(size) });
       if (startDate)       params.set('startDate',       String(startDate));
       if (endDate)         params.set('endDate',         String(endDate));
       if (transactionType) params.set('transactionType', transactionType);
-      url = `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/settlements?${params}`;
+
+      // Finance API için Bearer token + birden fazla URL dene
+      const bearerHeaders = token ? {
+        'Authorization': `Bearer ${token}`,
+        'User-Agent': `${sellerId} - Self Integration`,
+        'Content-Type': 'application/json',
+      } : null;
+
+      const urlCandidates = [
+        `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/settlements?${params}`,
+        `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/otherfinancials/settlements?${params}`,
+        `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/settlements?${params}`,
+      ];
+
+      for (const candidate of urlCandidates) {
+        // Önce Bearer, sonra Basic dene
+        const attempts = bearerHeaders
+          ? [bearerHeaders, basicHeaders]
+          : [basicHeaders];
+        for (const hdrs of attempts) {
+          const r = await fetch(candidate, { headers: hdrs });
+          const t2 = await r.text();
+          let d: unknown;
+          try { d = JSON.parse(t2); } catch { d = { error: t2.slice(0, 300) }; }
+          console.log(`[settlements] ${r.status} — ${candidate} — auth:${hdrs['Authorization'].slice(0,10)}`);
+          if (r.ok) {
+            return new Response(JSON.stringify(d), {
+              status: 200,
+              headers: { ...CORS, 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+      // Hiçbiri çalışmadı — son denemenin yanıtını döndür
+      return new Response(JSON.stringify({ error: 'Tüm Finance API URL\'leri başarısız — Supabase loglarını kontrol edin' }), {
+        status: 556,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
 
     } else if (type === 'products') {
       const { barcode, approved, page: p = 0 } = body;
@@ -74,7 +108,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const res = await fetch(url, { headers });
+    const res = await fetch(url, { headers: basicHeaders });
     const text = await res.text();
     let data: unknown;
     try { data = JSON.parse(text); } catch { data = { error: text.slice(0, 500) }; }

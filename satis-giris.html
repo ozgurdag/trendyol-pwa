@@ -470,7 +470,7 @@ async function proxyCall(body){
   const res = await fetch(PROXY, {
     method:'POST',
     headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`},
-    body: JSON.stringify({...body, sellerId:ayarlar.tySellerId, apiKey:ayarlar.tyApiKey, apiSecret:ayarlar.tyApiSecret}),
+    body: JSON.stringify({...body, sellerId:ayarlar.tySellerId, apiKey:ayarlar.tyApiKey, apiSecret:ayarlar.tyApiSecret, token:ayarlar.tyToken||''}),
   });
   const data = await res.json();
   console.log('Proxy yanıt:', res.status, body.type||'orders', data);

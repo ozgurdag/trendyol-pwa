@@ -78,6 +78,10 @@
         <div><div class="toggle-label">API Secret</div></div>
         <input class="form-input" type="password" id="ay-ty-secret" placeholder="API Secret" style="width:140px" autocomplete="off" onchange="trendyolAyarKaydet()">
       </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <div><div class="toggle-label">Token (Finans API)</div></div>
+        <input class="form-input" type="password" id="ay-ty-token" placeholder="Token" style="width:140px" autocomplete="off" onchange="trendyolAyarKaydet()">
+      </div>
       <div id="ty-durum" style="font-size:11px;margin-top:8px;display:none;color:var(--green)"></div>
       <a href="./trendyol-import.html" class="btn btn-secondary btn-full mt-8" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none">
         🛒 Siparişleri İçe Aktar
@@ -198,6 +202,7 @@ document.getElementById('ay-sirket-tipi').value = ay.sirketTipi || 'sahis';
 document.getElementById('ay-ty-seller').value = ay.tySellerId || '';
 document.getElementById('ay-ty-key').value    = ay.tyApiKey   || '';
 document.getElementById('ay-ty-secret').value = ay.tyApiSecret|| '';
+document.getElementById('ay-ty-token').value  = ay.tyToken    || '';
 if(ay.tySellerId && ay.tyApiKey && ay.tyApiSecret){
   const d = document.getElementById('ty-durum');
   d.textContent = '✅ Trendyol API bilgileri kayıtlı.';
@@ -284,7 +289,8 @@ window.trendyolAyarKaydet = () => {
   const seller = document.getElementById('ay-ty-seller').value.trim();
   const key    = document.getElementById('ay-ty-key').value.trim();
   const secret = document.getElementById('ay-ty-secret').value.trim();
-  ayarlarDB.kaydet({ tySellerId: seller, tyApiKey: key, tyApiSecret: secret });
+  const token  = document.getElementById('ay-ty-token').value.trim();
+  ayarlarDB.kaydet({ tySellerId: seller, tyApiKey: key, tyApiSecret: secret, tyToken: token });
   const d = document.getElementById('ty-durum');
   if(seller && key && secret){
     d.textContent = '✅ Trendyol API bilgileri kaydedildi.';

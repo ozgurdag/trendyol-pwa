@@ -146,6 +146,7 @@
         <div class="stat-box"><div class="val" id="ms-hesap">—</div><div class="lbl">Hesaplanan</div></div>
       </div>
 
+      <button id="m-uygula-btn" onclick="mutabakatUygula()" style="display:none;width:100%;margin-bottom:12px;padding:12px;background:var(--green);border:none;border-radius:var(--r-md);color:#fff;font-size:13px;font-weight:700;cursor:pointer"></button>
       <div id="m-list"></div>
     </div>
 
@@ -191,6 +192,14 @@ const PROXY  = `${SB_URL}/functions/v1/bright-api`;
 
 const o = auth.oturum();
 if (!o) { window.location.href = 'index.html'; }
+
+let mutabakatEslesimler = [];
+window.mutabakatUygula = () => {
+  const sayi = satislarDB.netTutarlariUygula(mutabakatEslesimler);
+  if(sayi) toast(`✅ ${sayi} satışa gerçek TY değeri uygulandı`, 'success');
+  else toast('Eşleşen kayıtlı satış bulunamadı', 'info');
+  document.getElementById('m-uygula-btn').style.display = 'none';
+};
 
 // Trendyol durum çevirileri
 const DURUM_TR = {Created:'Oluşturuldu',Picking:'Hazırlanıyor',Invoiced:'Faturalandı',
@@ -614,17 +623,29 @@ window.mutabakatCek = async () => {
     if(!items.length){
       cont.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px;font-size:13px">Bu dönemde ödeme kaydı bulunamadı</div>';
     } else {
-      // Hesaplanan kar toplamı (aynı dönemdeki satışlardan)
+      // Eşleştirme: settlement orderNumber → kayıtlı satış
+      mutabakatEslesimler = [];
+      const kayitliSatislar = satislarDB.hepsini();
+      items.forEach(it => {
+        const netOdeme = it.payoutAmount ?? it.netAmount ?? it.amount ?? 0;
+        toplamOdeme += netOdeme;
+        if(it.orderNumber) mutabakatEslesimler.push({tyOrderNumber: String(it.orderNumber), netTutar: netOdeme});
+      });
+      const eslesmeSayisi = mutabakatEslesimler.filter(e =>
+        kayitliSatislar.some(s => String(s.tyOrderNumber) === e.tyOrderNumber)
+      ).length;
+
+      // Hesaplanan kar — gerçek değer varsa onu kullan
       const donemSatislar = satislarDB.aralik(
         document.getElementById('m-start').value,
         document.getElementById('m-end').value
       );
-      const hesaplananKar = donemSatislar.reduce((t,s)=>t+(s.snapshot?.netKar||0)*s.adet, 0);
+      const hesaplananKar = donemSatislar.reduce((t,s) => {
+        if(s.snapshot?.tyNetTutar != null)
+          return t + s.snapshot.tyNetTutar - (s.snapshot.alisMaliyeti||0)*s.adet;
+        return t + (s.snapshot?.netKar||0)*s.adet;
+      }, 0);
 
-      items.forEach(it=>{
-        const netOdeme = it.payoutAmount ?? it.netAmount ?? it.amount ?? 0;
-        toplamOdeme += netOdeme;
-      });
       const delta = toplamOdeme - hesaplananKar;
       const deltaClass = delta>=0?'delta-pos':'delta-neg';
 
@@ -632,6 +653,14 @@ window.mutabakatCek = async () => {
       document.getElementById('ms-odeme').textContent  = toplamOdeme.toFixed(0)+'₺';
       document.getElementById('ms-hesap').textContent  = hesaplananKar.toFixed(0)+'₺';
       document.getElementById('m-stats').style.display = 'flex';
+
+      const uygulaBtn = document.getElementById('m-uygula-btn');
+      if(eslesmeSayisi > 0){
+        uygulaBtn.textContent = `✅ ${eslesmeSayisi} satışa gerçek TY değerini uygula`;
+        uygulaBtn.style.display = 'block';
+      } else {
+        uygulaBtn.style.display = 'none';
+      }
 
       cont.innerHTML = `<div class="card mb-12" style="border-color:${delta>=0?'var(--green)':'var(--red)'}">
         <div style="font-size:13px;font-weight:600">Dönem Karşılaştırması</div>

@@ -172,8 +172,25 @@ function satisKar(s){
     platform   = s.snapshot.platform||0;
     kargo      = s.snapshot.kargo||0;
     komisyonTL = s.snapshot.tyKomisyon!=null ? s.snapshot.tyKomisyon : null;
-    net        = s.snapshot.netKar * s.adet;
-    roi        = s.snapshot.roi;
+
+    if(s.snapshot.tyNetTutar != null){
+      // Gerçek TY değeri: sadece netTutar - alış
+      const alis = alisBirim * s.adet;
+      const netG = s.snapshot.tyNetTutar - alis;
+      return {
+        net: netG, roi: alis>0 ? netG/alis : 0, kararli: netG>=0,
+        ad, tip: s.tip, adet: s.adet,
+        gelir: gf*s.adet,
+        alis,
+        tyNetTutar: s.snapshot.tyNetTutar,
+        tyKesinti: gf*s.adet - s.snapshot.tyNetTutar,
+        tyGercek: true,
+        kargo: 0, platform: 0, komisyon: 0, komisyonGercek: false,
+      };
+    }
+
+    net = s.snapshot.netKar * s.adet;
+    roi = s.snapshot.roi;
   } else {
     if(s.tip==='stok-combo'){
       const maxDesi=Math.max(...(s.stokKombo||[]).map(it=>it.desi||1),1);
@@ -287,12 +304,19 @@ function renderListe(satislar, targetId){
       </div>
       <div class="sr-meta">${s.tarih||''}${s.tyOrderNumber?` · #${s.tyOrderNumber}`:''}</div>
       <div class="sr-detay">
+        ${k.tyGercek ? `
+        <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
+        <span class="sr-item">TY Kesinti: <b>-${p(k.tyKesinti)}</b> <span class="gercek-badge">Gerçek</span></span>
+        <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
+        <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
+        ` : `
         <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
         <span class="sr-item">Kom: <b>${p(k.komisyon)}</b>${k.komisyonGercek?'<span class="gercek-badge">TY</span>':''}</span>
         <span class="sr-item">Kargo: <b>${p(k.kargo)}</b></span>
         ${k.platform>0?`<span class="sr-item">Platform: <b>${p(k.platform)}</b></span>`:''}
         <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
         <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
+        `}
       </div>
       <div id="edit-form-${s.id}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">

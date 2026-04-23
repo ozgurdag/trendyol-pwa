@@ -596,7 +596,16 @@ window.mutabakatCek = async () => {
   document.getElementById('m-stats').style.display='none';
 
   try {
-    const items = await fetchAllPages({type:'settlements', startDate:startMs, endDate:endMs}, fillEl);
+    let items;
+    try {
+      items = await fetchAllPages({type:'settlements', startDate:startMs, endDate:endMs}, fillEl);
+    } catch(apiErr){
+      const msg = String(apiErr.message);
+      const hint = msg.includes('Bilinmeyen type') ? ' — Edge function\'ı yeniden deploy edin: supabase functions deploy trendyol-proxy' : '';
+      document.getElementById('m-list').innerHTML = `<div class="card" style="border-color:var(--red);color:var(--red);font-size:13px"><b>API Hatası:</b> ${msg}${hint}</div>`;
+      console.error('[Mutabakat] API hatası:', apiErr);
+      throw apiErr;
+    }
     fillEl.style.width='100%';
     setTimeout(()=>progEl.style.display='none',500);
 

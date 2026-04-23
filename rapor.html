@@ -160,7 +160,7 @@ function satisKar(s){
     if(u){ad=u.ad;alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;}
   } else if(s.tip==='set'){
     const u=setlerDB.bul(s.hedefId);
-    if(u){ad=u.ad;alisBirim=u.alisMaliyeti||0;komOrani=u.komisyon||0.04;}
+    if(u){ad=u.ad;alisBirim=setlerDB.alisMaliyeti(s.hedefId)||u.alisMaliyeti||0;komOrani=u.komisyon||0.04;}
   } else {
     const u=listingDB.bul(s.hedefId);
     if(u){ad=u.ad;alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;}
@@ -276,10 +276,14 @@ function renderListe(satislar, targetId){
   }
   el.innerHTML=siralı.map(s=>{
     const k=satisKar(s);if(!k)return'';
-    return `<div class="satis-row">
+    return `<div class="satis-row" id="sr-${s.id}">
       <div class="sr-baslik">
         <div class="sr-ad">${k.ad}${k.adet>1?` <span style="color:var(--accent)">×${k.adet}</span>`:''}</div>
-        <div class="sr-net" style="color:${k.kararli?'var(--green)':'var(--red)'}">${k.net>=0?'+':''}${p(k.net)}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div class="sr-net" style="color:${k.kararli?'var(--green)':'var(--red)'}">${k.net>=0?'+':''}${p(k.net)}</div>
+          <button onclick="editAc('${s.id}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:15px;padding:2px 4px" title="Düzenle">✏️</button>
+          <button onclick="satisSil('${s.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;padding:2px 4px" title="Sil">✕</button>
+        </div>
       </div>
       <div class="sr-meta">${s.tarih||''}${s.tyOrderNumber?` · #${s.tyOrderNumber}`:''}</div>
       <div class="sr-detay">
@@ -289,9 +293,74 @@ function renderListe(satislar, targetId){
         <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
         <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
       </div>
+      <div id="edit-form-${s.id}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Adet</div>
+            <input id="ef-adet-${s.id}" type="number" min="1" value="${s.adet||1}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Satış Fiyatı (₺)</div>
+            <input id="ef-fiyat-${s.id}" type="number" step="0.01" value="${s.gercekFiyat||''}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Tarih</div>
+            <input id="ef-tarih-${s.id}" type="date" value="${s.tarih||''}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="editKaydet('${s.id}')" style="flex:1;padding:7px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:600;cursor:pointer">Kaydet</button>
+          <button onclick="editKapat('${s.id}')" style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:13px;cursor:pointer">İptal</button>
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
+
+// ─── Edit helpers ───────────────────────────────────────────────────
+function toast(msg, tip='info'){
+  const c=document.getElementById('toastCont'); if(!c)return;
+  const t=document.createElement('div');
+  t.className='toast'+(tip==='success'?' success':tip==='error'?' error':'');
+  t.textContent=msg; c.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
+
+function aktifSekmeRender(){
+  const aktif=document.querySelector('.rapor-tab.active');
+  if(!aktif) return;
+  const id=aktif.getAttribute('onclick')?.match(/sekme\('(\w+)'/)?.[1];
+  if(id==='gunluk')   renderGunluk();
+  else if(id==='haftalik') renderHaftalik();
+  else if(id==='aylik')    renderAylik();
+  else if(id==='yillik')   renderYillik();
+  else if(id==='tumu')     renderTumu();
+  else renderGunluk();
+}
+
+window.editAc = id => {
+  document.getElementById(`edit-form-${id}`).style.display='block';
+};
+window.editKapat = id => {
+  document.getElementById(`edit-form-${id}`).style.display='none';
+};
+window.editKaydet = id => {
+  const adet   = +document.getElementById(`ef-adet-${id}`).value||1;
+  const fiyat  = document.getElementById(`ef-fiyat-${id}`).value;
+  const tarih  = document.getElementById(`ef-tarih-${id}`).value;
+  const degisiklik = {adet};
+  if(fiyat!=='') degisiklik.gercekFiyat = +fiyat;
+  if(tarih!=='') degisiklik.tarih = tarih;
+  const ok = satislarDB.guncelle(id, degisiklik);
+  if(ok){ toast('Satış güncellendi','success'); aktifSekmeRender(); }
+  else   toast('Güncelleme başarısız','error');
+};
+window.satisSil = id => {
+  if(!confirm('Bu satışı silmek istediğinizden emin misiniz?')) return;
+  satislarDB.sil(id);
+  toast('Satış silindi','success');
+  aktifSekmeRender();
+};
 
 // ─── Line chart ────────────────────────────────────────────────────
 function lineChart(el,data,renk='var(--accent)'){

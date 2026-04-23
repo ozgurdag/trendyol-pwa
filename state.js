@@ -757,7 +757,7 @@ export const satislarDB = {
         const f = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFU);
         const alisTop = k.tip==='listing' ? (obj.alisFiyati||0)
                       : k.tip==='stok'    ? (obj.alisFiyati||0)
-                      : (obj.alisMaliyeti||0);
+                      : (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0);
         if(f){
           const gercekFiyat = k.gercekFiyat || f.yuvarlak;
           const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat, desiH, ayarlar, kargoFU);
@@ -941,7 +941,7 @@ export const satislarDB = {
       if(k.tip==='stok-combo'){
         alisMaliyeti=(k.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
       } else if(obj){
-        alisMaliyeti = k.tip==='set' ? (obj.alisMaliyeti||0) : (obj.alisFiyati||0);
+        alisMaliyeti = k.tip==='set' ? (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0) : (obj.alisFiyati||0);
         komisyon = obj.komisyon||0.04;
       }
       const ayniGun = degisiklik.ayniGunKargo !== undefined
@@ -965,6 +965,7 @@ export const satislarDB = {
     const v={};
     if(degisiklik.adet!==undefined)        v.adet=yeniAdet;
     if(degisiklik.gercekFiyat!==undefined) v.gercek_fiyat=+degisiklik.gercekFiyat;
+    if(degisiklik.tarih!==undefined)       v.tarih=degisiklik.tarih;
     if(yeniSnapshot!==k.snapshot)          v.snapshot=yeniSnapshot?JSON.stringify(yeniSnapshot):null;
     if(Object.keys(v).length) sbPatch('satislar',id,v).then(()=>broadcastGonder());
     return true;

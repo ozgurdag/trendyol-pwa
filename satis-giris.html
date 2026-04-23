@@ -189,15 +189,20 @@
             <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(30,'m')">30 gün</button>
             <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(90,'m')">90 gün</button>
           </div>
-          <button class="btn btn-primary btn-full" id="m-cek-btn" onclick="mutabakatCek()">💳 Ödemeleri Getir</button>
+          <button class="btn btn-primary btn-full" id="m-cek-btn" onclick="mutabakatCek()">💳 Komisyon Verisi Getir</button>
           <div class="prog-bar" id="m-prog"><div class="prog-fill" id="m-prog-fill" style="width:0%"></div></div>
+          <div style="height:8px"></div>
+          <button class="btn btn-ghost btn-full" id="k-cek-btn" onclick="kargoVerisiCek()" style="border-color:var(--accent)">🚚 Kargo Verisi Getir</button>
+          <div class="prog-bar" id="k-prog"><div class="prog-fill" id="k-prog-fill" style="width:0%"></div></div>
         </div>
         <div class="stat-row" id="m-stats" style="display:none">
           <div class="stat-box"><div class="val" id="ms-toplam">0</div><div class="lbl">İşlem</div></div>
           <div class="stat-box"><div class="val" id="ms-odeme">—</div><div class="lbl">Net Ödeme</div></div>
           <div class="stat-box"><div class="val" id="ms-hesap">—</div><div class="lbl">Hesaplanan</div></div>
         </div>
-        <button id="m-uygula-btn" onclick="mutabakatUygula()" style="display:none;width:100%;margin-bottom:12px;padding:12px;background:var(--green);border:none;border-radius:var(--r-md);color:#fff;font-size:13px;font-weight:700;cursor:pointer"></button>
+        <button id="m-uygula-btn" onclick="mutabakatUygula()" style="display:none;width:100%;margin-bottom:8px;padding:12px;background:var(--green);border:none;border-radius:var(--r-md);color:#fff;font-size:13px;font-weight:700;cursor:pointer"></button>
+        <div id="k-stats" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px;margin-bottom:8px;font-size:12px;line-height:1.8"></div>
+        <button id="k-uygula-btn" onclick="kargoUygula()" style="display:none;width:100%;margin-bottom:12px;padding:12px;background:var(--accent);border:none;border-radius:var(--r-md);color:#fff;font-size:13px;font-weight:700;cursor:pointer"></button>
         <div id="m-list"></div>
       </div>
 
@@ -481,7 +486,7 @@ async function proxyCall(body){
 async function fetchAllPages(baseBody, progressEl){
   let page=0, totalPages=1, all=[];
   while(page < totalPages && page < 20){
-    const data = await proxyCall({...baseBody, page, size:200});
+    const data = await proxyCall({...baseBody, page, size: baseBody.size || 200});
     totalPages = data.totalPages||1;
     all = all.concat(data.content||data.items||[]);
     page++;
@@ -763,7 +768,7 @@ window.mutabakatCek = async () => {
   document.getElementById('m-list').innerHTML='';
   document.getElementById('m-stats').style.display='none';
   try {
-    const items=await fetchAllPages({type:'settlements',startDate:startMs,endDate:endMs},fillEl);
+    const items=await fetchAllPages({type:'settlements',transactionType:'Sale',size:500,startDate:startMs,endDate:endMs},fillEl);
     fillEl.style.width='100%'; setTimeout(()=>progEl.style.display='none',500);
     let toplamOdeme=0;
     const cont=document.getElementById('m-list');
@@ -774,7 +779,7 @@ window.mutabakatCek = async () => {
       mutabakatEslesimler = [];
       const kayitliSatislar = satislarDB.hepsini();
       items.forEach(it => {
-        const netOdeme = it.payoutAmount??it.netAmount??it.amount??0;
+        const netOdeme = it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         toplamOdeme += netOdeme;
         if(it.orderNumber) mutabakatEslesimler.push({tyOrderNumber: String(it.orderNumber), netTutar: netOdeme});
       });
@@ -801,7 +806,7 @@ window.mutabakatCek = async () => {
           Hesaplanan net kar: <b>${hesaplananKar.toFixed(2)}₺</b><br>
           Fark: <span class="${delta>=0?'delta-pos':'delta-neg'}">${delta>=0?'+':''}${delta.toFixed(2)}₺</span>
         </div></div>`+items.slice(0,100).map(it=>{
-        const net=it.payoutAmount??it.netAmount??it.amount??0;
+        const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         const tarih=it.transactionDate?new Date(it.transactionDate).toISOString().slice(0,10):'—';
         return `<div class="mut-row"><div style="display:flex;justify-content:space-between;align-items:center">
           <div><div style="font-size:12px;font-weight:600">${it.description||it.transactionType||'Ödeme'}</div>
@@ -813,6 +818,93 @@ window.mutabakatCek = async () => {
     toast('Mutabakat verisi getirildi','success');
   } catch(e){ progEl.style.display='none'; toast('Hata: '+e.message,'error'); }
   finally { document.getElementById('m-cek-btn').disabled=false; }
+};
+
+// ── Kargo Verisi ─────────────────────────────────────────────
+let kargoEslesimler = [];
+
+window.kargoVerisiCek = async () => {
+  const ay2=ayarlarDB.oku();
+  if(!ay2.tySellerId){ toast('API bilgileri eksik','error'); return; }
+  const startMs=new Date(document.getElementById('m-start').value).getTime();
+  const endMs  =new Date(document.getElementById('m-end').value).getTime()+86399999;
+  if(!startMs||!endMs){ toast('Tarih seçin','error'); return; }
+  document.getElementById('k-cek-btn').disabled=true;
+  const progEl=document.getElementById('k-prog'), fillEl=document.getElementById('k-prog-fill');
+  progEl.style.display='block'; fillEl.style.width='5%';
+  document.getElementById('k-stats').style.display='none';
+  document.getElementById('k-uygula-btn').style.display='none';
+  kargoEslesimler=[];
+  try {
+    // Adım 1: DeductionInvoices → Kargo Faturası kayıtlarını bul
+    const dedItems = await fetchAllPages({
+      type:'otherfinancials', transactionType:'DeductionInvoices', size:500,
+      startDate:startMs, endDate:endMs
+    }, null);
+    fillEl.style.width='30%';
+
+    const kargoFaturalar = dedItems.filter(it => {
+      const tip = (it.transactionType||it.description||'').toLowerCase();
+      return tip.includes('kargo fatura') || tip.includes('kargo faturası');
+    });
+
+    if(!kargoFaturalar.length){
+      document.getElementById('k-stats').innerHTML='Bu dönemde kargo faturası bulunamadı.';
+      document.getElementById('k-stats').style.display='block';
+      toast('Kargo faturası bulunamadı','error'); return;
+    }
+
+    // Adım 2: Her fatura için cargo-invoice/items çek
+    const orderKargoMap = {};
+    for(let i=0;i<kargoFaturalar.length;i++){
+      const inv = kargoFaturalar[i];
+      const serialNo = inv.id;
+      if(!serialNo) continue;
+      try {
+        const res = await proxyCall({type:'cargo-invoice', invoiceSerialNumber: serialNo});
+        const items = res.content || res.items || [];
+        items.forEach(ci => {
+          if(ci.orderNumber){
+            const key = String(ci.orderNumber);
+            orderKargoMap[key] = (orderKargoMap[key]||0) + Math.abs(ci.amount||0);
+          }
+        });
+      } catch(e){ console.warn(`cargo-invoice ${serialNo} hatası:`, e.message); }
+      fillEl.style.width=`${30+60*((i+1)/kargoFaturalar.length)}%`;
+    }
+
+    // Adım 3: Satışlarla eşleştir
+    const kayitliSatislar = satislarDB.hepsini();
+    kargoEslesimler = [];
+    Object.entries(orderKargoMap).forEach(([orderNo, kargo]) => {
+      const match = kayitliSatislar.find(s => String(s.tyOrderNumber) === orderNo);
+      if(match) kargoEslesimler.push({tyOrderNumber: orderNo, tyKargo: kargo});
+    });
+
+    fillEl.style.width='100%';
+    setTimeout(()=>progEl.style.display='none',500);
+
+    const statsEl = document.getElementById('k-stats');
+    statsEl.innerHTML = `Kargo faturaları: <b>${kargoFaturalar.length}</b> &nbsp;|&nbsp; `+
+      `Sipariş bazlı kargo: <b>${Object.keys(orderKargoMap).length}</b> &nbsp;|&nbsp; `+
+      `Eşleşen satış: <b>${kargoEslesimler.length}</b>`;
+    statsEl.style.display='block';
+
+    if(kargoEslesimler.length>0){
+      const uyBtn=document.getElementById('k-uygula-btn');
+      uyBtn.textContent=`🚚 ${kargoEslesimler.length} satışa gerçek kargo bedelini uygula`;
+      uyBtn.style.display='block';
+    }
+    toast(`${kargoEslesimler.length} satış için kargo verisi hazır`,'success');
+  } catch(e){ progEl.style.display='none'; toast('Kargo hatası: '+e.message,'error'); }
+  finally { document.getElementById('k-cek-btn').disabled=false; }
+};
+
+window.kargoUygula = () => {
+  if(!kargoEslesimler.length) return;
+  const sayi = satislarDB.kargoUygula(kargoEslesimler);
+  toast(`${sayi} satışa gerçek kargo bedeli uygulandı`,'success');
+  document.getElementById('k-uygula-btn').style.display='none';
 };
 
 // ── Fiyat Güncellemeleri ──────────────────────────────────────

@@ -1006,6 +1006,28 @@ export const satislarDB = {
     return sayi;
   },
 
+  kargoUygula(eslesimler){
+    // eslesimler: [{tyOrderNumber, tyKargo}]
+    const mevcut = [...this.hepsini()];
+    let sayi = 0;
+    const dbGuncelle = [];
+    eslesimler.forEach(({tyOrderNumber, tyKargo}) => {
+      if(!tyOrderNumber) return;
+      const idx = mevcut.findIndex(s => String(s.tyOrderNumber) === String(tyOrderNumber));
+      if(idx === -1) return;
+      const yeniSnap = {...(mevcut[idx].snapshot||{}), tyKargo: +tyKargo};
+      mevcut[idx] = {...mevcut[idx], snapshot: yeniSnap};
+      dbGuncelle.push({id: mevcut[idx].id, snapshot: JSON.stringify(yeniSnap)});
+      sayi++;
+    });
+    if(sayi){
+      set(DB_KEYS.satislar, mevcut);
+      dbGuncelle.forEach(u => sbPatch('satislar', u.id, {snapshot: u.snapshot}));
+      broadcastGonder();
+    }
+    return sayi;
+  },
+
   async temizle(){
     set(DB_KEYS.satislar, []);
     await sbDeleteAll('satislar').catch(e=>console.warn('sbDeleteAll:',e.message));

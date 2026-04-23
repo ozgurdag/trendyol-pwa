@@ -174,18 +174,21 @@ function satisKar(s){
     komisyonTL = s.snapshot.tyKomisyon!=null ? s.snapshot.tyKomisyon : null;
 
     if(s.snapshot.tyNetTutar != null){
-      // Gerçek TY değeri: sadece netTutar - alış
+      // Gerçek TY değeri: sellerRevenue (komisyon sonrası) - kargo (varsa) - alış
       const alis = alisBirim * s.adet;
-      const netG = s.snapshot.tyNetTutar - alis;
+      const tyKargo = s.snapshot.tyKargo != null ? s.snapshot.tyKargo : 0;
+      const netG = s.snapshot.tyNetTutar - tyKargo - alis;
       return {
         net: netG, roi: alis>0 ? netG/alis : 0, kararli: netG>=0,
         ad, tip: s.tip, adet: s.adet,
         gelir: gf*s.adet,
         alis,
         tyNetTutar: s.snapshot.tyNetTutar,
-        tyKesinti: gf*s.adet - s.snapshot.tyNetTutar,
+        tyKargo,
+        tyKargoGercek: s.snapshot.tyKargo != null,
+        tyKesinti: gf*s.adet - s.snapshot.tyNetTutar + tyKargo,
         tyGercek: true,
-        kargo: 0, platform: 0, komisyon: 0, komisyonGercek: false,
+        kargo: tyKargo, platform: 0, komisyon: 0, komisyonGercek: false,
       };
     }
 
@@ -306,7 +309,8 @@ function renderListe(satislar, targetId){
       <div class="sr-detay">
         ${k.tyGercek ? `
         <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
-        <span class="sr-item">TY Kesinti: <b>-${p(k.tyKesinti)}</b> <span class="gercek-badge">Gerçek</span></span>
+        <span class="sr-item">TY Net: <b>${p(k.tyNetTutar)}</b> <span class="gercek-badge">Gerçek</span></span>
+        ${k.tyKargoGercek ? `<span class="sr-item">Kargo: <b>-${p(k.tyKargo)}</b> <span class="gercek-badge">Gerçek</span></span>` : `<span class="sr-item" style="color:var(--t3);font-size:11px">Kargo: tahmini</span>`}
         <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
         <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
         ` : `

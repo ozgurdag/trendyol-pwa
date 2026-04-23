@@ -1,7 +1,7 @@
 // @ts-nocheck
 // Trendyol API CORS proxy — Supabase Edge Function
 // Deploy: supabase functions deploy trendyol-proxy  (slug: bright-api)
-// Supports type: "orders" | "settlements" | "products"
+// Supports type: "orders" | "settlements" | "otherfinancials" | "cargo-invoice" | "products"
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -61,9 +61,9 @@ Deno.serve(async (req) => {
       } : null;
 
       const urlCandidates = [
+        `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/settlements?${params}`,
         `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/settlements?${params}`,
         `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/otherfinancials/settlements?${params}`,
-        `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/settlements?${params}`,
       ];
 
       for (const candidate of urlCandidates) {
@@ -90,6 +90,25 @@ Deno.serve(async (req) => {
         status: 556,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
+
+    } else if (type === 'otherfinancials') {
+      const { startDate, endDate, transactionType, transactionSubType } = body;
+      const params = new URLSearchParams({ page: String(page), size: String(size) });
+      if (startDate)          params.set('startDate',          String(startDate));
+      if (endDate)            params.set('endDate',            String(endDate));
+      if (transactionType)    params.set('transactionType',    transactionType);
+      if (transactionSubType) params.set('transactionSubType', transactionSubType);
+      url = `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/otherfinancials?${params}`;
+
+    } else if (type === 'cargo-invoice') {
+      const { invoiceSerialNumber } = body;
+      if (!invoiceSerialNumber) {
+        return new Response(JSON.stringify({ error: 'invoiceSerialNumber zorunlu' }), {
+          status: 400,
+          headers: { ...CORS, 'Content-Type': 'application/json' },
+        });
+      }
+      url = `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/cargo-invoice/${invoiceSerialNumber}/items`;
 
     } else if (type === 'products') {
       const { barcode, approved, page: p = 0 } = body;

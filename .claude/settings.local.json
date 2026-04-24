@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(supabase functions *)",
+      "Bash(npx supabase *)",
+      "Bash(grep -B2 -A5 \"^[[:space:]]*/\\\\*\\\\|^[[:space:]]*//\" /c/Users/fujitsu/Desktop/Trendyol/UYGULAMA/trendyol-pwa/state.js)",
+      "Bash(grep -A5 \"^\\\\s*//\")"
+    ]
+  }
+}

@@ -745,21 +745,10 @@ export const satislarDB = {
                       : k.tip==='stok'    ? (obj.alisFiyati||0)
                       : (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0);
         if(f){
-          const gercekFiyat = k.gercekFiyat || f.yuvarlak;
-          const adet = k.adet || 1;
-          // Kargo ve platform sipariş başına sabit ücret → birim başına böl
-          const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat * adet, desiH, ayarlar, kargoFU) / adet;
-          const platformBirim = f.platform / adet;
           const tyKom = k.tyKomisyon!=null ? +k.tyKomisyon : null;
-          const kar = hesapla.gercekKar(alisTop, gercekFiyat, obj.komisyon||0.04, platformBirim, gercekKargo, 0, tyKom);
           snapshot = {
             alisMaliyeti: alisTop,
-            komisyon: obj.komisyon||0.04,
             tyKomisyon: tyKom,
-            platform: platformBirim,
-            kargo: gercekKargo,
-            netKar: kar.net,
-            roi: kar.roi,
           };
         }
       }
@@ -771,14 +760,11 @@ export const satislarDB = {
         const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',maxDesi);
         const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
         if(f){
-          const gercekFiyat=k.gercekFiyat||f.yuvarlak;
-          const adet = k.adet || 1;
-          const gercekKargo = hesapla.gercekKargoBedeli(gercekFiyat * adet, maxDesi, ayarlar, kargoFU) / adet;
-          const platformBirim = f.platform / adet;
           const tyKom2 = k.tyKomisyon!=null ? +k.tyKomisyon : null;
-          const kar=hesapla.gercekKar(alisTop,gercekFiyat,0.04,platformBirim,gercekKargo,0,tyKom2);
-          snapshot={alisMaliyeti:alisTop,komisyon:0.04,tyKomisyon:tyKom2,platform:platformBirim,
-            kargo:gercekKargo,netKar:kar.net,roi:kar.roi};
+          snapshot={
+            alisMaliyeti: alisTop,
+            tyKomisyon: tyKom2
+          };
         }
       }
       return {
@@ -908,42 +894,23 @@ export const satislarDB = {
     }
 
     // Snapshot'ı yeniden hesapla — snapshot yoksa sıfırdan oluştur
-    const ayarlarG = ayarlarDB.oku();
-    const yeniFiyat = degisiklik.gercekFiyat!==undefined ? +degisiklik.gercekFiyat : k.gercekFiyat;
-    let dsi = 1; let obj = null;
-    if(k.tip==='set')        { obj=setlerDB.bul(k.hedefId);  dsi=obj?.desi||2; }
-    else if(k.tip==='stok')  { obj=stokDB.bul(k.hedefId);   dsi=obj?.desi||1; }
-    else if(k.tip==='listing'){ obj=listingDB.bul(k.hedefId); dsi=obj?.desi||1; }
-    else if(k.tip==='stok-combo'){ dsi=Math.max(...(k.stokKombo||[]).map(x=>x.desi||1),1); }
-    const kFU = kargoUcreti(ayarlarG.kargoFirma||'Aras', dsi);
-    // Kargo ve platform sipariş başına sabit → birim başına böl
-    const yeniKargo = hesapla.gercekKargoBedeli(yeniFiyat * yeniAdet, dsi, ayarlarG, kFU) / yeniAdet;
+    let obj = null;
+    if(k.tip==='set')        { obj=setlerDB.bul(k.hedefId); }
+    else if(k.tip==='stok')  { obj=stokDB.bul(k.hedefId); }
+    else if(k.tip==='listing'){ obj=listingDB.bul(k.hedefId); }
 
     let yeniSnapshot;
     if(k.snapshot){
-      // Mevcut snapshot: tarihi alisMaliyeti/komisyon koru, platform/kargo/kar güncelle
-      const platformToplam = degisiklik.ayniGunKargo !== undefined
-        ? (degisiklik.ayniGunKargo ? (ayarlarG.platformAyniGun||8.388) : (ayarlarG.platformNormal||13.188))
-        : k.snapshot.platform * yeniAdet; // eski birim değerden toplama çevir
-      const yeniPlatform = platformToplam / yeniAdet;
-      const yeniKar = hesapla.gercekKar(k.snapshot.alisMaliyeti, yeniFiyat, k.snapshot.komisyon, yeniPlatform, yeniKargo, 0, k.snapshot.tyKomisyon||null);
-      yeniSnapshot = {...k.snapshot, platform:yeniPlatform, kargo:yeniKargo, netKar:yeniKar.net, roi:yeniKar.roi};
+      yeniSnapshot = {...k.snapshot};
     } else {
       // Snapshot yok (anlık satış) — mevcut ürün verisinden oluştur
-      let alisMaliyeti=0, komisyon=0.04;
+      let alisMaliyeti=0;
       if(k.tip==='stok-combo'){
         alisMaliyeti=(k.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
       } else if(obj){
         alisMaliyeti = k.tip==='set' ? (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0) : (obj.alisFiyati||0);
-        komisyon = obj.komisyon||0.04;
       }
-      const ayniGun = degisiklik.ayniGunKargo !== undefined
-        ? degisiklik.ayniGunKargo
-        : (obj?.ayniGunKargo ?? ayarlarG.ayniGunKargo ?? false);
-      const platformToplam = ayniGun ? (ayarlarG.platformAyniGun||8.388) : (ayarlarG.platformNormal||13.188);
-      const yeniPlatform = platformToplam / yeniAdet;
-      const yeniKar = hesapla.gercekKar(alisMaliyeti, yeniFiyat, komisyon, yeniPlatform, yeniKargo);
-      yeniSnapshot = {alisMaliyeti, komisyon, platform:yeniPlatform, kargo:yeniKargo, netKar:yeniKar.net, roi:yeniKar.roi};
+      yeniSnapshot = {alisMaliyeti, tyKomisyon: null};
     }
 
     const guncellendi = {...k, ...degisiklik, adet:yeniAdet, snapshot:yeniSnapshot};

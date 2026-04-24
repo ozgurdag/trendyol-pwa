@@ -149,106 +149,61 @@ const ay_s = ayarlarDB.oku();
 
 // ─── satisKar ─────────────────────────────────────────────────────
 function satisKar(s){
-  let ad='?', alisBirim=0, gf=+(s.gercekFiyat||0), komOrani=0.04, kargo=0, platform=0, net=0, roi=0;
-  let komisyonTL = null; // gerçek Trendyol komisyonu (TL)
+  let ad='?', alisBirim=0, gf=+(s.gercekFiyat||0);
 
   if(s.tip==='stok-combo'){
     ad = (s.stokKombo||[]).map(it=>it.ad).join(' + ')||'Kombo';
     alisBirim = (s.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
   } else if(s.tip==='stok'){
     const u=stokDB.bul(s.hedefId);
-    if(u){ad=u.ad;alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;}
+    if(u){ad=u.ad;alisBirim=u.alisFiyati||0;}
   } else if(s.tip==='set'){
     const u=setlerDB.bul(s.hedefId);
-    if(u){ad=u.ad;alisBirim=setlerDB.alisMaliyeti(s.hedefId)||u.alisMaliyeti||0;komOrani=u.komisyon||0.04;}
+    if(u){ad=u.ad;alisBirim=setlerDB.alisMaliyeti(s.hedefId)||u.alisMaliyeti||0;}
   } else {
     const u=listingDB.bul(s.hedefId);
-    if(u){ad=u.ad;alisBirim=u.alisFiyati||0;komOrani=u.komisyon||0.04;}
+    if(u){ad=u.ad;alisBirim=u.alisFiyati||0;}
   }
 
-  if(s.snapshot){
-    alisBirim  = s.snapshot.alisMaliyeti;
-    komOrani   = s.snapshot.komisyon;
-    platform   = s.snapshot.platform||0;
-    kargo      = s.snapshot.kargo||0;
-    komisyonTL = s.snapshot.tyKomisyon!=null ? s.snapshot.tyKomisyon : null;
-
-    if(s.snapshot.tyNetTutar != null){
-      // sellerRevenue = gelir - komisyon (kargo HARİÇ), bu yüzden kargo ayrıca düşülmeli
-      const alis = alisBirim * s.adet;
-      const hasRealKargo = s.snapshot.tyKargo != null;
-      const tyKargo = hasRealKargo ? s.snapshot.tyKargo : (s.snapshot.kargo||0) * s.adet;
-      const netG = s.snapshot.tyNetTutar - tyKargo - alis;
-      return {
-        net: netG, roi: alis>0 ? netG/alis : 0, kararli: netG>=0,
-        ad, tip: s.tip, adet: s.adet,
-        gelir: gf*s.adet,
-        alis,
-        tyNetTutar: s.snapshot.tyNetTutar,
-        tyKargo,
-        tyKargoGercek: hasRealKargo,
-        tyKesinti: gf*s.adet - s.snapshot.tyNetTutar + tyKargo,
-        tyGercek: true,
-        kargo: tyKargo, kargoGercek: hasRealKargo, platform: 0, komisyon: 0, komisyonGercek: false,
-      };
-    }
-
-    net = s.snapshot.netKar * s.adet;
-    roi = s.snapshot.roi;
-  } else {
-    if(s.tip==='stok-combo'){
-      const maxDesi=Math.max(...(s.stokKombo||[]).map(it=>it.desi||1),1);
-      const synth={alisFiyati:alisBirim,desi:maxDesi,komisyon:0.04,hedefKar:ay_s.hedefKarROI||0.30,ayniGunKargo:ay_s.ayniGunKargo||false};
-      const kFU=kargoUcreti(ay_s.kargoFirma||'Aras',maxDesi);
-      const f=hesapla.satisFiyati(synth,ay_s,1,kFU);
-      if(f){
-        if(!gf)gf=f.yuvarlak;
-        platform=f.platform/s.adet;
-        kargo=hesapla.gercekKargoBedeli(gf*s.adet,maxDesi,ay_s,kFU)/s.adet;
-        const kr=hesapla.gercekKar(alisBirim,gf,0.04,platform,kargo);
-        net=kr.net*s.adet;roi=kr.roi;
-      }
-    } else {
-      const obj=s.tip==='stok'?stokDB.bul(s.hedefId):s.tip==='set'?setlerDB.bul(s.hedefId):listingDB.bul(s.hedefId);
-      if(obj){
-        const desi=obj.desi||(s.tip==='set'?2:1);
-        const kFU=kargoUcreti(ay_s.kargoFirma||'Aras',desi);
-        const f=hesapla.satisFiyati(s.tip==='set'?{alisFiyati:alisBirim,desi,komisyon:komOrani}:obj,ay_s,1,kFU);
-        if(f){
-          if(!gf)gf=f.yuvarlak;
-          platform=f.platform/s.adet;
-          kargo=hesapla.gercekKargoBedeli(gf*s.adet,desi,ay_s,kFU)/s.adet;
-          const kr=hesapla.gercekKar(alisBirim,gf,komOrani,platform,kargo);
-          net=kr.net*s.adet;roi=kr.roi;
-        }
-      }
-    }
+  // Eğer snapshot varsa snapshot içindeki alış maliyeti kullanılır
+  if(s.snapshot && s.snapshot.alisMaliyeti != null){
+    alisBirim = s.snapshot.alisMaliyeti;
   }
 
-  const komTLToplam = komisyonTL!=null ? komisyonTL*s.adet : gf*s.adet*komOrani;
+  const alis = alisBirim * s.adet;
+  const tyNetTutar = s.snapshot?.tyNetTutar;
+  const tyKargo = s.snapshot?.tyKargo;
+  
+  const veriTam = tyNetTutar != null && tyKargo != null;
+  let net = null, roi = null;
+  
+  if (veriTam) {
+    net = tyNetTutar - tyKargo - alis;
+    roi = alis > 0 ? net / alis : 0;
+  }
 
   return {
-    net, roi, kararli:net>=0, ad, tip:s.tip, adet:s.adet,
-    gelir:   gf*s.adet,
-    alis:    alisBirim*s.adet,
-    kargo:   kargo*s.adet,
-    platform:platform*s.adet,
-    komisyon:komTLToplam,
-    komisyonGercek: komisyonTL!=null,
-    kargoGercek: s.snapshot?.tyKargo != null,
-    tahmini: !s.snapshot,
+    net, roi, kararli: net !== null && net >= 0, ad, tip: s.tip, adet: s.adet,
+    gelir: gf * s.adet,
+    alis,
+    tyNetTutar,
+    tyKargo,
+    veriTam
   };
 }
 
 // ─── Özet hesapla ─────────────────────────────────────────────────
 function ozetHesapla(satislar){
-  let adet=0,gelir=0,alis=0,komisyon=0,kargo=0,platform=0,net=0;
+  let adet=0,gelir=0,alis=0,net=0, tamSayi=0;
   satislar.forEach(s=>{
     const k=satisKar(s);if(!k)return;
-    adet+=s.adet;gelir+=k.gelir;alis+=k.alis;komisyon+=k.komisyon;
-    kargo+=k.kargo;platform+=k.platform;net+=k.net;
+    if(k.veriTam){
+      adet+=s.adet; gelir+=k.gelir; alis+=k.alis;
+      net+=k.net;
+      tamSayi++;
+    }
   });
-  return {adet,gelir,alis,komisyon,kargo,platform,net,roi:alis>0?net/alis:0};
+  return {adet,gelir,alis,net,roi:alis>0?net/alis:0, tamSayi, toplamSayi:satislar.length};
 }
 
 // ─── Özet kartları ────────────────────────────────────────────────
@@ -256,22 +211,21 @@ function renderOzet(ozet, targetId){
   const el=document.getElementById(targetId);
   if(!el)return;
   const netRenk=ozet.net>=0?'var(--green)':'var(--red)';
+  const incompleteText = ozet.tamSayi < ozet.toplamSayi ? `<div style="font-size:10px;color:var(--yellow);margin-top:4px">⚠️ ${ozet.toplamSayi - ozet.tamSayi} satışın kargo/mutabakat verisi eksik</div>` : '';
+
   el.innerHTML=`
+    <div class="ozet-card full" style="border-color:${netRenk}">
+      <div class="lbl">Net Kar <span style="float:right;font-weight:normal;color:var(--t3)">(${ozet.tamSayi}/${ozet.toplamSayi} Tam)</span></div>
+      <div class="val" style="color:${netRenk};font-size:24px">${ozet.net>=0?'+':''}${p(ozet.net)}</div>
+      ${incompleteText}
+    </div>
     <div class="ozet-card">
-      <div class="lbl">Satış Adedi</div>
+      <div class="lbl">Tam Satış Adedi</div>
       <div class="val accent">${ozet.adet}</div>
     </div>
     <div class="ozet-card">
-      <div class="lbl">Toplam Gelir</div>
+      <div class="lbl">Tam Satış Geliri</div>
       <div class="val">${p(ozet.gelir)}</div>
-    </div>
-    <div class="ozet-card">
-      <div class="lbl">Komisyon</div>
-      <div class="val" style="color:var(--red)">-${p(ozet.komisyon)}</div>
-    </div>
-    <div class="ozet-card">
-      <div class="lbl">Kargo</div>
-      <div class="val" style="color:var(--red)">-${p(ozet.kargo)}</div>
     </div>
     <div class="ozet-card">
       <div class="lbl">Alış Maliyeti</div>
@@ -280,10 +234,6 @@ function renderOzet(ozet, targetId){
     <div class="ozet-card">
       <div class="lbl">ROI</div>
       <div class="val accent">${ozet.roi>0?'+':''}${(ozet.roi*100).toFixed(1)}%</div>
-    </div>
-    <div class="ozet-card full" style="border-color:${netRenk}">
-      <div class="lbl">Net Kar</div>
-      <div class="val" style="color:${netRenk};font-size:24px">${ozet.net>=0?'+':''}${p(ozet.net)}</div>
     </div>
   `;
 }
@@ -304,27 +254,18 @@ function renderListe(satislar, targetId){
       <div class="sr-baslik">
         <div class="sr-ad">${k.ad}${k.adet>1?` <span style="color:var(--accent)">×${k.adet}</span>`:''}</div>
         <div style="display:flex;align-items:center;gap:6px">
-          <div class="sr-net" style="color:${k.kararli?'var(--green)':'var(--red)'}">${k.net>=0?'+':''}${p(k.net)}</div>
+          <div class="sr-net" style="color:${k.veriTam?(k.kararli?'var(--green)':'var(--red)'):'var(--t3)'}">${k.net!=null?(k.net>=0?'+':'')+p(k.net):'—'}</div>
           <button onclick="editAc('${pfx}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:15px;padding:2px 4px" title="Düzenle">✏️</button>
           <button onclick="satisSil('${s.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;padding:2px 4px" title="Sil">✕</button>
         </div>
       </div>
       <div class="sr-meta">${s.tarih||''}${s.tyOrderNumber?` · #${s.tyOrderNumber}`:''}</div>
       <div class="sr-detay">
-        ${k.tyGercek ? `
         <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
-        <span class="sr-item">TY Net: <b>${p(k.tyNetTutar)}</b> <span class="gercek-badge">Gerçek</span></span>
-        <span class="sr-item">Kargo: <b>-${p(k.kargo)}</b>${k.kargoGercek?'<span class="gercek-badge">TY</span>':'<span style="font-size:10px;color:var(--t3)"> ~</span>'}</span>
+        <span class="sr-item">TY Net: <b>${k.tyNetTutar!=null ? p(k.tyNetTutar) : '<span style="color:var(--yellow)">Bekleniyor</span>'}</b></span>
+        <span class="sr-item">Kargo: <b>${k.tyKargo!=null ? '-'+p(k.tyKargo) : '<span style="color:var(--yellow)">Bekleniyor</span>'}</b></span>
         <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
-        <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
-        ` : `
-        <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
-        <span class="sr-item">Kom: <b>${p(k.komisyon)}</b>${k.komisyonGercek?'<span class="gercek-badge">TY</span>':'<span style="font-size:10px;color:var(--t3)"> ~</span>'}</span>
-        <span class="sr-item">Kargo: <b>${p(k.kargo)}</b>${k.kargoGercek?'<span class="gercek-badge">TY</span>':'<span style="font-size:10px;color:var(--t3)"> ~</span>'}</span>
-        ${k.platform>0?`<span class="sr-item">Platform: <b>${p(k.platform)}</b><span style="font-size:10px;color:var(--t3)"> ~</span></span>`:''}
-        <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
-        <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
-        `}
+        <span class="sr-item">ROI: <b>${k.roi!=null?((k.roi)*100).toFixed(1)+'%':'—'}</b></span>
       </div>
       <div id="edit-form-${pfx}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">

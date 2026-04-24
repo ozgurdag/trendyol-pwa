@@ -201,8 +201,6 @@ const PROXY  = `${SB_URL}/functions/v1/bright-api`;
 let ayarlar = ayarlarDB.oku();
 const ay = ayarlar; // alias for trendyol functions
 const bugunStr = new Date().toISOString().slice(0,10);
-document.getElementById('listing-tarih').value = bugunStr;
-document.getElementById('kombo-tarih').value   = bugunStr;
 document.getElementById('tarih-goster').textContent = new Date().toLocaleDateString('tr-TR',{day:'numeric',month:'long'});
 
 const p = n => (+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
@@ -221,6 +219,15 @@ window.toast = (msg, tip='info') => {
   const c = document.getElementById('toastCont');
   const el = document.createElement('div'); el.className=`toast ${tip}`; el.textContent=msg;
   c.appendChild(el); setTimeout(()=>el.remove(), 3500);
+};
+
+window.hizliTarih = (gun, pfx) => {
+  const d = new Date();
+  const end = d.toISOString().slice(0,10);
+  d.setDate(d.getDate() - gun);
+  const start = d.toISOString().slice(0,10);
+  document.getElementById(`${pfx}-start`).value = start;
+  document.getElementById(`${pfx}-end`).value = end;
 };
 
 // ══════════════════════════════════════════════════════════════

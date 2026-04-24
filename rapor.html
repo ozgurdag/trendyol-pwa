@@ -234,6 +234,8 @@ function satisKar(s){
     platform:platform*s.adet,
     komisyon:komTLToplam,
     komisyonGercek: komisyonTL!=null,
+    kargoGercek: s.snapshot?.tyKargo != null,
+    tahmini: !s.snapshot,
   };
 }
 
@@ -315,9 +317,9 @@ function renderListe(satislar, targetId){
         <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
         ` : `
         <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
-        <span class="sr-item">Kom: <b>${p(k.komisyon)}</b>${k.komisyonGercek?'<span class="gercek-badge">TY</span>':''}</span>
-        <span class="sr-item">Kargo: <b>${p(k.kargo)}</b></span>
-        ${k.platform>0?`<span class="sr-item">Platform: <b>${p(k.platform)}</b></span>`:''}
+        <span class="sr-item">Kom: <b>${p(k.komisyon)}</b>${k.komisyonGercek?'<span class="gercek-badge">TY</span>':'<span style="font-size:10px;color:var(--t3)"> ~</span>'}</span>
+        <span class="sr-item">Kargo: <b>${p(k.kargo)}</b>${k.kargoGercek?'<span class="gercek-badge">TY</span>':'<span style="font-size:10px;color:var(--t3)"> ~</span>'}</span>
+        ${k.platform>0?`<span class="sr-item">Platform: <b>${p(k.platform)}</b><span style="font-size:10px;color:var(--t3)"> ~</span></span>`:''}
         <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
         <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
         `}

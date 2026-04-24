@@ -338,15 +338,15 @@ async function fetchAllPages(baseBody, progressEl){
   return all;
 }
 
-// 30-günlük chunk'lara bölerek tarih aralığı çek (Trendyol API limiti)
-async function fetchDateRange(type, startMs, endMs, fillEl){
-  const CHUNK = 30 * 86400000;
+// Tarih aralığını chunk'lara bölerek çek (Trendyol API limitleri: orders=30g, settlements=15g)
+async function fetchDateRange(type, startMs, endMs, fillEl, chunkDays=30, extraBody={}){
+  const CHUNK = chunkDays * 86400000;
   const chunks = [];
   let cur = startMs;
   while(cur < endMs){ chunks.push({start:cur, end:Math.min(cur+CHUNK, endMs)}); cur+=CHUNK; }
   let all = [];
   for(let i=0; i<chunks.length; i++){
-    const part = await fetchAllPages({type, startDate:chunks[i].start, endDate:chunks[i].end}, null);
+    const part = await fetchAllPages({type, ...extraBody, startDate:chunks[i].start, endDate:chunks[i].end}, null);
     all = all.concat(part);
     if(fillEl) fillEl.style.width = `${10 + 80*((i+1)/chunks.length)}%`;
   }
@@ -608,7 +608,7 @@ window.mutabakatCek = async () => {
   try {
     let items;
     try {
-      items = await fetchAllPages({type:'settlements', startDate:startMs, endDate:endMs}, fillEl);
+      items = await fetchDateRange('settlements', startMs, endMs, fillEl, 15);
     } catch(apiErr){
       const msg = String(apiErr.message);
       const hint = msg.includes('Bilinmeyen type') ? ' — Edge function\'ı yeniden deploy edin: supabase functions deploy trendyol-proxy' : '';

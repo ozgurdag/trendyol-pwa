@@ -27,39 +27,6 @@
       </div>
     </div>
 
-    <!-- KARGO AYARLARI -->
-    <div class="section-title" id="sec-kargo-barem-title">Kargo Barem Eşikleri</div>
-    <div class="card mb-16" id="sec-kargo-barem-card">
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Alt Barem Eşiği (₺)</div>
-          <div class="toggle-sub">Varsayılan: 150₺</div>
-        </div>
-        <input class="form-input" type="number" inputmode="decimal" id="ay-esik1" value="150" style="width:80px;text-align:center" onchange="ayarKaydet()">
-      </div>
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Alt Barem Ücreti (₺)</div>
-          <div class="toggle-sub">Varsayılan: 51.49₺</div>
-        </div>
-        <input class="form-input" type="number" inputmode="decimal" id="ay-ucret1" value="51.492" style="width:80px;text-align:center" onchange="ayarKaydet()">
-      </div>
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Üst Barem Eşiği (₺)</div>
-          <div class="toggle-sub">Varsayılan: 300₺</div>
-        </div>
-        <input class="form-input" type="number" inputmode="decimal" id="ay-esik2" value="300" style="width:80px;text-align:center" onchange="ayarKaydet()">
-      </div>
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Üst Barem Ücreti (₺)</div>
-          <div class="toggle-sub">Varsayılan: 88.49₺</div>
-        </div>
-        <input class="form-input" type="number" inputmode="decimal" id="ay-ucret2" value="88.488" style="width:80px;text-align:center" onchange="ayarKaydet()">
-      </div>
-    </div>
-
     <!-- TRENDYOL API -->
     <div id="sec-trendyol-title" class="section-title">Trendyol API</div>
     <div class="card mb-16" id="sec-trendyol-card">
@@ -78,14 +45,11 @@
         <div><div class="toggle-label">API Secret</div></div>
         <input class="form-input" type="password" id="ay-ty-secret" placeholder="API Secret" style="width:140px" autocomplete="off" onchange="trendyolAyarKaydet()">
       </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      <div class="toggle-row">
         <div><div class="toggle-label">Token (Finans API)</div></div>
         <input class="form-input" type="password" id="ay-ty-token" placeholder="Token" style="width:140px" autocomplete="off" onchange="trendyolAyarKaydet()">
       </div>
       <div id="ty-durum" style="font-size:11px;margin-top:8px;display:none;color:var(--green)"></div>
-      <a href="./trendyol-import.html" class="btn btn-secondary btn-full mt-8" style="display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none">
-        🛒 Siparişleri İçe Aktar
-      </a>
     </div>
 
     <!-- FİNANS & API AYARLARI -->

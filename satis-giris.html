@@ -186,8 +186,8 @@
             </div>
           </div>
           <div style="display:flex;gap:6px;margin-bottom:10px">
-            <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(30,'m')">30 gün</button>
-            <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(90,'m')">90 gün</button>
+            <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(7,'m')">7 gün</button>
+            <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(15,'m')">15 gün</button>
           </div>
           <button class="btn btn-primary btn-full" id="m-cek-btn" onclick="mutabakatCek()">💳 Komisyon Verisi Getir</button>
           <div class="prog-bar" id="m-prog"><div class="prog-fill" id="m-prog-fill" style="width:0%"></div></div>
@@ -495,18 +495,33 @@ async function fetchAllPages(baseBody, progressEl){
   return all;
 }
 
-async function fetchDateRange(type, startMs, endMs, fillEl){
-  const CHUNK = 30*86400000;
+async function fetchDateRange(type, startMs, endMs, fillEl, chunkDays=30, extraBody={}){
+  const CHUNK = chunkDays*86400000;
   const chunks=[]; let cur=startMs;
   while(cur<endMs){ chunks.push({start:cur, end:Math.min(cur+CHUNK,endMs)}); cur+=CHUNK; }
   let all=[];
   for(let i=0;i<chunks.length;i++){
-    const part = await fetchAllPages({type, startDate:chunks[i].start, endDate:chunks[i].end}, null);
+    const part = await fetchAllPages({type, ...extraBody, startDate:chunks[i].start, endDate:chunks[i].end}, null);
     all = all.concat(part);
     if(fillEl) fillEl.style.width=`${10+80*((i+1)/chunks.length)}%`;
   }
   return all;
 }
+
+// ── Arama filtresi (select dropdown için) ─────────────────────
+window.filterSel = (inp, selId) => {
+  const q = inp.value.toLowerCase();
+  const sel = document.getElementById(selId);
+  if(!sel._opts) sel._opts = [...sel.options].map(o=>({val:o.value,txt:o.text}));
+  const curVal = sel.value;
+  sel.innerHTML = '';
+  sel._opts.filter(o=>!o.val||o.txt.toLowerCase().includes(q)).forEach(o=>{
+    const opt=document.createElement('option');
+    opt.value=o.val; opt.text=o.txt;
+    if(o.val===curVal) opt.selected=true;
+    sel.appendChild(opt);
+  });
+};
 
 // ── Bekleyen eşleşmeler ───────────────────────────────────────
 function bekleyenleriRender(){
@@ -521,10 +536,14 @@ function bekleyenleriRender(){
       <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.urunAd}</div>
       <div style="font-size:10px;color:var(--t3);margin-top:2px">${b.sipNo} · ${b.tarih}${b.barcode?' · Barkod: '+b.barcode:''}${b.merchantSku?' · SKU: '+b.merchantSku:''}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-        <select class="match-sel" id="bsel-${b.id}" style="flex:1;margin-right:8px">
-          <option value="">— Ürün seçin —</option>
-          ${urunler.map(u=>`<option value="${u.tip}|${u.hedefId}">${u.ad} (${u.tip})</option>`).join('')}
-        </select>
+        <div style="flex:1;margin-right:8px">
+          <input type="search" placeholder="🔍 Ürün ara..." oninput="filterSel(this,'bsel-${b.id}')"
+            style="width:100%;padding:5px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:12px;margin-bottom:4px;box-sizing:border-box">
+          <select class="match-sel" id="bsel-${b.id}" style="width:100%">
+            <option value="">— Ürün seçin —</option>
+            ${urunler.map(u=>`<option value="${u.tip}|${u.hedefId}">${u.ad} (${u.tip})</option>`).join('')}
+          </select>
+        </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:13px;font-weight:700;color:var(--accent)">${b.fiyat.toFixed(2)}₺</div>
           <div style="font-size:10px;color:var(--t3)">×${b.adet}</div>
@@ -684,16 +703,20 @@ function renderSiparisler(){
       matchHtml=`<div style="font-size:11px;color:var(--t3);margin-top:4px">→ ${match?.ad||'?'}</div>`;
     } else if(match){
       badgeHtml=`<span class="mbadge ok">${match.fuzzy?'~Eşleşti':'Barkod ✓'}</span>`;
-      matchHtml=`<div style="margin-top:6px"><select class="match-sel" id="sel-${s.id}" onchange="eslesmeDegistir('${s.id}',this.value)">
-        <option value="">— Eşleşme seç —</option>
-        ${urunler.map(u=>`<option value="${u.tip}|${u.hedefId}" ${u.tip===match.tip&&u.hedefId===match.hedefId?'selected':''}>${u.ad} (${u.tip})</option>`).join('')}
-      </select></div>`;
+      matchHtml=`<div style="margin-top:6px">
+        <input type="search" placeholder="🔍 Ürün ara..." oninput="filterSel(this,'sel-${s.id}')" style="width:100%;padding:5px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:12px;margin-bottom:4px;box-sizing:border-box">
+        <select class="match-sel" id="sel-${s.id}" onchange="eslesmeDegistir('${s.id}',this.value)">
+          <option value="">— Eşleşme seç —</option>
+          ${urunler.map(u=>`<option value="${u.tip}|${u.hedefId}" ${u.tip===match.tip&&u.hedefId===match.hedefId?'selected':''}>${u.ad} (${u.tip})</option>`).join('')}
+        </select></div>`;
     } else {
       badgeHtml='<span class="mbadge warn">Manuel Seç</span>';
-      matchHtml=`<div style="margin-top:6px"><select class="match-sel" id="sel-${s.id}" onchange="eslesmeDegistir('${s.id}',this.value)">
-        <option value="">— Ürün seçin —</option>
-        ${urunler.map(u=>`<option value="${u.tip}|${u.hedefId}">${u.ad} (${u.tip})</option>`).join('')}
-      </select></div>`;
+      matchHtml=`<div style="margin-top:6px">
+        <input type="search" placeholder="🔍 Ürün ara..." oninput="filterSel(this,'sel-${s.id}')" style="width:100%;padding:5px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:12px;margin-bottom:4px;box-sizing:border-box">
+        <select class="match-sel" id="sel-${s.id}" onchange="eslesmeDegistir('${s.id}',this.value)">
+          <option value="">— Ürün seçin —</option>
+          ${urunler.map(u=>`<option value="${u.tip}|${u.hedefId}">${u.ad} (${u.tip})</option>`).join('')}
+        </select></div>`;
     }
     return `<div class="order-row ${s.aktarildi?'imported':s.iade?'iade':match?'matched':'no-match'}" id="row-${s.id}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
@@ -768,7 +791,7 @@ window.mutabakatCek = async () => {
   document.getElementById('m-list').innerHTML='';
   document.getElementById('m-stats').style.display='none';
   try {
-    const items=await fetchAllPages({type:'settlements',transactionType:'Sale',size:500,startDate:startMs,endDate:endMs},fillEl);
+    const items=await fetchDateRange('settlements', startMs, endMs, fillEl, 15, {size:500});
     fillEl.style.width='100%'; setTimeout(()=>progEl.style.display='none',500);
     let toplamOdeme=0;
     const cont=document.getElementById('m-list');
@@ -836,11 +859,20 @@ window.kargoVerisiCek = async () => {
   document.getElementById('k-uygula-btn').style.display='none';
   kargoEslesimler=[];
   try {
-    // Adım 1: DeductionInvoices → Kargo Faturası kayıtlarını bul
-    const dedItems = await fetchAllPages({
-      type:'otherfinancials', transactionType:'DeductionInvoices', size:500,
-      startDate:startMs, endDate:endMs
-    }, null);
+    // Adım 1: DeductionInvoices → Kargo Faturası kayıtlarını bul (15g chunk)
+    let dedItems;
+    try {
+      dedItems = await fetchDateRange('otherfinancials', startMs, endMs, null, 15, {size:500});
+    } catch(cheErr){
+      const msg = String(cheErr.message);
+      if(msg.includes('CheApiBusinessException')){
+        document.getElementById('k-stats').innerHTML = '⚠️ Hesabınızda CHE Finance API erişimi yok. Trendyol satıcı desteğiyle iletişime geçin veya Mutabakat sekmesini kullanın.';
+        document.getElementById('k-stats').style.display='block';
+        toast('CHE API erişimi yok','error');
+        return;
+      }
+      throw cheErr;
+    }
     fillEl.style.width='30%';
 
     const kargoFaturalar = dedItems.filter(it => {

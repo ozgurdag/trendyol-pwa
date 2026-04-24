@@ -188,8 +188,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla, bulBarcodeUrun } from './state.js';
-import { kargoUcreti } from './kargo.js';
+import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, bulBarcodeUrun } from './state.js';
 
 if(!auth.oturum()?.token) { window.location.href='./index.html'; }
 
@@ -607,7 +606,7 @@ window.mutabakatCek = async () => {
       const donemSatislar=satislarDB.aralik(document.getElementById('m-start').value,document.getElementById('m-end').value);
       const hesaplananKar=donemSatislar.reduce((t,s)=>{
         if(s.snapshot?.tyNetTutar!=null) return t+s.snapshot.tyNetTutar-(s.snapshot.alisMaliyeti||0)*s.adet;
-        return t+(s.snapshot?.netKar||0)*s.adet;
+        return t;
       },0);
       const delta=toplamOdeme-hesaplananKar;
       document.getElementById('ms-toplam').textContent=items.length;

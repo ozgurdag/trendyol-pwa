@@ -138,14 +138,12 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
-import { kargoUcreti } from './kargo.js';
+import { auth, stokDB, listingDB, setlerDB, satislarDB } from './state.js';
 
 if(!auth.oturum()?.token) window.location.href='./index.html';
 
 const aylar=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const p = n => (+(n||0)).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
-const ay_s = ayarlarDB.oku();
 
 // ─── satisKar ─────────────────────────────────────────────────────
 function satisKar(s){

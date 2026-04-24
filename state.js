@@ -1,5 +1,4 @@
 /* ── SATIŞ YÖNETİM · state.js ────────────────────────────────── */
-import { kargoUcreti } from './kargo.js';
 
 /* ── TİP TANIMLARI ─────────────────────────────────────────────
    stokDB    → Fiziksel stok kalemleri (stok_kalemleri tablosu)
@@ -725,47 +724,21 @@ export const satislarDB = {
   hepsini(){ return get(DB_KEYS.satislar)||[]; },
 
   ekle(kayitlar){
-    const ayarlar = ayarlarDB.oku();
     const yeniler=kayitlar.map(k=>{
-      // Satış anındaki maliyet/komisyon/kargo snapshot'ı kaydet
-      // Böylece sonraki ayar değişiklikleri geçmiş satışları etkilemez
       const obj = k.tip==='set' ? setlerDB.bul(k.hedefId)
                : k.tip==='stok' ? stokDB.bul(k.hedefId)
                : k.tip==='stok-combo' ? null
                : listingDB.bul(k.hedefId);
       let snapshot = null;
       if(obj){
-        const urunB = k.tip==='set'
-          ? {alisFiyati:obj.alisMaliyeti||0, desi:obj.desi||2, komisyon:obj.komisyon||0.04, ayniGunKargo:k.ayniGunKargo!==undefined ? k.ayniGunKargo : (obj.ayniGunKargo||false), hedefKar:obj.hedefKar||0.30}
-          : {...obj, ayniGunKargo: k.ayniGunKargo!==undefined ? k.ayniGunKargo : (obj.ayniGunKargo||false)};
-        const desiH = obj.desi||(k.tip==='set'?2:1);
-        const kargoFU = kargoUcreti(ayarlar.kargoFirma||'Aras', desiH);
-        const f = hesapla.satisFiyati(urunB, ayarlar, 1, kargoFU);
         const alisTop = k.tip==='listing' ? (obj.alisFiyati||0)
                       : k.tip==='stok'    ? (obj.alisFiyati||0)
                       : (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0);
-        if(f){
-          const tyKom = k.tyKomisyon!=null ? +k.tyKomisyon : null;
-          snapshot = {
-            alisMaliyeti: alisTop,
-            tyKomisyon: tyKom,
-          };
-        }
+        snapshot = { alisMaliyeti: alisTop, tyKomisyon: k.tyKomisyon!=null ? +k.tyKomisyon : null };
       }
       if(k.tip==='stok-combo' && (k.stokKombo||[]).length){
         const alisTop=(k.stokKombo).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
-        const maxDesi=Math.max(...k.stokKombo.map(it=>it.desi||1));
-        const synth={alisFiyati:alisTop,desi:maxDesi,komisyon:0.04,
-          hedefKar:ayarlar.hedefKarROI||0.30,ayniGunKargo:k.ayniGunKargo!==undefined ? k.ayniGunKargo : (ayarlar.ayniGunKargo||false)};
-        const kargoFU=kargoUcreti(ayarlar.kargoFirma||'Aras',maxDesi);
-        const f=hesapla.satisFiyati(synth,ayarlar,1,kargoFU);
-        if(f){
-          const tyKom2 = k.tyKomisyon!=null ? +k.tyKomisyon : null;
-          snapshot={
-            alisMaliyeti: alisTop,
-            tyKomisyon: tyKom2
-          };
-        }
+        snapshot = { alisMaliyeti: alisTop, tyKomisyon: k.tyKomisyon!=null ? +k.tyKomisyon : null };
       }
       return {
         id:uid(), tip:k.tip||'listing', hedefId:k.hedefId||null,

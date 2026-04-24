@@ -791,7 +791,7 @@ window.mutabakatCek = async () => {
   document.getElementById('m-list').innerHTML='';
   document.getElementById('m-stats').style.display='none';
   try {
-    const items=await fetchDateRange('settlements', startMs, endMs, fillEl, 15, {size:500});
+    const items=await fetchDateRange('settlements', startMs, endMs, fillEl, 15, {size:500, transactionType:'Sale'});
     fillEl.style.width='100%'; setTimeout(()=>progEl.style.display='none',500);
     let toplamOdeme=0;
     const cont=document.getElementById('m-list');
@@ -862,7 +862,7 @@ window.kargoVerisiCek = async () => {
     // Adım 1: DeductionInvoices → Kargo Faturası kayıtlarını bul (15g chunk)
     let dedItems;
     try {
-      dedItems = await fetchDateRange('otherfinancials', startMs, endMs, null, 15, {size:500});
+      dedItems = await fetchDateRange('otherfinancials', startMs, endMs, null, 15, {size:500, transactionType:'DeductionInvoices'});
     } catch(cheErr){
       const msg = String(cheErr.message);
       if(msg.includes('CheApiBusinessException')){

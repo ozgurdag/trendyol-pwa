@@ -7,11 +7,6 @@
 <title>Satış · Satış Yönetim</title>
 <link rel="stylesheet" href="./app.css">
 <style>
-/* ── ANA SEKMELER ── */
-.main-tab-bar{display:flex;gap:4px;background:var(--bg2);border-radius:var(--r-md);padding:4px;margin-bottom:16px}
-.main-tab{flex:1;padding:8px 4px;text-align:center;font-size:12px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:none;background:transparent;color:var(--t3);transition:all .15s}
-.main-tab.active{background:var(--accent);color:#fff}
-.main-pane{display:none}.main-pane.active{display:block}
 /* ── TRENDYOL SYNC ── */
 .tab-bar{display:flex;gap:4px;background:var(--bg2);border-radius:var(--r-md);padding:4px;margin-bottom:16px}
 .tab-btn{flex:1;padding:8px 4px;text-align:center;font-size:12px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:none;background:transparent;color:var(--t3);transition:all .15s}
@@ -39,47 +34,7 @@
 .delta-neg{color:var(--red);font-weight:600}
 .price-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
 .price-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
-/* ── MANUEL GİRİŞ ── */
-.filter-tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;}
-.filter-tabs::-webkit-scrollbar{display:none;}
-.filter-tab{flex-shrink:0;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;background:var(--bg3);color:var(--t3);border:1px solid var(--border2);cursor:pointer;transition:all .15s;}
-.filter-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-.satis-row{padding:12px 0;border-bottom:1px solid var(--border);}
-.satis-row:last-child{border-bottom:none;}
-.satis-row-header{display:flex;align-items:center;gap:10px;}
-.satis-avatar{width:38px;height:38px;background:var(--bg3);border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
-.satis-info{flex:1;min-width:0;}
-.satis-ad{font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.satis-meta{font-size:11px;color:var(--t3);margin-top:2px;}
-.satis-kar{text-align:right;flex-shrink:0;}
-.satis-kar-val{font-size:14px;font-weight:700;font-family:var(--mono);}
-.satis-aksiyonlar{display:flex;gap:6px;margin-top:8px;padding-left:48px;}
-.edit-form{background:var(--bg3);border-radius:var(--r-md);padding:12px;margin-top:8px;margin-left:48px;}
-.edit-form-btns{display:flex;gap:6px;}
-.kombo-item{display:flex;align-items:center;gap:8px;background:var(--bg3);border-radius:var(--r-md);padding:9px 12px;margin-bottom:6px;}
-.kombo-item-info{flex:1;min-width:0;}
-.kombo-item-ad{font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.kombo-item-meta{font-size:11px;color:var(--t3);margin-top:2px;}
-.kombo-item-fiyat{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--t2);white-space:nowrap;}
-.kombo-sil{width:26px;height:26px;background:var(--red-l);border:none;border-radius:6px;color:var(--red);font-size:13px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
-.onizleme-box{background:var(--bg3);border-radius:var(--r-md);padding:10px 14px;margin-bottom:12px;font-size:12px;}
-.onizleme-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-.onizleme-row:last-child{margin-bottom:0;}
-.onizleme-label{color:var(--t3);}
-.onizleme-val{font-weight:600;}
-.kar-badge{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:700;font-family:var(--mono);}
-.seksiyon-baslik{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px;}
-.sd-wrap{position:relative;margin-bottom:12px}
-.sd-btn{width:100%;margin-top:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-md);padding:11px 14px;font-size:14px;color:var(--t1);text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--font)}
-.sd-panel{position:absolute;top:calc(100%+4px);left:0;right:0;z-index:400;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-md);box-shadow:var(--shadow-md);display:none}
-.sd-panel.open{display:block}
-.sd-search{padding:8px;border-bottom:1px solid var(--border)}
-.sd-search input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-sm);padding:8px 10px;font-size:13px;color:var(--t1);font-family:var(--font)}
-.sd-list{max-height:200px;overflow-y:auto}
-.sd-item{padding:10px 14px;font-size:13px;color:var(--t1);cursor:pointer;border-bottom:1px solid var(--border)}
-.sd-item:hover{background:var(--bg3)}
-.sd-item:last-child{border:none}
-.sd-none{padding:12px;text-align:center;font-size:12px;color:var(--t3)}
+
 </style>
 </head>
 <body>

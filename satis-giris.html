@@ -602,7 +602,6 @@ window.siparisleriCek = async () => {
   try {
     const content = await fetchDateRange('orders', startMs, endMs, fillEl);
     fillEl.style.width='100%';
-    if(content.length) window._lastPaket = content[0]; // debug
     const filtre = document.getElementById('s-durum').value;
     const filtreli = content.filter(pkg=>{
       if(filtre==='teslim') return TESLIM_DURUMLAR.includes(pkg.status);

@@ -580,20 +580,6 @@ export const stokDB = {
   },
 };
 
-/* Geriye dönük uyumluluk için alias */
-export const urunlerDB = {
-  hepsini(){ return stokDB.hepsini(); },
-  bul(id){ return stokDB.bul(id); },
-  stokUrunler(){ return stokDB.hepsini(); },
-  ekle(u){ return stokDB.ekle(u); },
-  guncelle(id,d){ return stokDB.guncelle(id,d); },
-  sil(id){ return stokDB.sil(id); },
-  // listing ile ilgili metodlar listingDB'ye yönlendir
-  listingler(){ return listingDB.hepsini(); },
-  onaylananlar(){ return listingDB.onaylananlar(); },
-  olusturulanlar(){ return listingDB.hepsini(); },
-};
-
 /* ── LISTING DB ── */
 export const listingDB = {
   hepsini(){ return get(DB_KEYS.listing)||[]; },

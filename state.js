@@ -933,13 +933,13 @@ export const satislarDB = {
   },
 
   kargoUygula(eslesimler){
-    // eslesimler: [{tyOrderNumber, tyKargo}]
+    // eslesimler: [{id, tyKargo}]
     const mevcut = [...this.hepsini()];
     let sayi = 0;
     const dbGuncelle = [];
-    eslesimler.forEach(({tyOrderNumber, tyKargo}) => {
-      if(!tyOrderNumber) return;
-      const idx = mevcut.findIndex(s => String(s.tyOrderNumber) === String(tyOrderNumber));
+    eslesimler.forEach(({id, tyKargo}) => {
+      if(!id) return;
+      const idx = mevcut.findIndex(s => s.id === id);
       if(idx === -1) return;
       const yeniSnap = {...(mevcut[idx].snapshot||{}), tyKargo: +tyKargo};
       mevcut[idx] = {...mevcut[idx], snapshot: yeniSnap};

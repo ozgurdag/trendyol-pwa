@@ -699,12 +699,17 @@ window.kargoVerisiCek = async () => {
       fillEl.style.width=`${30+60*((i+1)/kargoFaturalar.length)}%`;
     }
 
-    // Adım 3: Satışlarla eşleştir
+    // Adım 3: Satışlarla eşleştir (aynı siparişte birden fazla satır varsa tyNetTutar oranında bölünür)
     const kayitliSatislar = satislarDB.hepsini();
     kargoEslesimler = [];
     Object.entries(orderKargoMap).forEach(([orderNo, kargo]) => {
-      const match = kayitliSatislar.find(s => String(s.tyOrderNumber) === orderNo);
-      if(match) kargoEslesimler.push({tyOrderNumber: orderNo, tyKargo: kargo});
+      const eslesen = kayitliSatislar.filter(s => String(s.tyOrderNumber) === orderNo);
+      if(!eslesen.length) return;
+      const toplamNet = eslesen.reduce((t, s) => t + (s.snapshot?.tyNetTutar || 0), 0);
+      eslesen.forEach(s => {
+        const oran = toplamNet > 0 ? (s.snapshot?.tyNetTutar || 0) / toplamNet : 1 / eslesen.length;
+        kargoEslesimler.push({id: s.id, tyKargo: kargo * oran});
+      });
     });
 
     fillEl.style.width='100%';

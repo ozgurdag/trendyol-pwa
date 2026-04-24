@@ -174,9 +174,10 @@ function satisKar(s){
     komisyonTL = s.snapshot.tyKomisyon!=null ? s.snapshot.tyKomisyon : null;
 
     if(s.snapshot.tyNetTutar != null){
-      // Gerçek TY değeri: sellerRevenue (komisyon sonrası) - kargo (varsa) - alış
+      // sellerRevenue = gelir - komisyon (kargo HARİÇ), bu yüzden kargo ayrıca düşülmeli
       const alis = alisBirim * s.adet;
-      const tyKargo = s.snapshot.tyKargo != null ? s.snapshot.tyKargo : 0;
+      const hasRealKargo = s.snapshot.tyKargo != null;
+      const tyKargo = hasRealKargo ? s.snapshot.tyKargo : (s.snapshot.kargo||0) * s.adet;
       const netG = s.snapshot.tyNetTutar - tyKargo - alis;
       return {
         net: netG, roi: alis>0 ? netG/alis : 0, kararli: netG>=0,
@@ -185,10 +186,10 @@ function satisKar(s){
         alis,
         tyNetTutar: s.snapshot.tyNetTutar,
         tyKargo,
-        tyKargoGercek: s.snapshot.tyKargo != null,
+        tyKargoGercek: hasRealKargo,
         tyKesinti: gf*s.adet - s.snapshot.tyNetTutar + tyKargo,
         tyGercek: true,
-        kargo: tyKargo, platform: 0, komisyon: 0, komisyonGercek: false,
+        kargo: tyKargo, kargoGercek: hasRealKargo, platform: 0, komisyon: 0, komisyonGercek: false,
       };
     }
 
@@ -298,12 +299,13 @@ function renderListe(satislar, targetId){
   }
   el.innerHTML=siralı.map(s=>{
     const k=satisKar(s);if(!k)return'';
-    return `<div class="satis-row" id="sr-${s.id}">
+    const pfx=`${targetId}-${s.id}`;
+    return `<div class="satis-row" id="sr-${pfx}">
       <div class="sr-baslik">
         <div class="sr-ad">${k.ad}${k.adet>1?` <span style="color:var(--accent)">×${k.adet}</span>`:''}</div>
         <div style="display:flex;align-items:center;gap:6px">
           <div class="sr-net" style="color:${k.kararli?'var(--green)':'var(--red)'}">${k.net>=0?'+':''}${p(k.net)}</div>
-          <button onclick="editAc('${s.id}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:15px;padding:2px 4px" title="Düzenle">✏️</button>
+          <button onclick="editAc('${pfx}')" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:15px;padding:2px 4px" title="Düzenle">✏️</button>
           <button onclick="satisSil('${s.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;padding:2px 4px" title="Sil">✕</button>
         </div>
       </div>
@@ -312,7 +314,7 @@ function renderListe(satislar, targetId){
         ${k.tyGercek ? `
         <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
         <span class="sr-item">TY Net: <b>${p(k.tyNetTutar)}</b> <span class="gercek-badge">Gerçek</span></span>
-        ${k.tyKargoGercek ? `<span class="sr-item">Kargo: <b>-${p(k.tyKargo)}</b> <span class="gercek-badge">Gerçek</span></span>` : `<span class="sr-item" style="color:var(--t3);font-size:11px">Kargo: tahmini</span>`}
+        <span class="sr-item">Kargo: <b>-${p(k.kargo)}</b>${k.kargoGercek?'<span class="gercek-badge">TY</span>':'<span style="font-size:10px;color:var(--t3)"> ~</span>'}</span>
         <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
         <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
         ` : `
@@ -324,24 +326,24 @@ function renderListe(satislar, targetId){
         <span class="sr-item">ROI: <b>${k.alis>0?((k.net/k.alis)*100).toFixed(1)+'%':'—'}</b></span>
         `}
       </div>
-      <div id="edit-form-${s.id}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+      <div id="edit-form-${pfx}" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
           <div>
             <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Adet</div>
-            <input id="ef-adet-${s.id}" type="number" min="1" value="${s.adet||1}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
+            <input id="ef-adet-${pfx}" type="number" min="1" value="${s.adet||1}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
           </div>
           <div>
             <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Satış Fiyatı (₺)</div>
-            <input id="ef-fiyat-${s.id}" type="number" step="0.01" value="${s.gercekFiyat||''}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
+            <input id="ef-fiyat-${pfx}" type="number" step="0.01" value="${s.gercekFiyat||''}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
           </div>
           <div>
             <div style="font-size:11px;color:var(--t3);margin-bottom:3px">Tarih</div>
-            <input id="ef-tarih-${s.id}" type="date" value="${s.tarih||''}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
+            <input id="ef-tarih-${pfx}" type="date" value="${s.tarih||''}" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-size:13px">
           </div>
         </div>
         <div style="display:flex;gap:8px">
-          <button onclick="editKaydet('${s.id}')" style="flex:1;padding:7px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:600;cursor:pointer">Kaydet</button>
-          <button onclick="editKapat('${s.id}')" style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:13px;cursor:pointer">İptal</button>
+          <button onclick="editKaydet('${pfx}','${s.id}')" style="flex:1;padding:7px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:600;cursor:pointer">Kaydet</button>
+          <button onclick="editKapat('${pfx}')" style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t2);font-size:13px;cursor:pointer">İptal</button>
         </div>
       </div>
     </div>`;
@@ -369,16 +371,16 @@ function aktifSekmeRender(){
   else renderGunluk();
 }
 
-window.editAc = id => {
-  document.getElementById(`edit-form-${id}`).style.display='block';
+window.editAc = pfx => {
+  document.getElementById(`edit-form-${pfx}`).style.display='block';
 };
-window.editKapat = id => {
-  document.getElementById(`edit-form-${id}`).style.display='none';
+window.editKapat = pfx => {
+  document.getElementById(`edit-form-${pfx}`).style.display='none';
 };
-window.editKaydet = id => {
-  const adet   = +document.getElementById(`ef-adet-${id}`).value||1;
-  const fiyat  = document.getElementById(`ef-fiyat-${id}`).value;
-  const tarih  = document.getElementById(`ef-tarih-${id}`).value;
+window.editKaydet = (pfx, id) => {
+  const adet   = +document.getElementById(`ef-adet-${pfx}`).value||1;
+  const fiyat  = document.getElementById(`ef-fiyat-${pfx}`).value;
+  const tarih  = document.getElementById(`ef-tarih-${pfx}`).value;
   const degisiklik = {adet};
   if(fiyat!=='') degisiklik.gercekFiyat = +fiyat;
   if(tarih!=='') degisiklik.tarih = tarih;

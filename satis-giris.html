@@ -34,6 +34,10 @@
 .delta-neg{color:var(--red);font-weight:600}
 .price-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
 .price-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.s-dtab{flex-shrink:0;padding:6px 10px;font-size:11px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--t3);transition:all .15s}
+.s-dtab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.s-dtab .cnt{display:inline-block;background:rgba(255,255,255,.25);border-radius:10px;padding:0 5px;margin-left:2px;font-size:10px}
+.s-dtab:not(.active) .cnt{background:var(--bg2);color:var(--t2)}
 
 </style>
 </head>
@@ -111,6 +115,16 @@
           <div class="stat-box"><div class="val" id="ss-aktarildi">0</div><div class="lbl">Aktarıldı</div></div>
         </div>
 
+        <div id="s-durum-tabs" style="display:none;overflow-x:auto;padding-bottom:4px;margin-bottom:8px">
+          <div style="display:flex;gap:4px;min-width:max-content">
+            <button class="s-dtab active" onclick="durumTabSec('tum',this)">Tüm <span class="cnt" id="sdt-tum">0</span></button>
+            <button class="s-dtab" onclick="durumTabSec('yeni',this)">Yeni <span class="cnt" id="sdt-yeni">0</span></button>
+            <button class="s-dtab" onclick="durumTabSec('islem',this)">İşleme <span class="cnt" id="sdt-islem">0</span></button>
+            <button class="s-dtab" onclick="durumTabSec('kargo',this)">Kargoda <span class="cnt" id="sdt-kargo">0</span></button>
+            <button class="s-dtab" onclick="durumTabSec('teslim',this)">Teslim <span class="cnt" id="sdt-teslim">0</span></button>
+            <button class="s-dtab" onclick="durumTabSec('iade',this)">İade <span class="cnt" id="sdt-iade">0</span></button>
+          </div>
+        </div>
         <div id="s-list"></div>
 
         <div id="s-import-bar" style="display:none;position:sticky;bottom:72px;z-index:10;padding:8px 0;gap:8px;flex-direction:column">
@@ -241,6 +255,14 @@ const TESLIM_DURUMLAR = ['Delivered','UnPacked','Invoiced','Shipped'];
 const AKTIF_DURUMLAR  = ['Created','Picking','Invoiced','Shipped','UnPacked','Delivered'];
 
 const ESLESME_KEY  = 'tsx_ty_eslesme';
+const DURUM_GRUBU = {Created:'yeni',Picking:'islem',Invoiced:'islem',Shipped:'kargo',UnPacked:'kargo',Delivered:'teslim',Cancelled:'iade',Returned:'iade',UnDelivered:'iade'};
+let aktifDurum = 'tum';
+window.durumTabSec = (d, el) => {
+  aktifDurum = d;
+  document.querySelectorAll('.s-dtab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderSiparisler();
+};
 const BEKLEYEN_KEY = 'tsx_ty_eslesme_bekleyen';
 function eslesmeMap(){ try{ return JSON.parse(localStorage.getItem(ESLESME_KEY)||'{}'); }catch{ return {}; } }
 function eslesmeKaydet(barcode, tip, hedefId){
@@ -392,7 +414,9 @@ window.siparisleriCek = async () => {
   document.getElementById('s-list').innerHTML='';
   document.getElementById('s-import-bar').style.display='none';
   document.getElementById('s-stats').style.display='none';
-  satirlar=[];
+  document.getElementById('s-durum-tabs').style.display='none';
+  satirlar=[]; aktifDurum='tum';
+  document.querySelectorAll('.s-dtab').forEach((b,i)=>{b.classList.toggle('active',i===0);});
 
   try {
     // 7 günlük chunk + status API'ye gönderilir (lastModifiedDate filtresi — TY davranışı)
@@ -429,6 +453,9 @@ window.siparisleriCek = async () => {
           eslesti, aktarildi:mevcutTyIds.has(lineId)});
       });
     });
+    // Deduplicate by line id (aynı line birden fazla chunk'ta gelebilir)
+    const _seen = new Set();
+    satirlar = satirlar.filter(s=>{ if(_seen.has(s.id)) return false; _seen.add(s.id); return true; });
     setTimeout(()=>progEl.style.display='none',500);
     renderSiparisler(); guncelleSiperisStat();
     toast(`${satirlar.length} satır getirildi`,'success');
@@ -470,6 +497,11 @@ function guncelleSiperisStat(){
   document.getElementById('ss-eslesme').textContent  = eslesme;
   document.getElementById('ss-aktarildi').textContent= aktarildi;
   document.getElementById('s-stats').style.display   = satirlar.length?'flex':'none';
+  // Durum tab sayaçları
+  const cnt = {tum:satirlar.length,yeni:0,islem:0,kargo:0,teslim:0,iade:0};
+  satirlar.forEach(s=>{ const g=DURUM_GRUBU[s.durum]; if(g) cnt[g]++; });
+  Object.entries(cnt).forEach(([k,v])=>{ const el=document.getElementById(`sdt-${k}`); if(el) el.textContent=v; });
+  document.getElementById('s-durum-tabs').style.display = satirlar.length ? 'block' : 'none';
   const bar = document.getElementById('s-import-bar');
   const bekleyen = satirlar.filter(s=>s.eslesti&&!s.aktarildi&&!s.iade).length;
   if(bekleyen>0){
@@ -492,8 +524,9 @@ function tumUrunler(){
 function renderSiparisler(){
   const urunler = tumUrunler();
   const cont = document.getElementById('s-list');
-  if(!satirlar.length){ cont.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px;font-size:13px">Sipariş bulunamadı</div>'; return; }
-  cont.innerHTML = satirlar.map(s=>{
+  const liste = aktifDurum === 'tum' ? satirlar : satirlar.filter(s => DURUM_GRUBU[s.durum] === aktifDurum);
+  if(!liste.length){ cont.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px;font-size:13px">Bu durumda sipariş yok</div>'; return; }
+  cont.innerHTML = liste.map(s=>{
     const match=s.eslesti; let badgeHtml, matchHtml;
     if(s.iade){
       badgeHtml='<span class="mbadge none">İade/İptal</span>'; matchHtml='';

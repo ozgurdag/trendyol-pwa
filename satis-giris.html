@@ -638,6 +638,7 @@ window.verileriCek = async () => {
   const kargoEslesimler = [];
   let toplamOdeme = 0;
   let kargoApiHata = false;
+  let allSettlements = [];
   
   const CHUNK_SIZE = 7 * 24 * 60 * 60 * 1000;
   const chunks = [];
@@ -660,6 +661,7 @@ window.verileriCek = async () => {
       durumGoster(`Tarama yapılıyor: ${chunkLabel} (${cIdx+1}/${chunks.length})`);
       
       const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 7, {size:500});
+      allSettlements = allSettlements.concat(items);
       items.forEach(it=>{
         const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         toplamOdeme+=net;
@@ -774,7 +776,7 @@ window.verileriCek = async () => {
         Hesaplanan kar (tam veri olan satışlar): <b>${hesaplananKar.toFixed(2)}₺</b><br>
         Fark: <span class="${delta>=0?'delta-pos':'delta-neg'}">${delta>=0?'+':''}${delta.toFixed(2)}₺</span>
       </div></div>`
-      + items.slice(0,100).map(it=>{
+      + allSettlements.slice(0,100).map(it=>{
         const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         const tarih=it.transactionDate?new Date(it.transactionDate).toISOString().slice(0,10):'—';
         return `<div class="mut-row"><div style="display:flex;justify-content:space-between;align-items:center">

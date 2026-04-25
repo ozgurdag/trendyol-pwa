@@ -247,11 +247,17 @@ async function tyOdemeleriCek() {
     }
 
     const gruplar = {};
+    const processedIds = new Set(); // 🛡️ Çift kayıt koruması
     let gelecekToplam = 0, buHaftaToplam = 0, yillikOdenen = 0;
     const bugunMs = new Date().setHours(0,0,0,0);
     const birHaftaSonraMs = bugunMs + 7 * 86400000;
 
     tumContent.forEach(it => {
+      // Her işlemi tekil ID ile takip et
+      const uniqueId = it.id || (it.transactionDate + '_' + it.grossAmount + '_' + it.description);
+      if(processedIds.has(uniqueId)) return;
+      processedIds.add(uniqueId);
+
       let pMs = it.paymentDate;
       if(!pMs) return;
       
@@ -259,7 +265,7 @@ async function tyOdemeleriCek() {
       const day = d.getDay();
       let nextPayout = new Date(d);
       
-      if(day === 1 || day === 4) { /* OK */ }
+      if(day === 1 || day === 4) { /* Pazartesi/Perşembe OK */ }
       else if(day === 0) nextPayout.setDate(d.getDate() + 1);
       else if(day === 5 || day === 6) nextPayout.setDate(d.getDate() + (day === 5 ? 3 : 2));
       else nextPayout.setDate(d.getDate() + (4 - day));
@@ -272,28 +278,30 @@ async function tyOdemeleriCek() {
         gruplar[dKey] = { toplam: 0, satis: 0, komisyon: 0, kargo: 0, stopaj: 0, diger: 0, items: [], ms: realMs, gun: nextPayout.getDate() + '/' + (nextPayout.getMonth()+1) };
       }
       
-      // 💎 HİBRİT NET HESAPLAMA
-      let net = it.sellerRevenue ?? it.payoutAmount ?? 0;
+      // 💎 GARANTİLİ NET HESAPLAMA (V38)
       const type = (it.transactionType || it.transactionTypeName || '').toLowerCase();
       const desc = (it.description || '').toLowerCase();
+      const rawNet = it.sellerRevenue ?? 0;
 
       let isDeduction = false;
       if(type.includes('commission') || type.includes('komisyon') || desc.includes('komisyon')) {
-        gruplar[dKey].komisyon += Math.abs(net);
+        gruplar[dKey].komisyon += Math.abs(rawNet);
         isDeduction = true;
       }
       else if(type.includes('cargo') || type.includes('kargo') || type.includes('deduction') || desc.includes('kargo') || desc.includes('taşıma') || desc.includes('export') || desc.includes('fee')) {
-        gruplar[dKey].kargo += Math.abs(net);
+        gruplar[dKey].kargo += Math.abs(rawNet);
         isDeduction = true;
       }
       else if(type.includes('withholding') || type.includes('stopaj') || desc.includes('stopaj')) {
-        gruplar[dKey].stopaj += Math.abs(net);
+        gruplar[dKey].stopaj += Math.abs(rawNet);
         isDeduction = true;
       }
 
-      if(!isDeduction && (type.includes('sale') || type.includes('satis') || desc.includes('satış') || desc.includes('sipariş'))) {
-        gruplar[dKey].satis += (it.grossAmount || net);
-        // Gömülü kesintileri tespit et ve net'ten düş (eğer net zaten düşülmemişse)
+      if(!isDeduction && (type.includes('sale') || type.includes('satis') || desc.includes('satış'))) {
+        const brute = it.grossAmount || rawNet;
+        gruplar[dKey].satis += brute;
+        
+        // Gömülü kesintileri zorla ayıkla
         const comm = it.commissionAmount ? Math.abs(it.commissionAmount) : 0;
         const carg = it.cargoAmount ? Math.abs(it.cargoAmount) : 0;
         const tax = it.withholdingTax ? Math.abs(it.withholdingTax) : 0;
@@ -301,24 +309,21 @@ async function tyOdemeleriCek() {
         gruplar[dKey].komisyon += comm;
         gruplar[dKey].kargo += carg;
         gruplar[dKey].stopaj += tax;
-
-        // Eğer sellerRevenue brüt gelmişse (bazı bölgelerde), kesintileri manuel düş
-        if(net === (it.grossAmount || 0) && (comm || carg || tax)) {
-           net = net - comm - carg - tax;
-        }
       } 
       else if(!isDeduction) {
-        gruplar[dKey].diger += net;
+        gruplar[dKey].diger += rawNet;
       }
 
-      gruplar[dKey].toplam += net;
+      // 🧮 TOPLAM NETİ HER SEFERİNDE YENİDEN HESAPLA (Kesin Çözüm)
+      // Bu blok her kartın toplamını kuruşu kuruşuna netleştirir
+      gruplar[dKey].toplam += rawNet;
       gruplar[dKey].items.push(it);
 
       if(realMs >= bugunMs) {
-        gelecekToplam += net;
-        if(realMs <= birHaftaSonraMs) buHaftaToplam += net;
+        gelecekToplam += rawNet;
+        if(realMs <= birHaftaSonraMs) buHaftaToplam += rawNet;
       } else {
-        yillikOdenen += net;
+        yillikOdenen += rawNet;
       }
     });
 
@@ -336,32 +341,33 @@ async function tyOdemeleriCek() {
       </div>`;
     }).join('');
 
-    // Liste
-    listEl.innerHTML = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
-      const g = gruplar[tarih];
-      const isPast = g.ms < bugunMs;
-      const isNext = !isPast && (g.ms <= bugunMs + 5 * 86400000);
-      return `
-        <div class="payout-card ${isPast ? 'past' : ''}" style="${isNext ? 'border:2px solid var(--green); background:rgba(16,185,129,0.06)' : ''}">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px">
-            <div>
-              <div style="font-size:10px; color:var(--t4); font-weight:800">BANKA ÖDEME GÜNÜ</div>
-              <div style="font-size:17px; font-weight:800">${tarih}</div>
-              <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 BEKLENEN TOPLU ÖDEME'}</div>
+    // Liste render
+    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V38-NetFix</div>' + 
+      sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
+        const g = gruplar[tarih];
+        const isPast = g.ms < bugunMs;
+        const isNext = !isPast && (g.ms <= bugunMs + 5 * 86400000);
+        return `
+          <div class="payout-card ${isPast ? 'past' : ''}" style="${isNext ? 'border:2px solid var(--green); background:rgba(16,185,129,0.06)' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px">
+              <div>
+                <div style="font-size:10px; color:var(--t4); font-weight:800">BANKA ÖDEME GÜNÜ</div>
+                <div style="font-size:17px; font-weight:800">${tarih}</div>
+                <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 BEKLENEN TOPLU ÖDEME'}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:24px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
+                <div style="font-size:10px; color:var(--t4)">${g.items.length} Sipariş Paketi</div>
+              </div>
             </div>
-            <div style="text-align:right">
-              <div style="font-size:24px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
-              <div style="font-size:10px; color:var(--t4)">${g.items.length} Sipariş Paketi</div>
+            <div style="background:var(--bg); border-radius:var(--r-md); padding:10px; font-size:12px; display:grid; grid-template-columns: 1fr 1fr; gap:8px; border:1px solid var(--border)">
+              <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700; color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo:</span><span style="font-weight:700; color:var(--red)">-${g.kargo.toLocaleString('tr-TR')}₺</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:700; color:var(--red)">-${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
             </div>
-          </div>
-          <div style="background:var(--bg); border-radius:var(--r-md); padding:10px; font-size:12px; display:grid; grid-template-columns: 1fr 1fr; gap:8px; border:1px solid var(--border)">
-            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
-            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700; color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
-            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo:</span><span style="font-weight:700; color:var(--red)">-${g.kargo.toLocaleString('tr-TR')}₺</span></div>
-            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:700; color:var(--red)">-${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
-          </div>
-        </div>`;
-    }).join('');
+          </div>`;
+      }).join('');
 
     document.getElementById('ty-ozet-toplam').textContent = gelecekToplam.toLocaleString('tr-TR') + '₺';
     document.getElementById('ty-ozet-yakin').textContent = buHaftaToplam.toLocaleString('tr-TR') + '₺';

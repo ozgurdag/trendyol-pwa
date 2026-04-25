@@ -1,6 +1,10 @@
--- Satışlara snapshot sütunu ekle
+-- ── Flat finansal sütunlar (snapshot JSON'ın yerini alır) ──────
 -- Supabase SQL Editor'da çalıştırın
 ALTER TABLE satislar ADD COLUMN IF NOT EXISTS snapshot jsonb DEFAULT NULL;
+ALTER TABLE satislar ADD COLUMN IF NOT EXISTS alis_maliyeti numeric(10,2) DEFAULT NULL;
+ALTER TABLE satislar ADD COLUMN IF NOT EXISTS ty_seller_revenue numeric(10,2) DEFAULT NULL;
+ALTER TABLE satislar ADD COLUMN IF NOT EXISTS ty_komisyon_tutar numeric(10,2) DEFAULT NULL;
+ALTER TABLE satislar ADD COLUMN IF NOT EXISTS ty_kargo numeric(10,2) DEFAULT NULL;
 
 -- Ürünlere Trendyol barcode/SKU alanları ekle
 ALTER TABLE stok_kalemleri ADD COLUMN IF NOT EXISTS ty_barcode text DEFAULT NULL;

@@ -205,22 +205,19 @@ export async function supabasedenYukle(){
     }))); }
 
     if(rSt.ok){ const d=await rSt.json(); if(d?.length) {
-      // Supabase snapshot > yerel snapshot > null öncelik sırası
-      const localSatislar = get(DB_KEYS.satislar)||[];
-      const localMap = Object.fromEntries(localSatislar.map(s=>[s.id,s]));
-      set(DB_KEYS.satislar, d.map(s=>{
-        const sbSnapshot = s.snapshot ? (typeof s.snapshot==='string'?JSON.parse(s.snapshot):s.snapshot) : null;
-        return {
-          id:s.id, tip:s.tip||'listing', hedefId:s.hedef_id,
-          adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
-          tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
-          snapshot: sbSnapshot || localMap[s.id]?.snapshot || null,
-          stokKombo: s.stok_kombo ? (typeof s.stok_kombo==='string'?JSON.parse(s.stok_kombo):s.stok_kombo) : (localMap[s.id]?.stokKombo||null),
-          tyOrderId:     s.ty_order_id||null,
-          tyOrderNumber: s.ty_order_number||null,
-          tyStatus:      s.ty_status||null,
-        };
-      }));
+      set(DB_KEYS.satislar, d.map(s=>({
+        id:s.id, tip:s.tip||'listing', hedefId:s.hedef_id,
+        adet:s.adet, gercekFiyat:s.gercek_fiyat||null,
+        tarih:s.tarih, kayitTarih:new Date(s.created_at).getTime(),
+        stokKombo: s.stok_kombo ? (typeof s.stok_kombo==='string'?JSON.parse(s.stok_kombo):s.stok_kombo) : null,
+        alisMaliyeti:    s.alis_maliyeti    ?? null,
+        tySellerRevenue: s.ty_seller_revenue ?? null,
+        tyKomisyon:      s.ty_komisyon_tutar ?? null,
+        tyKargo:         s.ty_kargo          ?? null,
+        tyOrderId:       s.ty_order_id       || null,
+        tyOrderNumber:   s.ty_order_number   || null,
+        tyStatus:        s.ty_status         || null,
+      })));
     }}
 
     if(rF.ok){ const d=await rF.json(); if(d?.length) {
@@ -725,31 +722,29 @@ export const satislarDB = {
 
   ekle(kayitlar){
     const yeniler=kayitlar.map(k=>{
-      const obj = k.tip==='set' ? setlerDB.bul(k.hedefId)
-               : k.tip==='stok' ? stokDB.bul(k.hedefId)
-               : k.tip==='stok-combo' ? null
-               : listingDB.bul(k.hedefId);
-      let snapshot = null;
-      if(obj){
-        const alisTop = k.tip==='listing' ? (obj.alisFiyati||0)
-                      : k.tip==='stok'    ? (obj.alisFiyati||0)
-                      : (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0);
-        snapshot = { alisMaliyeti: alisTop, tyKomisyon: k.tyKomisyon!=null ? +k.tyKomisyon : null };
-      }
+      let alisMaliyeti = 0;
       if(k.tip==='stok-combo' && (k.stokKombo||[]).length){
-        const alisTop=(k.stokKombo).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
-        snapshot = { alisMaliyeti: alisTop, tyKomisyon: k.tyKomisyon!=null ? +k.tyKomisyon : null };
+        alisMaliyeti = k.stokKombo.reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1), 0);
+      } else {
+        const obj = k.tip==='set' ? setlerDB.bul(k.hedefId)
+                 : k.tip==='stok' ? stokDB.bul(k.hedefId)
+                 : listingDB.bul(k.hedefId);
+        if(obj) alisMaliyeti = k.tip==='set'
+          ? (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0)
+          : (obj.alisFiyati||0);
       }
       return {
         id:uid(), tip:k.tip||'listing', hedefId:k.hedefId||null,
         adet:k.adet, gercekFiyat:k.gercekFiyat,
         stokKombo:k.stokKombo||null,
         tarih:k.tarih||today(), kayitTarih:Date.now(),
-        snapshot,
+        alisMaliyeti,
+        tySellerRevenue: null,
+        tyKomisyon:    k.tyKomisyon!=null ? +k.tyKomisyon : null,
+        tyKargo:       null,
         tyOrderId:     k.tyOrderId||null,
         tyOrderNumber: k.tyOrderNumber||null,
         tyStatus:      k.tyStatus||null,
-        tyKomisyon:    k.tyKomisyon!=null ? +k.tyKomisyon : null,
       };
     });
     set(DB_KEYS.satislar,[...this.hepsini(),...yeniler]);
@@ -789,8 +784,8 @@ export const satislarDB = {
     sbPost('satislar',yeniler.map(k=>({
       id:k.id, tip:k.tip, hedef_id:k.hedefId,
       adet:k.adet, gercek_fiyat:k.gercekFiyat||null, tarih:k.tarih,
-      stok_kombo: k.stokKombo ? JSON.stringify(k.stokKombo) : null,
-      snapshot: k.snapshot ? JSON.stringify(k.snapshot) : null,
+      stok_kombo:      k.stokKombo ? JSON.stringify(k.stokKombo) : null,
+      alis_maliyeti:   k.alisMaliyeti||null,
       ty_order_id:     k.tyOrderId||null,
       ty_order_number: k.tyOrderNumber||null,
       ty_status:       k.tyStatus||null,
@@ -866,27 +861,7 @@ export const satislarDB = {
       }
     }
 
-    // Snapshot'ı yeniden hesapla — snapshot yoksa sıfırdan oluştur
-    let obj = null;
-    if(k.tip==='set')        { obj=setlerDB.bul(k.hedefId); }
-    else if(k.tip==='stok')  { obj=stokDB.bul(k.hedefId); }
-    else if(k.tip==='listing'){ obj=listingDB.bul(k.hedefId); }
-
-    let yeniSnapshot;
-    if(k.snapshot){
-      yeniSnapshot = {...k.snapshot};
-    } else {
-      // Snapshot yok (anlık satış) — mevcut ürün verisinden oluştur
-      let alisMaliyeti=0;
-      if(k.tip==='stok-combo'){
-        alisMaliyeti=(k.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
-      } else if(obj){
-        alisMaliyeti = k.tip==='set' ? (setlerDB.alisMaliyeti(k.hedefId)||obj.alisMaliyeti||0) : (obj.alisFiyati||0);
-      }
-      yeniSnapshot = {alisMaliyeti, tyKomisyon: null};
-    }
-
-    const guncellendi = {...k, ...degisiklik, adet:yeniAdet, snapshot:yeniSnapshot};
+    const guncellendi = {...k, ...degisiklik, adet:yeniAdet};
     set(DB_KEYS.satislar, mevcut.map(s=>s.id===id?guncellendi:s));
     if(degisiklik.adet!==undefined||degisiklik.gercekFiyat!==undefined){
       const adBul3 = k.tip==='listing' ? listingDB.bul(k.hedefId)?.ad
@@ -900,7 +875,6 @@ export const satislarDB = {
     if(degisiklik.adet!==undefined)        v.adet=yeniAdet;
     if(degisiklik.gercekFiyat!==undefined) v.gercek_fiyat=+degisiklik.gercekFiyat;
     if(degisiklik.tarih!==undefined)       v.tarih=degisiklik.tarih;
-    if(yeniSnapshot!==k.snapshot)          v.snapshot=yeniSnapshot?JSON.stringify(yeniSnapshot):null;
     if(Object.keys(v).length) sbPatch('satislar',id,v).then(()=>broadcastGonder());
     return true;
   },
@@ -911,22 +885,21 @@ export const satislarDB = {
   tyIdleri(){ return new Set(this.hepsini().filter(s=>s.tyOrderId).map(s=>s.tyOrderId)); },
 
   netTutarlariUygula(eslesimler){
-    // eslesimler: [{tyOrderNumber, netTutar}]
+    // eslesimler: [{id, netTutar}]
     const mevcut = [...this.hepsini()];
     let sayi = 0;
     const dbGuncelle = [];
-    eslesimler.forEach(({tyOrderNumber, netTutar}) => {
-      if(!tyOrderNumber) return;
-      const idx = mevcut.findIndex(s => String(s.tyOrderNumber) === String(tyOrderNumber));
+    eslesimler.forEach(({id, netTutar}) => {
+      if(!id) return;
+      const idx = mevcut.findIndex(s => s.id === id);
       if(idx === -1) return;
-      const yeniSnap = {...(mevcut[idx].snapshot||{}), tyNetTutar: +netTutar};
-      mevcut[idx] = {...mevcut[idx], snapshot: yeniSnap};
-      dbGuncelle.push({id: mevcut[idx].id, snapshot: JSON.stringify(yeniSnap)});
+      mevcut[idx] = {...mevcut[idx], tySellerRevenue: +netTutar};
+      dbGuncelle.push({id: mevcut[idx].id, ty_seller_revenue: +netTutar});
       sayi++;
     });
     if(sayi){
       set(DB_KEYS.satislar, mevcut);
-      dbGuncelle.forEach(u => sbPatch('satislar', u.id, {snapshot: u.snapshot}));
+      dbGuncelle.forEach(u => sbPatch('satislar', u.id, {ty_seller_revenue: u.ty_seller_revenue}));
       broadcastGonder();
     }
     return sayi;
@@ -941,14 +914,13 @@ export const satislarDB = {
       if(!id) return;
       const idx = mevcut.findIndex(s => s.id === id);
       if(idx === -1) return;
-      const yeniSnap = {...(mevcut[idx].snapshot||{}), tyKargo: +tyKargo};
-      mevcut[idx] = {...mevcut[idx], snapshot: yeniSnap};
-      dbGuncelle.push({id: mevcut[idx].id, snapshot: JSON.stringify(yeniSnap)});
+      mevcut[idx] = {...mevcut[idx], tyKargo: +tyKargo};
+      dbGuncelle.push({id: mevcut[idx].id, ty_kargo: +tyKargo});
       sayi++;
     });
     if(sayi){
       set(DB_KEYS.satislar, mevcut);
-      dbGuncelle.forEach(u => sbPatch('satislar', u.id, {snapshot: u.snapshot}));
+      dbGuncelle.forEach(u => sbPatch('satislar', u.id, {ty_kargo: u.ty_kargo}));
       broadcastGonder();
     }
     return sayi;

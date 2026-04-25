@@ -147,36 +147,27 @@ const p = n => (+(n||0)).toLocaleString('tr-TR',{minimumFractionDigits:2,maximum
 
 // ─── satisKar ─────────────────────────────────────────────────────
 function satisKar(s){
-  let ad='?', alisBirim=0, gf=+(s.gercekFiyat||0);
+  let ad='?', gf=+(s.gercekFiyat||0);
 
   if(s.tip==='stok-combo'){
     ad = (s.stokKombo||[]).map(it=>it.ad).join(' + ')||'Kombo';
-    alisBirim = (s.stokKombo||[]).reduce((t,it)=>t+(it.alisFiyati||0)*(it.adet||1),0);
   } else if(s.tip==='stok'){
-    const u=stokDB.bul(s.hedefId);
-    if(u){ad=u.ad;alisBirim=u.alisFiyati||0;}
+    const u=stokDB.bul(s.hedefId); if(u) ad=u.ad;
   } else if(s.tip==='set'){
-    const u=setlerDB.bul(s.hedefId);
-    if(u){ad=u.ad;alisBirim=setlerDB.alisMaliyeti(s.hedefId)||u.alisMaliyeti||0;}
+    const u=setlerDB.bul(s.hedefId); if(u) ad=u.ad;
   } else {
-    const u=listingDB.bul(s.hedefId);
-    if(u){ad=u.ad;alisBirim=u.alisFiyati||0;}
+    const u=listingDB.bul(s.hedefId); if(u) ad=u.ad;
   }
 
-  // Eğer snapshot varsa snapshot içindeki alış maliyeti kullanılır
-  if(s.snapshot && s.snapshot.alisMaliyeti != null){
-    alisBirim = s.snapshot.alisMaliyeti;
-  }
+  const alis = (s.alisMaliyeti ?? 0) * s.adet;
+  const tySellerRevenue = s.tySellerRevenue ?? null;
+  const tyKargo = s.tyKargo ?? null;
 
-  const alis = alisBirim * s.adet;
-  const tyNetTutar = s.snapshot?.tyNetTutar;
-  const tyKargo = s.snapshot?.tyKargo;
-  
-  const veriTam = tyNetTutar != null && tyKargo != null;
+  const veriTam = tySellerRevenue != null && tyKargo != null;
   let net = null, roi = null;
-  
-  if (veriTam) {
-    net = tyNetTutar - tyKargo - alis;
+
+  if(veriTam){
+    net = tySellerRevenue - tyKargo - alis;
     roi = alis > 0 ? net / alis : 0;
   }
 
@@ -184,7 +175,7 @@ function satisKar(s){
     net, roi, kararli: net !== null && net >= 0, ad, tip: s.tip, adet: s.adet,
     gelir: gf * s.adet,
     alis,
-    tyNetTutar,
+    tySellerRevenue,
     tyKargo,
     veriTam
   };
@@ -260,7 +251,7 @@ function renderListe(satislar, targetId){
       <div class="sr-meta">${s.tarih||''}${s.tyOrderNumber?` · #${s.tyOrderNumber}`:''}</div>
       <div class="sr-detay">
         <span class="sr-item">Gelir: <b>${p(k.gelir)}</b></span>
-        <span class="sr-item">TY Net: <b>${k.tyNetTutar!=null ? p(k.tyNetTutar) : '<span style="color:var(--yellow)">Bekleniyor</span>'}</b></span>
+        <span class="sr-item">TY Net: <b>${k.tySellerRevenue!=null ? p(k.tySellerRevenue) : '<span style="color:var(--yellow)">Bekleniyor</span>'}</b></span>
         <span class="sr-item">Kargo: <b>${k.tyKargo!=null ? '-'+p(k.tyKargo) : '<span style="color:var(--yellow)">Bekleniyor</span>'}</b></span>
         <span class="sr-item">Alış: <b>${p(k.alis)}</b></span>
         <span class="sr-item">ROI: <b>${k.roi!=null?((k.roi)*100).toFixed(1)+'%':'—'}</b></span>
@@ -413,7 +404,7 @@ function renderAylik(){
   for(let g=1;g<=gunSayisi;g++){
     const tarih=`${y}-${String(m+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
     const gSat=satislar.filter(s=>s.tarih===tarih);
-    let gKar=0; gSat.forEach(s=>{const k=satisKar(s);if(k)gKar+=k.net;});
+    let gKar=0; gSat.forEach(s=>{const k=satisKar(s);if(k&&k.net!=null)gKar+=k.net;});
     chartData.push({label:g%5===1||gunSayisi<=10?String(g):'',val:Math.round(gKar)});
   }
   lineChart(document.getElementById('aylik-chart'),chartData);
@@ -436,7 +427,7 @@ function renderYillik(){
   for(let i=1;i<=12;i++){
     const ayStr=`${curYil}-${String(i).padStart(2,'0')}`;
     const aySat=satislar.filter(s=>s.tarih?.startsWith(ayStr));
-    let aKar=0; aySat.forEach(s=>{const k=satisKar(s);if(k)aKar+=k.net;});
+    let aKar=0; aySat.forEach(s=>{const k=satisKar(s);if(k&&k.net!=null)aKar+=k.net;});
     chartData.push({label:aylar[i-1].slice(0,3),val:Math.round(aKar)});
   }
   lineChart(document.getElementById('yillik-chart'),chartData);
@@ -475,9 +466,11 @@ window.excelIndir=async()=>{
       const k=satisKar(s);if(!k)return null;
       return {Tarih:s.tarih,Ürün:k.ad,Tip:s.tip,Adet:s.adet,
         'Gelir (₺)':+k.gelir.toFixed(2),
-        'Komisyon (₺)':+k.komisyon.toFixed(2),'TY Gerçek':k.komisyonGercek?'Evet':'Hayır',
-        'Kargo (₺)':+k.kargo.toFixed(2),'Alış (₺)':+k.alis.toFixed(2),
-        'Net Kar (₺)':+k.net.toFixed(2),'ROI %':k.alis>0?+((k.net/k.alis)*100).toFixed(1):0,
+        'TY Net (₺)':k.tySellerRevenue!=null?+k.tySellerRevenue.toFixed(2):'',
+        'Kargo (₺)':k.tyKargo!=null?+k.tyKargo.toFixed(2):'',
+        'Alış (₺)':+k.alis.toFixed(2),
+        'Net Kar (₺)':k.net!=null?+k.net.toFixed(2):'',
+        'ROI %':k.roi!=null&&k.alis>0?+((k.roi)*100).toFixed(1):'',
         'Sipariş No':s.tyOrderNumber||''};
     }).filter(Boolean);
     const ws=utils.json_to_sheet(rows);

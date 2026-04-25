@@ -550,6 +550,7 @@ window.secilenleriAktar = () => {
     tip:s.eslesti.tip, hedefId:s.eslesti.hedefId, adet:s.adet,
     gercekFiyat:+s.fiyat, tarih:s.tarih,
     tyOrderId:s.id, tyOrderNumber:s.sipNo, tyStatus:s.durum,
+    tyKomisyon: s.komisyon,
   })));
   bekleyenler.forEach(s=>{ s.aktarildi=true; const row=document.getElementById(`row-${s.id}`); if(row) row.className='order-row imported'; });
   guncelleSiperisStat();
@@ -592,20 +593,28 @@ window.mutabakatCek = async () => {
     if(!items.length){
       cont.innerHTML='<div style="text-align:center;color:var(--t3);padding:24px;font-size:13px">Bu dönemde ödeme kaydı bulunamadı</div>';
     } else {
-      // Eşleştirme: settlement orderNumber → kayıtlı satış
+      // Eşleştirme: settlement orderNumber → kayıtlı satış (çok ürünlü siparişlerde gelire orantılı bölünür)
       mutabakatEslesimler = [];
       const kayitliSatislar = satislarDB.hepsini();
+      const orderNetMap = {};
       items.forEach(it => {
         const netOdeme = it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         toplamOdeme += netOdeme;
-        if(it.orderNumber) mutabakatEslesimler.push({tyOrderNumber: String(it.orderNumber), netTutar: netOdeme});
+        if(it.orderNumber) orderNetMap[String(it.orderNumber)] = (orderNetMap[String(it.orderNumber)]||0) + netOdeme;
       });
-      const eslesmeSayisi = mutabakatEslesimler.filter(e =>
-        kayitliSatislar.some(s => String(s.tyOrderNumber) === e.tyOrderNumber)
-      ).length;
+      Object.entries(orderNetMap).forEach(([orderNo, netTutar]) => {
+        const eslesen = kayitliSatislar.filter(s => String(s.tyOrderNumber) === orderNo);
+        if(!eslesen.length) return;
+        const toplamGelir = eslesen.reduce((t, s) => t + (s.gercekFiyat||0)*(s.adet||1), 0);
+        eslesen.forEach(s => {
+          const oran = toplamGelir > 0 ? ((s.gercekFiyat||0)*(s.adet||1)) / toplamGelir : 1/eslesen.length;
+          mutabakatEslesimler.push({id: s.id, netTutar: netTutar * oran});
+        });
+      });
+      const eslesmeSayisi = mutabakatEslesimler.length;
       const donemSatislar=satislarDB.aralik(document.getElementById('m-start').value,document.getElementById('m-end').value);
       const hesaplananKar=donemSatislar.reduce((t,s)=>{
-        if(s.snapshot?.tyNetTutar!=null) return t+s.snapshot.tyNetTutar-(s.snapshot.alisMaliyeti||0)*s.adet;
+        if(s.tySellerRevenue!=null) return t+s.tySellerRevenue-(s.alisMaliyeti||0)*s.adet;
         return t;
       },0);
       const delta=toplamOdeme-hesaplananKar;
@@ -705,7 +714,7 @@ window.kargoVerisiCek = async () => {
     Object.entries(orderKargoMap).forEach(([orderNo, kargo]) => {
       const eslesen = kayitliSatislar.filter(s => String(s.tyOrderNumber) === orderNo);
       if(!eslesen.length) return;
-      const toplamNet = eslesen.reduce((t, s) => t + (s.snapshot?.tyNetTutar || 0), 0);
+      const toplamNet = eslesen.reduce((t, s) => t + (s.tySellerRevenue || 0), 0);
       eslesen.forEach(s => {
         const oran = toplamNet > 0 ? (s.snapshot?.tyNetTutar || 0) / toplamNet : 1 / eslesen.length;
         kargoEslesimler.push({id: s.id, tyKargo: kargo * oran});

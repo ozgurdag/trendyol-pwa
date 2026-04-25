@@ -477,10 +477,13 @@ function guncelleSiperisStat(){
 }
 
 function tumUrunler(){
+  const listingStokIds = new Set(
+    listingDB.hepsini().flatMap(l=>(l.stokBilesenleri||[]).map(b=>b.urunId))
+  );
   return [
-    ...stokDB.hepsini().map(u=>({tip:'stok',hedefId:u.id,ad:u.ad})),
     ...listingDB.hepsini().map(l=>({tip:'listing',hedefId:l.id,ad:l.ad})),
     ...setlerDB.hepsini().map(s=>({tip:'set',hedefId:s.id,ad:s.ad})),
+    ...stokDB.hepsini().filter(u=>!listingStokIds.has(u.id)).map(u=>({tip:'stok',hedefId:u.id,ad:u.ad})),
   ];
 }
 

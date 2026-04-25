@@ -242,8 +242,8 @@ async function tyOdemeleriCek() {
         sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
         type: 'otherfinancials', size: 500, startDate: araliklar[i].s, endDate: araliklar[i].e
       });
-      if(othRes.content) {
-        if(i === 0 && othRes.content.length) console.log('[DEBUG-OTH] ilk otherfinancials item:', JSON.stringify(othRes.content[0]));
+      if(othRes.content && othRes.content.length) {
+        console.log(`[DEBUG-OTH] chunk ${i} — ${othRes.content.length} item, ilk:`, JSON.stringify(othRes.content[0]));
         tumContent = tumContent.concat(othRes.content);
       }
 

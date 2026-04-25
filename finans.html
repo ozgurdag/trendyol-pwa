@@ -261,14 +261,11 @@ async function tyOdemeleriCek() {
     const birHaftaSonraMs = bugunMs + 7 * 86400000;
 
     tumContent.forEach(it => {
-      // De-duplication using more robust key
       const uniqueId = (it.id || it.transactionId || '') + '_' + (it.transactionDate || '') + '_' + (it.grossAmount || it.totalAmount || 0);
       if(processedIds.has(uniqueId)) return;
       processedIds.add(uniqueId);
 
-      let pMs = it.paymentDate;
-      // Other financials'ta bazen paymentDate boştur, transactionDate kullan
-      if(!pMs) pMs = it.transactionDate;
+      let pMs = it.paymentDate || it.transactionDate;
       if(!pMs) return;
       
       const d = new Date(pMs);
@@ -292,34 +289,55 @@ async function tyOdemeleriCek() {
       const desc = (it.description || '').toLowerCase();
       const rawNet = it.sellerRevenue ?? it.totalAmount ?? 0;
 
-      let isDeduction = false;
+      // 🛡️ V40 AGRESİF EŞLEŞTİRME
+      let matched = false;
+
+      // 1. Komisyon
       if(type.includes('commission') || type.includes('komisyon') || desc.includes('komisyon')) {
         gruplar[dKey].komisyon += Math.abs(rawNet);
-        isDeduction = true;
+        matched = true;
       }
-      else if(type.includes('cargo') || type.includes('kargo') || type.includes('deduction') || desc.includes('kargo') || desc.includes('taşıma') || desc.includes('export') || desc.includes('fee') || desc.includes('kesinti')) {
+      // 2. Kargo ve Platform Giderleri
+      else if(
+        type.includes('cargo') || type.includes('kargo') || 
+        desc.includes('kargo') || desc.includes('taşıma') || 
+        desc.includes('hizmet') || desc.includes('platform') || 
+        desc.includes('fee') || desc.includes('kesinti') ||
+        rawNet < 0 // Herhangi bir negatif tutar genellikle bir kesintidir
+      ) {
         gruplar[dKey].kargo += Math.abs(rawNet);
-        isDeduction = true;
+        matched = true;
       }
+      // 3. Stopaj
       else if(type.includes('withholding') || type.includes('stopaj') || desc.includes('stopaj')) {
         gruplar[dKey].stopaj += Math.abs(rawNet);
-        isDeduction = true;
+        matched = true;
       }
 
-      if(!isDeduction && (type.includes('sale') || type.includes('satis') || desc.includes('satış') || desc.includes('sipariş'))) {
+      // 4. Satış (Sadece pozitif ve eşleşmeyenler)
+      if(!matched && (rawNet > 0 || type.includes('sale') || type.includes('satis') || desc.includes('satış'))) {
         gruplar[dKey].satis += (it.grossAmount || rawNet);
-        const comm = it.commissionAmount ? Math.abs(it.commissionAmount) : 0;
-        const carg = it.cargoAmount ? Math.abs(it.cargoAmount) : 0;
-        const tax = it.withholdingTax ? Math.abs(it.withholdingTax) : 0;
-        gruplar[dKey].komisyon += comm;
-        gruplar[dKey].kargo += carg;
-        gruplar[dKey].stopaj += tax;
-      } 
-      else if(!isDeduction) {
-        gruplar[dKey].diger += rawNet;
+        
+        // Satır içi kesinti varsa onları da zorla ayır
+        const cComm = it.commissionAmount ? Math.abs(it.commissionAmount) : 0;
+        const cCarg = it.cargoAmount ? Math.abs(it.cargoAmount) : 0;
+        const cTax = it.withholdingTax ? Math.abs(it.withholdingTax) : 0;
+        
+        gruplar[dKey].komisyon += cComm;
+        gruplar[dKey].kargo += cCarg;
+        gruplar[dKey].stopaj += cTax;
+        
+        // Eğer rawNet kesilmemiş brüt ise, biz manuel düşelim
+        let actualNet = rawNet;
+        if(actualNet === (it.grossAmount || 0) && (cComm || cCarg || cTax)) {
+          actualNet = actualNet - cComm - cCarg - cTax;
+        }
+        gruplar[dKey].toplam += actualNet;
+      } else {
+        // Zaten kesinti olarak eşleşmişse toplamı azalt
+        gruplar[dKey].toplam += rawNet; 
       }
 
-      gruplar[dKey].toplam += rawNet;
       gruplar[dKey].items.push(it);
 
       if(realMs >= bugunMs) {
@@ -345,7 +363,7 @@ async function tyOdemeleriCek() {
     }).join('');
 
     // Liste render
-    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V39-FullSync</div>' + 
+    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V40-AggressiveMatch</div>' + 
       sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
         const g = gruplar[tarih];
         const isPast = g.ms < bugunMs;

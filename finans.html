@@ -183,74 +183,155 @@ window.sekme = s => {
   if(s==='trendyol') tyOdemeleriCek();
 };
 
+// ── TRENDYOL ÖDEMELERİ (PREMIUM BREAKDOWN) ──
 async function tyOdemeleriCek() {
   const ay = ayarlarDB.oku();
   const listEl = document.getElementById('ty-odeme-liste');
   const chartEl = document.getElementById('ty-payout-chart');
-  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Yükleniyor...</span></div>';
+  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Trendyol detayları hesaplanıyor...</span></div>';
 
   try {
-    const res = await fetch('https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api', {
+    const PROXY = 'https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api';
+    
+    // 1. Settlements çek (Detaylı kırılım için)
+    const res = await fetch(PROXY, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
         type: 'settlements', size: 500,
-        startDate: Date.now() - 5 * 86400000,
-        endDate: Date.now() + 10 * 86400000
+        startDate: Date.now() - 10 * 86400000, // Son 10 gün
+        endDate: Date.now() + 30 * 86400000    // Gelecek 30 gün
       })
     });
+
     const data = await res.json();
     const content = data.content || [];
-    if(!content.length){ listEl.innerHTML='<div style="padding:20px;text-align:center">Kayıt yok.</div>'; return; }
 
+    if(!content.length){
+      listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
+      return;
+    }
+
+    // 2. Verileri paymentDate'e göre grupla ve kırılımları hesapla
     const gruplar = {};
-    let gelecekToplam = 0, buHaftaToplam = 0, netOdenen = 0;
+    let bakiye = 0;
+    let gelecekToplam = 0;
+    let buHaftaToplam = 0;
+    let sonOdenen = 0;
     const bugunMs = new Date().setHours(0,0,0,0);
     const birHaftaSonraMs = bugunMs + 7 * 86400000;
 
     content.forEach(it => {
       const pMs = it.paymentDate;
+      if(!pMs) return;
       const dKey = new Date(pMs).toLocaleDateString('tr-TR');
-      if(!gruplar[dKey]) gruplar[dKey] = { toplam: 0, items: [], ms: pMs };
+      
+      if(!gruplar[dKey]) {
+        gruplar[dKey] = { 
+          toplam: 0, 
+          satis: 0, 
+          komisyon: 0, 
+          kargo: 0, 
+          stopaj: 0, 
+          diger: 0, 
+          items: [], 
+          ms: pMs 
+        };
+      }
+      
       const net = it.sellerRevenue ?? it.payoutAmount ?? 0;
+      const type = (it.transactionType || '').toLowerCase();
+      const desc = (it.description || '').toLowerCase();
+
       gruplar[dKey].toplam += net;
       gruplar[dKey].items.push(it);
-      if(pMs >= bugunMs){ gelecekToplam+=net; if(pMs<=birHaftaSonraMs) buHaftaToplam+=net; } else { netOdenen+=net; }
+
+      // Kırılım Mantığı
+      if(type === 'sale' || type === 'satis') {
+        gruplar[dKey].satis += it.grossAmount || net;
+        // Eğer grossAmount yoksa ve komisyon varsa, satis = net - komisyon - kargo vb.
+      } else if(type.includes('commission') || type.includes('komisyon')) {
+        gruplar[dKey].komisyon += net;
+      } else if(type.includes('cargo') || type.includes('kargo')) {
+        gruplar[dKey].kargo += net;
+      } else if(type.includes('withholding') || type.includes('stopaj')) {
+        gruplar[dKey].stopaj += net;
+      } else {
+        gruplar[dKey].diger += net;
+      }
+
+      if(pMs >= bugunMs) {
+        gelecekToplam += net;
+        if(pMs <= birHaftaSonraMs) buHaftaToplam += net;
+      } else {
+        if(sonOdenen === 0) sonOdenen = net; // En son ödenen (basit mantık)
+      }
     });
 
     const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[b].ms - gruplar[a].ms);
     const maxVal = Math.max(...Object.values(gruplar).map(g => g.toplam), 1);
 
+    // Grafik
     chartEl.innerHTML = Object.keys(gruplar).sort((a,b) => gruplar[a].ms - gruplar[b].ms).map(k => {
       const h = (gruplar[k].toplam / maxVal) * 100;
       const isPast = gruplar[k].ms < bugunMs;
       return `<div class="payout-bar" style="height:${Math.max(h, 10)}%; background:${isPast?'rgba(255,255,255,0.2)':'var(--accent)'}" data-val="${gruplar[k].toplam.toFixed(0)}₺"></div>`;
     }).join('');
 
+    // Liste Render (Trendyol Style Breakdown)
     listEl.innerHTML = sortedDates.map(tarih => {
       const g = gruplar[tarih];
       const isPast = g.ms < bugunMs;
+      const isNext = !isPast && (g.ms <= bugunMs + 2 * 86400000); // Yaklaşan ilk ödeme
+
       return `
-        <div class="payout-card ${isPast ? 'past' : ''}">
-          <div style="display:flex; justify-content:space-between; align-items:center">
+        <div class="payout-card ${isPast ? 'past' : ''}" style="${isNext ? 'border:2px solid var(--green); background:rgba(16,185,129,0.05)' : ''}">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px">
             <div>
-              <div style="font-size:14px; font-weight:700">${tarih}</div>
-              <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 BEKLENEN'}</div>
+              <div style="font-size:11px; color:var(--t4); font-weight:700">ÖDEME GÜNÜ</div>
+              <div style="font-size:16px; font-weight:800">${tarih}</div>
+              <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 TAHMİNİ HAKEDİŞ'}</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:19px; font-weight:800; color:${isPast ? 'var(--t1)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
-              <div style="font-size:10px; color:var(--t4)">${g.items.length} Sipariş</div>
+              <div style="font-size:22px; font-weight:900; color:${isPast ? 'var(--t1)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
+              <div style="font-size:10px; color:var(--t4)">${g.items.length} İşlem</div>
             </div>
           </div>
+          
+          <div style="background:var(--bg); border-radius:var(--r-md); padding:10px; font-size:12px; display:grid; grid-template-columns: 1fr 1fr; gap:8px">
+            <div style="display:flex; justify-content:space-between">
+              <span style="color:var(--t4)">Satış:</span>
+              <span style="font-weight:600">${g.satis.toLocaleString('tr-TR')}₺</span>
+            </div>
+            <div style="display:flex; justify-content:space-between">
+              <span style="color:var(--t4)">Komisyon:</span>
+              <span style="font-weight:600; color:var(--red)">${g.komisyon.toLocaleString('tr-TR')}₺</span>
+            </div>
+            <div style="display:flex; justify-content:space-between">
+              <span style="color:var(--t4)">Kargo:</span>
+              <span style="font-weight:600; color:var(--red)">${g.kargo.toLocaleString('tr-TR')}₺</span>
+            </div>
+            <div style="display:flex; justify-content:space-between">
+              <span style="color:var(--t4)">Stopaj:</span>
+              <span style="font-weight:600; color:var(--red)">${g.stopaj.toLocaleString('tr-TR')}₺</span>
+            </div>
+          </div>
+          
+          ${isNext ? `<div style="margin-top:10px; font-size:10px; color:var(--green); font-weight:700">💡 Bir sonraki ödemeniz tahmini olarak hesaplanmıştır.</div>` : ''}
         </div>`;
     }).join('');
 
     document.getElementById('ty-ozet-toplam').textContent = gelecekToplam.toLocaleString('tr-TR') + '₺';
     document.getElementById('ty-ozet-yakin').textContent = buHaftaToplam.toLocaleString('tr-TR') + '₺';
-    document.getElementById('ty-ozet-odenen').textContent = netOdenen.toLocaleString('tr-TR') + '₺';
-  } catch (err) { listEl.innerHTML = 'Hata: ' + err.message; }
+    document.getElementById('ty-ozet-odenen').textContent = sonOdenen.toLocaleString('tr-TR') + '₺';
+
+  } catch (err) {
+    listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:20px">⚠️ Hata: ${err.message}</div>`;
+  }
 }
+
+window.tyOdemeleriCek = tyOdemeleriCek;
 
 window.tyOdemeleriCek = tyOdemeleriCek;
 window.toast = (msg, tip='info') => {

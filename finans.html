@@ -237,6 +237,16 @@ async function tyOdemeleriCek() {
       });
       if(setRes.content) tumContent = tumContent.concat(setRes.content);
 
+      // otherfinancials — kargo ve stopaj kesintileri için
+      const othRes = await proxyCall({
+        sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
+        type: 'otherfinancials', size: 500, startDate: araliklar[i].s, endDate: araliklar[i].e
+      });
+      if(othRes.content) {
+        if(i === 0 && othRes.content.length) console.log('[DEBUG-OTH] ilk otherfinancials item:', JSON.stringify(othRes.content[0]));
+        tumContent = tumContent.concat(othRes.content);
+      }
+
       if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 600));
     }
 
@@ -244,9 +254,9 @@ async function tyOdemeleriCek() {
       listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
       return;
     }
-    // DEBUG — Console'da ilk settlement item'ının yapısını gör, sonra kaldır
-    console.log('[DEBUG] ilk item:', JSON.stringify(tumContent[0]));
-    console.log('[DEBUG] toplam item:', tumContent.length);
+    // DEBUG — settlements ilk item yapısı + 30/04 grubundaki itemları gör
+    console.log('[DEBUG-SET] ilk item:', JSON.stringify(tumContent[0]));
+    console.log('[DEBUG-SET] toplam item:', tumContent.length);
 
     const gruplar = {};
     const processedIds = new Set();
@@ -281,17 +291,23 @@ async function tyOdemeleriCek() {
       
       const type = (it.transactionType || it.transactionTypeName || '').toLowerCase();
       const desc = (it.description || '').toLowerCase();
-      const rawNet = it.sellerRevenue ?? it.totalAmount ?? 0;
+      // credit-debt modeli (otherfinancials) veya sellerRevenue modeli (settlements)
+      const rawNet = it.sellerRevenue != null ? it.sellerRevenue
+                   : it.totalAmount   != null ? it.totalAmount
+                   : (it.credit || 0) - (it.debt || 0);
 
-      // Kategori tespiti (sadece type/desc bazlı, negatif-tutar catch-all yok)
+      // Kategori tespiti — Türkçe transactionType'ları da kapsıyor
       if(type.includes('commission') || type.includes('komisyon') || desc.includes('komisyon')) {
         gruplar[dKey].komisyon += Math.abs(rawNet);
-      } else if(type.includes('cargo') || type.includes('kargo') || desc.includes('kargo') || desc.includes('taşıma')) {
+      } else if(type.includes('cargo') || type.includes('kargo') || desc.includes('kargo') || desc.includes('taşıma') || desc.includes('kargo fatura') || type.includes('deduction')) {
         gruplar[dKey].kargo += Math.abs(rawNet);
       } else if(type.includes('withholding') || type.includes('stopaj') || desc.includes('stopaj')) {
         gruplar[dKey].stopaj += Math.abs(rawNet);
       } else if(rawNet > 0) {
-        gruplar[dKey].satis += rawNet;
+        // Brüt satış: credit varsa onu kullan (settlements), yoksa rawNet
+        gruplar[dKey].satis += (it.credit || rawNet);
+        // Komisyon: settlements'ta her satırda commissionAmount gömülü
+        if(it.commissionAmount) gruplar[dKey].komisyon += Math.abs(it.commissionAmount);
       }
 
       // Net ödeme = tüm sellerRevenue'ların toplamı (satışlar +, kesintiler -)

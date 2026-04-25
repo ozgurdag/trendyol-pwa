@@ -203,6 +203,7 @@ function ozetHesapla(satislar){
   
   return {
     adet, gelir, alis, net, tyNet, kargo,
+    kesinti: gelir - tyNet,
     roi: alis > 0 ? net / alis : 0, 
     tamSayi, toplamSayi,
     siparisSayisi: siparisNoSet.size,
@@ -237,6 +238,12 @@ function renderOzet(ozet, targetId){
       <div class="lbl">Brüt Ciro</div>
       <div class="val" style="color:var(--t1)">${p(ozet.gelir)}</div>
       <div class="lbl" style="margin-top:4px; font-size:9px">TY Net: ${p(ozet.tyNet)}</div>
+    </div>
+
+    <div class="ozet-card">
+      <div class="lbl">Komisyon & Hizmet</div>
+      <div class="val" style="color:var(--red)">-${p(ozet.kesinti)}</div>
+      <div class="lbl" style="margin-top:4px; font-size:9px">Ciroya Oranı: %${ozet.gelir > 0 ? ((ozet.kesinti / ozet.gelir) * 100).toFixed(1) : 0}</div>
     </div>
 
     <div class="ozet-card">

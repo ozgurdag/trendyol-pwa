@@ -35,15 +35,15 @@ Deno.serve(async (req) => {
     let url: string;
 
     if (type === 'orders') {
-      const { startDate, endDate } = body;
+      const { startDate, endDate, status } = body;
       const params = new URLSearchParams({
-        orderByField: 'CreatedDate',
-        orderByDirection: 'DESC',
         page: String(page),
         size: String(size),
       });
+      // startDate/endDate → TY API'de lastModifiedDate filtresi olarak çalışır
       if (startDate) params.set('startDate', String(startDate));
       if (endDate)   params.set('endDate',   String(endDate));
+      if (status)    params.set('status',    status);
       url = `https://apigw.trendyol.com/integration/order/sellers/${sellerId}/orders?${params}`;
 
     } else if (type === 'settlements') {

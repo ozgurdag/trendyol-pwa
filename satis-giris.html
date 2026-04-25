@@ -395,9 +395,11 @@ window.siparisleriCek = async () => {
   satirlar=[];
 
   try {
-    const content = await fetchDateRange('orders', startMs, endMs, fillEl);
-    fillEl.style.width='100%';
+    // 7 günlük chunk + status API'ye gönderilir (lastModifiedDate filtresi — TY davranışı)
     const filtre = document.getElementById('s-durum').value;
+    const apiStatus = filtre === 'teslim' ? 'Delivered' : filtre === 'aktif' ? null : null;
+    const content = await fetchDateRange('orders', startMs, endMs, fillEl, 7, apiStatus ? {status: apiStatus} : {});
+    fillEl.style.width='100%';
     const filtreli = content.filter(pkg=>{
       if(filtre==='teslim') return TESLIM_DURUMLAR.includes(pkg.status);
       if(filtre==='aktif')  return AKTIF_DURUMLAR.includes(pkg.status);

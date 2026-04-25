@@ -1,0 +1,905 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<title>Finans Â· SatÄ±ÅŸ YÃ¶netim</title>
+<link rel="stylesheet" href="./app.css">
+<style>
+.fin-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
+.fin-tab{padding:8px 14px;border-radius:var(--r-md);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;border:1px solid var(--border2);color:var(--t3);background:var(--bg2);transition:all .15s}
+.fin-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--r-lg);padding:28px 16px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent);background:rgba(99,102,241,.06)}
+.upload-icon{font-size:36px;margin-bottom:8px}
+.upload-text{font-size:13px;color:var(--t3)}
+.upload-sub{font-size:11px;color:var(--t4);margin-top:4px}
+.fatura-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
+.fatura-row:last-child{border:none}
+.fatura-ikon{width:38px;height:38px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.fatura-ikon.gelen{background:rgba(16,185,129,.12);color:var(--green)}
+.fatura-ikon.giden{background:rgba(239,68,68,.12);color:var(--red)}
+.fatura-ikon.masraf{background:rgba(245,158,11,.12);color:#f59e0b}
+.fatura-bilgi{flex:1;min-width:0}
+.fatura-ad{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fatura-meta{font-size:11px;color:var(--t3);margin-top:2px}
+.fatura-tutar{text-align:right;flex-shrink:0}
+.fatura-tutar-ana{font-size:14px;font-weight:700;font-family:var(--mono)}
+.fatura-tutar-kdv{font-size:10px;color:var(--t3)}
+.rapor-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:12px}
+.rapor-card-title{font-size:13px;font-weight:600;color:var(--t2);margin-bottom:12px}
+.rapor-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.rapor-row:last-child{border:none}
+.rapor-lbl{font-size:13px;color:var(--t2)}
+.rapor-val{font-size:14px;font-weight:700;font-family:var(--mono)}
+.ai-loading{display:flex;align-items:center;gap:8px;padding:12px;background:var(--bg3);border-radius:var(--r-md);margin-bottom:12px;font-size:13px;color:var(--accent)}
+.ai-loading .spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.form-inline{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.form-inline .form-group{flex:1;min-width:120px}
+.dilim-bar{height:8px;border-radius:4px;overflow:hidden;display:flex;margin:8px 0}
+.dilim-bar div{height:100%}
+.badge-tip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.badge-gelen{background:rgba(16,185,129,.15);color:var(--green)}
+.badge-giden{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-masraf{background:rgba(245,158,11,.15);color:#f59e0b}
+/* Trendyol Payout Styles */
+.payout-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:12px;transition:transform .2s;position:relative;overflow:hidden}
+.payout-card:hover{transform:translateY(-2px);border-color:var(--accent)}
+.payout-card.past{opacity:0.7;background:var(--bg3)}
+.payout-chart{display:flex;align-items:flex-end;gap:4px;height:60px;margin:16px 0;padding:0 8px}
+.payout-bar{flex:1;background:var(--accent);border-radius:2px 2px 0 0;min-height:2px;position:relative;transition:height .3s}
+.payout-bar:hover::after{content:attr(data-val);position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--t1);font-weight:700}
+.payout-grad-card{background:linear-gradient(135deg, var(--accent), #4f46e5);color:#fff;padding:20px;border-radius:var(--r-xl);margin-bottom:20px;box-shadow:0 8px 20px rgba(99,102,241,0.25)}
+.payout-grad-val{font-size:32px;font-weight:800;letter-spacing:-1px;margin:4px 0}
+.payout-grad-lbl{font-size:12px;opacity:0.85;text-transform:uppercase;letter-spacing:1px}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="topbar">
+    <div class="topbar-title">ğŸ’° Finans</div>
+  </div>
+  <div class="page-content">
+
+    <!-- SEKME SEÃ‡Ä°CÄ° -->
+    <div class="fin-tabs">
+      <div class="fin-tab active" onclick="sekme('gelen')">ğŸ“¥ Gelen Faturalar</div>
+      <div class="fin-tab" onclick="sekme('giden')">ğŸ“¤ Giden Faturalar</div>
+      <div class="fin-tab" onclick="sekme('masraf')">ğŸ§¾ Masraflar</div>
+      <div class="fin-tab" onclick="sekme('rapor')">ğŸ“Š Raporlar</div>
+      <div class="fin-tab" onclick="sekme('trendyol')" id="tab-ty-payout">ğŸ—“ï¸ Trendyol Ã–demeleri</div>
+    </div>
+
+    <!-- â•â•â• GELEN FATURALAR â•â•â• -->
+    <div id="pnl-gelen">
+      <div class="card mb-16">
+        <div class="card-title mb-12">Gelen Fatura Ekle</div>
+        <div class="upload-zone" id="upload-gelen"
+             onclick="document.getElementById('dosya-gelen').click()"
+             ondragover="event.preventDefault();this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files,'gelen_fatura')">
+          <div class="upload-icon">ğŸ“„</div>
+          <div class="upload-text">PDF veya HTML fatura yÃ¼kleyin</div>
+          <div class="upload-sub">SÃ¼rÃ¼kle-BÄ±rak (Toplu GÃ¶nderilebilir) Â· AI ile otomatik okuma</div>
+        </div>
+        <input type="file" id="dosya-gelen" accept=".pdf,.html,.htm" multiple style="display:none"
+               onchange="dosyaIsle(this.files,'gelen_fatura')">
+        <div id="ai-status-gelen" style="display:none"></div>
+
+        <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center">â”€â”€â”€ veya manuel giriÅŸ â”€â”€â”€</div>
+        <div class="form-inline" style="margin-top:10px">
+          <div class="form-group"><label class="form-label">Cari AdÄ±</label>
+            <input class="form-input" id="gelen-cari" placeholder="TedarikÃ§i"></div>
+          <div class="form-group"><label class="form-label">Fatura No</label>
+            <input class="form-input" id="gelen-no" placeholder="Belge No"></div>
+          <div class="form-group"><label class="form-label">Tarih</label>
+            <input class="form-input" type="date" id="gelen-tarih"></div>
+        </div>
+        <div class="form-inline">
+          <div class="form-group"><label class="form-label">Tutar (KDV HariÃ§)</label>
+            <input class="form-input" type="number" inputmode="decimal" id="gelen-tutar" placeholder="0.00" step="0.01" oninput="kdvHesapla('gelen')"></div>
+          <div class="form-group"><label class="form-label">KDV OranÄ± (%)</label>
+            <select class="form-select" id="gelen-kdv-oran" onchange="kdvHesapla('gelen')">
+              <option value="20">%20</option><option value="10">%10</option>
+              <option value="1">%1</option><option value="0">%0</option>
+            </select></div>
+          <div class="form-group"><label class="form-label">KDV TutarÄ±</label>
+            <input class="form-input" type="number" inputmode="decimal" id="gelen-kdv" placeholder="0.00" step="0.01" readonly style="opacity:.7"></div>
+        </div>
+        <div class="form-group"><label class="form-label">AÃ§Ä±klama</label>
+          <input class="form-input" id="gelen-aciklama" placeholder="Fatura aÃ§Ä±klamasÄ±"></div>
+        <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('gelen_fatura')">âœ“ Gelen Fatura Kaydet</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Gelen Faturalar</div>
+          <span id="gelen-sayi" style="font-size:12px;color:var(--t3)"></span></div>
+        <div id="liste-gelen"></div>
+      </div>
+    </div>
+
+    <!-- â•â•â• GÄ°DEN FATURALAR â•â•â• -->
+    <div id="pnl-giden" style="display:none">
+      <div class="card mb-16">
+        <div class="card-title mb-12">Giden Fatura Ekle</div>
+        <div class="upload-zone" id="upload-giden"
+             onclick="document.getElementById('dosya-giden').click()"
+             ondragover="event.preventDefault();this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files,'giden_fatura')">
+          <div class="upload-icon">ğŸ“„</div>
+          <div class="upload-text">PDF veya HTML fatura yÃ¼kleyin</div>
+          <div class="upload-sub">SÃ¼rÃ¼kle-BÄ±rak (Toplu GÃ¶nderilebilir) Â· AI ile otomatik okuma</div>
+        </div>
+        <input type="file" id="dosya-giden" accept=".pdf,.html,.htm" multiple style="display:none"
+               onchange="dosyaIsle(this.files,'giden_fatura')">
+        <div id="ai-status-giden" style="display:none"></div>
+
+        <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center">â”€â”€â”€ veya manuel giriÅŸ â”€â”€â”€</div>
+        <div class="form-inline" style="margin-top:10px">
+          <div class="form-group"><label class="form-label">MÃ¼ÅŸteri / Firma</label>
+            <input class="form-input" id="giden-cari" placeholder="MÃ¼ÅŸteri adÄ±"></div>
+          <div class="form-group"><label class="form-label">Fatura No</label>
+            <input class="form-input" id="giden-no" placeholder="Belge No"></div>
+          <div class="form-group"><label class="form-label">Tarih</label>
+            <input class="form-input" type="date" id="giden-tarih"></div>
+        </div>
+        <div class="form-inline">
+          <div class="form-group"><label class="form-label">Tutar (KDV HariÃ§)</label>
+            <input class="form-input" type="number" inputmode="decimal" id="giden-tutar" placeholder="0.00" step="0.01" oninput="kdvHesapla('giden')"></div>
+          <div class="form-group"><label class="form-label">KDV OranÄ± (%)</label>
+            <select class="form-select" id="giden-kdv-oran" onchange="kdvHesapla('giden')">
+              <option value="20">%20</option><option value="10">%10</option>
+              <option value="1">%1</option><option value="0">%0</option>
+            </select></div>
+          <div class="form-group"><label class="form-label">KDV TutarÄ±</label>
+            <input class="form-input" type="number" inputmode="decimal" id="giden-kdv" placeholder="0.00" step="0.01" readonly style="opacity:.7"></div>
+        </div>
+        <div class="form-group"><label class="form-label">AÃ§Ä±klama</label>
+          <input class="form-input" id="giden-aciklama" placeholder="Fatura aÃ§Ä±klamasÄ±"></div>
+        <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('giden_fatura')">âœ“ Giden Fatura Kaydet</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Giden Faturalar</div>
+          <span id="giden-sayi" style="font-size:12px;color:var(--t3)"></span></div>
+        <div id="liste-giden"></div>
+      </div>
+    </div>
+
+    <!-- â•â•â• MASRAFLAR â•â•â• -->
+    <div id="pnl-masraf" style="display:none">
+      <div class="card mb-16">
+        <div class="card-title mb-12">Masraf Ekle</div>
+        <div class="upload-zone" id="upload-masraf"
+             onclick="document.getElementById('dosya-masraf').click()"
+             ondragover="event.preventDefault();this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files,'masraf')">
+          <div class="upload-icon">ğŸ§¾</div>
+          <div class="upload-text">Masraf fiÅŸi / faturasÄ± yÃ¼kleyin</div>
+          <div class="upload-sub">SÃ¼rÃ¼kle-BÄ±rak (Toplu GÃ¶nderilebilir) Â· AI ile otomatik okuma</div>
+        </div>
+        <input type="file" id="dosya-masraf" accept=".pdf,.html,.htm" multiple style="display:none"
+               onchange="dosyaIsle(this.files,'masraf')">
+        <div id="ai-status-masraf" style="display:none"></div>
+
+        <div style="margin-top:14px;font-size:11px;color:var(--t3);text-align:center">â”€â”€â”€ veya manuel giriÅŸ â”€â”€â”€</div>
+        <div class="form-inline" style="margin-top:10px">
+          <div class="form-group"><label class="form-label">Masraf Kalemi</label>
+            <input class="form-input" id="masraf-cari" placeholder="Kira, elektrik vb."></div>
+          <div class="form-group"><label class="form-label">Belge No</label>
+            <input class="form-input" id="masraf-no" placeholder="FiÅŸ/Fatura No"></div>
+          <div class="form-group"><label class="form-label">Tarih</label>
+            <input class="form-input" type="date" id="masraf-tarih"></div>
+        </div>
+        <div class="form-inline">
+          <div class="form-group"><label class="form-label">Tutar (KDV HariÃ§)</label>
+            <input class="form-input" type="number" inputmode="decimal" id="masraf-tutar" placeholder="0.00" step="0.01" oninput="kdvHesapla('masraf')"></div>
+          <div class="form-group"><label class="form-label">KDV OranÄ± (%)</label>
+            <select class="form-select" id="masraf-kdv-oran" onchange="kdvHesapla('masraf')">
+              <option value="20">%20</option><option value="10">%10</option>
+              <option value="1">%1</option><option value="0">%0</option>
+            </select></div>
+          <div class="form-group"><label class="form-label">KDV TutarÄ±</label>
+            <input class="form-input" type="number" inputmode="decimal" id="masraf-kdv" placeholder="0.00" step="0.01" readonly style="opacity:.7"></div>
+        </div>
+        <div class="form-group"><label class="form-label">AÃ§Ä±klama</label>
+          <input class="form-input" id="masraf-aciklama" placeholder="Masraf aÃ§Ä±klamasÄ±"></div>
+        <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('masraf')">âœ“ Masraf Kaydet</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Masraflar</div>
+          <span id="masraf-sayi" style="font-size:12px;color:var(--t3)"></span></div>
+        <div id="liste-masraf"></div>
+      </div>
+    </div>
+
+    <!-- â•â•â• RAPORLAR â•â•â• -->
+    <div id="pnl-rapor" style="display:none">
+      <div class="form-inline mb-16">
+        <div class="form-group">
+          <label class="form-label">DÃ¶nem</label>
+          <select class="form-select" id="rapor-donem" onchange="renderRapor()">
+            <option value="ay">Bu Ay</option>
+            <option value="yil">Bu YÄ±l</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ay / YÄ±l SeÃ§imi</label>
+          <input class="form-input" type="month" id="rapor-ay" onchange="renderRapor()">
+        </div>
+      </div>
+
+      <!-- Genel Ã–zet -->
+      <div class="rapor-card" id="rapor-ozet"></div>
+
+      <!-- KDV Raporu -->
+      <div class="rapor-card" id="rapor-kdv"></div>
+
+      <!-- Gelir Vergisi -->
+      <div class="rapor-card" id="rapor-vergi"></div>
+    </div>
+
+    <!-- â•â•â• TRENDYOL Ã–DEMELERÄ° â•â•â• -->
+    <div id="pnl-trendyol" style="display:none">
+      
+      <!-- Ana Ã–zet KartÄ± -->
+      <div class="payout-grad-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="payout-grad-lbl">Gelecek Toplam HakediÅŸ</div>
+            <div class="payout-grad-val" id="ty-ozet-toplam">0â‚º</div>
+          </div>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);border:none;color:#fff" onclick="tyOdemeleriCek()">ğŸ”„ GÃ¼ncelle</button>
+        </div>
+        <div style="display:flex;gap:20px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15)">
+          <div>
+            <div style="font-size:11px;opacity:0.8">BU HAFTA</div>
+            <div style="font-size:18px;font-weight:700" id="ty-ozet-yakin">0â‚º</div>
+          </div>
+          <div>
+            <div style="font-size:11px;opacity:0.8">NETLEÅEN (Ã–DENEN)</div>
+            <div style="font-size:18px;font-weight:700" id="ty-ozet-odenen">0â‚º</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grafik AlanÄ± -->
+      <div class="card mb-16">
+        <div class="card-title" style="font-size:12px;opacity:0.7">Ã–DEME DAÄILIMI (15 GÃœNLÃœK)</div>
+        <div class="payout-chart" id="ty-payout-chart">
+          <!-- Barlar JS ile gelecek -->
+        </div>
+      </div>
+
+      <!-- Liste -->
+      <div id="ty-odeme-liste">
+        <div style="text-align:center;padding:40px;color:var(--t4);font-size:13px">
+          Veriler yÃ¼kleniyor...
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="./dashboard.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg><span class="nav-label">Panel</span></a>
+    <a class="nav-item" href="./fiyatlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg><span class="nav-label">Katalog</span></a>
+    <a class="nav-item" href="./satis-giris.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6"/></svg><span class="nav-label">SatÄ±ÅŸ</span></a>
+    <a class="nav-item" href="./stok.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg><span class="nav-label">Stok</span></a>
+    <a class="nav-item active" href="./finans.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg><span class="nav-label">Finans</span></a>
+    <a class="nav-item" href="./rapor.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="nav-label">Rapor</span></a>
+    <a class="nav-item" href="./ayarlar.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="nav-label">Ayarlar</span></a>
+  </nav>
+</div>
+
+<div class="toast-container" id="toastCont"></div>
+
+<script type="module">
+import { auth, faturalarDB, ayarlarDB, satislarDB, hesapla, sbStorageUpload } from './state.js';
+if(!auth.oturum()?.token) window.location.href='./index.html';
+
+const ayarlar = ayarlarDB.oku();
+const bugunStr = new Date().toISOString().slice(0,10);
+const buAy = bugunStr.slice(0,7);
+const buYil = bugunStr.slice(0,4);
+const p = n => (+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'â‚º';
+const pInt = n => (+n).toLocaleString('tr-TR',{minimumFractionDigits:0,maximumFractionDigits:0})+'â‚º';
+
+// Tarih varsayÄ±lanlarÄ±
+['gelen-tarih','giden-tarih','masraf-tarih'].forEach(id=>{
+  const el=document.getElementById(id); if(el) el.value=bugunStr;
+});
+document.getElementById('rapor-ay').value = buAy;
+
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ SEKME YÃ–NETÄ°MÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+const sekmeler = ['gelen','giden','masraf','rapor','trendyol'];
+window.sekme = s => {
+  sekmeler.forEach((id,i) => {
+    const el = document.getElementById('pnl-'+id);
+    if(el) el.style.display = s===id ? '' : 'none';
+    document.querySelectorAll('.fin-tab')[i]?.classList.toggle('active', s===id);
+  });
+  if(s==='rapor') renderRapor();
+  if(s==='trendyol') tyOdemeleriCek();
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ KDV OTOMATÄ°K HESAPLAMA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+window.kdvHesapla = (prefix) => {
+  const tutar = +document.getElementById(prefix+'-tutar').value || 0;
+  const oran = +document.getElementById(prefix+'-kdv-oran').value || 0;
+  document.getElementById(prefix+'-kdv').value = (tutar * oran / 100).toFixed(2);
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ CLAUDE AI Ä°LE FATURA OKUMA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+async function claudeOku(base64Data, mimeType, tip) {
+  const apiKey = ayarlarDB.oku().claudeApiKey;
+  if (!apiKey) {
+    toast('Ayarlar > Claude API AnahtarÄ± gerekli', 'error');
+    return null;
+  }
+
+  const tipKisa = tip.replace('_fatura','');
+  const statusEl = document.getElementById('ai-status-' + tipKisa);
+  statusEl.style.display = '';
+  statusEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div>AI faturayÄ± okuyorâ€¦</div>';
+
+  try {
+    const isGiden = tip === 'giden_fatura';
+    
+    let basePrompt;
+    if (isGiden) {
+      basePrompt = `GÃ¶rev: GÄ°DEN SATIÅ FATURASI okumak. (Senin gÃ¶revin MÃœÅTERÄ°YÄ° bulmak)
+DÃ–NÃœÅ ÅABLONU (Sadece JSON):
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"","aciklama":""}
+
+KURALLAR:
+1) FaturayÄ± dÃ¼zenleyen kiÅŸi "Damla Ã–ztÃ¼rk" olabilir. KESÄ°NLÄ°KLE cari_adi kÄ±smÄ±na "Damla Ã–ztÃ¼rk" YAZILMAYACAK.
+2) FaturanÄ±n MÃœÅTERÄ°SÄ° (AlÄ±cÄ±sÄ±) aranacak. Faturadaki "SAYIN", "SAYIN:" veya "MÃ¼ÅŸteri VKN:" yazÄ±sÄ±nÄ±n hemen altÄ±ndaki/yanÄ±ndaki ismi bul.
+3) cari_adi alanÄ±na SADECE bu mÃ¼ÅŸterinin adÄ±nÄ± yaz (Ã–rnek: Murat Kaya, Ahmet YÄ±lmaz vb).
+4) fatura_no: GIB, EAA, DCA, DDA veya benzeri belge numarasÄ±.
+5) Ã‡OK Ã–NEMLÄ° - tutar: "Ã–DENECEK TUTAR" veya "Toplam Tutar (KDV Dahil)" deÄŸerini yaz. EÄŸer faturada "Ã–denecek Tutar" aÃ§Ä±kÃ§a yazÄ±yorsa O DEÄERÄ° AL. Bu KDV DAHÄ°L nihai toplamÄ±dÄ±r, "Mal/Hizmet Toplam TutarÄ±" DEÄÄ°LDÄ°R.
+6) kdv_tutari: Faturadaki "Hesaplanan KDV" veya "KDV TutarÄ±" alanÄ±ndaki deÄŸer.`;
+    } else {
+      basePrompt = `GÃ¶rev: ALIÅ / MASRAF FATURASI okumak. (Senin gÃ¶revin SATICIYI/TEDARÄ°KÃ‡Ä°YÄ° bulmak)
+DÃ–NÃœÅ ÅABLONU (Sadece JSON):
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"","aciklama":""}
+
+KURALLAR:
+1) FaturanÄ±n ALICISI (mÃ¼ÅŸterisi) "Damla Ã–ztÃ¼rk" olabilir. KESÄ°NLÄ°KLE cari_adi kÄ±smÄ±na "Damla Ã–ztÃ¼rk" veya "SAYIN" kÄ±smÄ±ndakileri YAZMA.
+2) FaturayÄ± BÄ°ZE KESEN firma (SatÄ±cÄ±) aranacak. Genellikle sayfanÄ±n sol en Ã¼stÃ¼nde, kalÄ±n bÃ¼yÃ¼k harflerle yazan, adresi/tel/Mersis nosu olan ANA ÅÄ°RKET adÄ±dÄ±r (Ã–rn: MOON GLOBAL, DSM GRUP vb).
+3) cari_adi alanÄ±na SADECE faturayÄ± dÃ¼zenleyen (parayÄ± alan) satÄ±cÄ± firmanÄ±n/kiÅŸinin adÄ±nÄ± yaz.
+4) fatura_no: Belge numarasÄ± (DCA, DDA, GIB, EAA vb ile baÅŸlayabilir).
+5) Ã‡OK Ã–NEMLÄ° - tutar: "Ã–DENECEK TUTAR" veya "Toplam Tutar (KDV Dahil)" deÄŸerini yaz. EÄŸer faturada "Ã–denecek Tutar" aÃ§Ä±kÃ§a yazÄ±yorsa O DEÄERÄ° AL. Bu KDV DAHÄ°L nihai toplamÄ±dÄ±r, "Mal/Hizmet Toplam TutarÄ±" DEÄÄ°LDÄ°R.
+6) kdv_tutari: Faturadaki "Hesaplanan KDV" veya "KDV TutarÄ±" alanÄ±ndaki deÄŸer.`;
+    }
+
+    let content;
+    if (mimeType === 'application/pdf') {
+      content = [{
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: base64Data }
+      }, {
+        type: 'text',
+        text: basePrompt
+      }];
+    } else {
+      const text = atob(base64Data);
+      content = [{
+        type: 'text',
+        text: `${basePrompt}\n\nFatura HTML Metni:\n${text.substring(0, 15000)}`
+      }];
+    }
+
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content }]
+      })
+    });
+
+    if (!r.ok) {
+      const err = await r.text();
+      throw new Error(err);
+    }
+
+    const data = await r.json();
+    const text = data.content?.[0]?.text || '';
+    // JSON parse â€” pozisyon bul
+    const jsonMatch = text.match(/\{[\s\S]*?\}/);
+    if (!jsonMatch) throw new Error('AI cevabÄ±ndan JSON Ã§Ä±karÄ±lamadÄ±');
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    statusEl.innerHTML = '<div class="ai-loading" style="color:var(--green)">âœ… AI baÅŸarÄ±yla okudu!</div>';
+    setTimeout(() => statusEl.style.display = 'none', 3000);
+    return parsed;
+  } catch (e) {
+    console.error('Claude AI hata:', e);
+    statusEl.innerHTML = `<div class="ai-loading" style="color:var(--red)">âŒ AI okuma hatasÄ±: ${e.message?.substring(0,80)}</div>`;
+    return null;
+  }
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ DOSYA Ä°ÅLEME (PDF/HTML â†’ AI â†’ Form Doldurma veya Toplu KayÄ±t) 
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+window.dosyaIsle = async (files, tip) => {
+  if (!files || files.length === 0) return;
+  const dosyaListesi = Array.from(files);
+  const prefix = tip.replace('_fatura','');
+  const statusEl = document.getElementById('ai-status-' + prefix);
+  
+  statusEl.style.display = '';
+  statusEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div>AI HazÄ±rlanÄ±yor... (${dosyaListesi.length} dosya iÅŸlenecek)</div>`;
+
+  for (let i = 0; i < dosyaListesi.length; i++) {
+    const file = dosyaListesi[i];
+    statusEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div>AI Ä°ÅŸliyor (${i+1}/${dosyaListesi.length}): ${file.name}</div>`;
+    
+    try {
+      // 1. Dosya okuma iÅŸlemi
+      const base64Data = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result.split(',')[1]);
+        reader.readAsDataURL(file);
+      });
+      
+      const mimeType = file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'text/html');
+      
+      // 2. Storage YÃ¼kleme (dosya adÄ±ndaki TÃ¼rkÃ§e/Ã¶zel karakterleri temizle)
+      let dosyaUrl = null;
+      try {
+        const temizAd = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const dosyaAdi = `${tip}/${Date.now()}_${temizAd}`;
+        dosyaUrl = await sbStorageUpload('faturalar', dosyaAdi, file);
+        if (!dosyaUrl) console.warn('Storage URL null dÃ¶ndÃ¼, dosya:', file.name, 'tip:', file.type);
+      } catch(e) { console.warn('Storage yÃ¼kleme atlandÄ±:', e.message); }
+
+      // 3. AI ile Anlama
+      const sonuc = await claudeOku(base64Data, mimeType, tip);
+      
+      if (sonuc) {
+        // Formu doldur ve eÄŸer Ã§oklu iÅŸlemse veya baÅŸarÄ±lÄ± okunduysa oto-kaydet!
+        // (EÄŸer kullanÄ±cÄ±nÄ±n hata dÃ¼zeltmesi istenecekse 1'li iÅŸlemlerde kaydedilmeyebilir ama en ÅŸÄ±kkÄ± oto-kayÄ±ttÄ±r)
+        const fNo = (sonuc.fatura_no || '').trim();
+        let mukerrer = false;
+
+        if (fNo) {
+          mukerrer = faturalarDB.hepsini().find(f => f.tip === tip && f.faturaNo && f.faturaNo.toLowerCase() === fNo.toLowerCase());
+        } else if (sonuc.tutar && sonuc.tarih) {
+          // EÄŸer fatura numarasÄ± yoksa; tarih, tutar ve tip tamamen aynÄ±ysa mÃ¼kerrer sayalÄ±m.
+          mukerrer = faturalarDB.hepsini().find(f => 
+             f.tip === tip && 
+             f.tarih === sonuc.tarih && 
+             Math.abs((Number(f.tutar)||0) - (Number(sonuc.tutar)||0)) < 0.01
+          );
+        }
+        
+        if (mukerrer) {
+           console.warn('MÃ¼kerrer olduÄŸu iÃ§in atlandÄ±:', file.name);
+           toast(`AtlandÄ±: ${fNo || sonuc.tutar + 'â‚º' } zaten kayÄ±tlÄ±`, 'error');
+        } else if(sonuc.tutar && sonuc.tarih) {
+           faturalarDB.ekle({
+             tip, 
+             tarih: sonuc.tarih, 
+             faturaNo: fNo, 
+             tutar: Number(sonuc.tutar) || 0,
+             kdvTutari: Number(sonuc.kdv_tutari) || 0,
+             kdvOrani: Number(sonuc.kdv_orani) || (sonuc.kdv_tutari ? 0 : 20),
+             cariAdi: sonuc.cari_adi || '',
+             aciklama: sonuc.aciklama || '',
+             dosyaUrl: dosyaUrl || null
+           });
+           renderListe(tip); // Listeyi anlÄ±k gÃ¼ncelle
+        } else {
+           // Eksik bilgi varsa yine de formda gÃ¶stersin (son dosya iÃ§in)
+           if (sonuc.tarih) document.getElementById(prefix+'-tarih').value = sonuc.tarih;
+           if (sonuc.fatura_no) document.getElementById(prefix+'-no').value = sonuc.fatura_no;
+           if (sonuc.tutar) document.getElementById(prefix+'-tutar').value = sonuc.tutar;
+           if (sonuc.kdv_orani != null) document.getElementById(prefix+'-kdv-oran').value = sonuc.kdv_orani;
+           if (sonuc.kdv_tutari != null) document.getElementById(prefix+'-kdv').value = (+sonuc.kdv_tutari).toFixed(2);
+           if (sonuc.cari_adi) document.getElementById(prefix+'-cari').value = sonuc.cari_adi;
+           if (sonuc.aciklama) document.getElementById(prefix+'-aciklama').value = sonuc.aciklama;
+           if (dosyaUrl) document.getElementById(prefix+'-tarih').dataset.dosyaUrl = dosyaUrl;
+           console.warn('Eksik bilgi, otomatik kaydedilmedi:', file.name);
+        }
+      }
+    } catch(err) {
+      console.error(file.name + ' okunamadÄ±:', err);
+    }
+  }
+
+  statusEl.innerHTML = `<div class="ai-loading" style="color:var(--green)">âœ… Ä°ÅŸlem tamamlandÄ±! (${dosyaListesi.length} dosya)</div>`;
+  setTimeout(() => statusEl.style.display = 'none', 3000);
+  toast('Toplu fatura yÃ¼klemesi tamamlandÄ±', 'success');
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ MEVCUT FATURAYA DOSYA EKLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+window.faturayadosyaEkle = async (faturaId, tip, inputEl) => {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const label = inputEl.parentElement;
+  label.textContent = 'â³ YÃ¼kleniyor...';
+  try {
+    const dosyaAdi = `${tip}/${Date.now()}_${file.name}`;
+    const url = await sbStorageUpload('faturalar', dosyaAdi, file);
+    if (url) {
+      faturalarDB.guncelle(faturaId, { dosyaUrl: url });
+      toast('âœ… Dosya eklendi!', 'success');
+      renderListe(tip);
+    } else {
+      label.textContent = 'âŒ YÃ¼kleme baÅŸarÄ±sÄ±z';
+      toast('Dosya yÃ¼klenemedi. Oturumunuzu kontrol edin.', 'error');
+    }
+  } catch(e) {
+    label.textContent = 'âŒ Hata';
+    toast('Dosya eklenirken hata: ' + e.message, 'error');
+  }
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ FATURA KAYDETME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+window.faturaKaydet = (tip) => {
+  const prefix = tip.replace('_fatura','');
+  const faturaNo = document.getElementById(prefix+'-no').value.trim();
+  const cari = document.getElementById(prefix+'-cari').value.trim();
+  const tarih = document.getElementById(prefix+'-tarih').value;
+  const tutar = +document.getElementById(prefix+'-tutar').value || 0;
+  const kdvOran = +document.getElementById(prefix+'-kdv-oran').value || 0;
+  const kdvTutar = +document.getElementById(prefix+'-kdv').value || 0;
+  const aciklama = document.getElementById(prefix+'-aciklama').value.trim();
+  const dosyaUrl = document.getElementById(prefix+'-tarih').dataset.dosyaUrl || null;
+
+  if (!tutar) { toast('Tutar girin', 'error'); return; }
+  if (!tarih) { toast('Tarih girin', 'error'); return; }
+
+  if (faturaNo) {
+    const mukerrer = faturalarDB.hepsini().find(f => f.faturaNo && f.faturaNo.toLowerCase() === faturaNo.toLowerCase());
+    if (mukerrer) { 
+      toast('Bu fatura no zaten kayÄ±tlÄ±!', 'error'); 
+      return; 
+    }
+  }
+
+  faturalarDB.ekle({
+    tip, tarih, faturaNo, tutar, kdvTutari: kdvTutar, kdvOrani: kdvOran,
+    cariAdi: cari, aciklama, dosyaUrl
+  });
+
+  // Formu temizle
+  document.getElementById(prefix+'-no').value = '';
+  document.getElementById(prefix+'-cari').value = '';
+  document.getElementById(prefix+'-tutar').value = '';
+  document.getElementById(prefix+'-kdv').value = '';
+  document.getElementById(prefix+'-aciklama').value = '';
+  document.getElementById(prefix+'-tarih').value = bugunStr;
+  delete document.getElementById(prefix+'-tarih').dataset.dosyaUrl;
+
+  renderListe(tip);
+  toast(`${tip==='masraf'?'Masraf':'Fatura'} kaydedildi`, 'success');
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ FATURA LÄ°STESÄ° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+function renderListe(tip) {
+  const ayAdlari = ['Ocak','Åubat','Mart','Nisan','MayÄ±s','Haziran','Temmuz','AÄŸustos','EylÃ¼l','Ekim','KasÄ±m','AralÄ±k'];
+  const prefix = tip.replace('_fatura','');
+  const faturalar = faturalarDB.tipGore(tip).sort((a,b) => b.tarih?.localeCompare(a.tarih));
+  const listeEl = document.getElementById('liste-'+prefix);
+  const sayiEl = document.getElementById(prefix+'-sayi');
+  sayiEl.textContent = faturalar.length + ' kayÄ±t';
+
+  if (!faturalar.length) {
+    listeEl.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px;font-size:13px">HenÃ¼z kayÄ±t yok</div>';
+    return;
+  }
+
+  // Aya gÃ¶re grupla
+  const gruplar = {};
+  faturalar.forEach(f => {
+    const ayKey = f.tarih?.slice(0,7) || 'Bilinmiyor';
+    if (!gruplar[ayKey]) gruplar[ayKey] = [];
+    gruplar[ayKey].push(f);
+  });
+
+  const ikonCls = tip==='gelen_fatura' ? 'gelen' : tip==='giden_fatura' ? 'giden' : 'masraf';
+  const ikonEmoji = tip==='gelen_fatura' ? 'ğŸ“¥' : tip==='giden_fatura' ? 'ğŸ“¤' : 'ğŸ§¾';
+
+  let html = '';
+  Object.keys(gruplar).forEach(ayKey => {
+    const ayFaturalar = gruplar[ayKey];
+    // Ay baÅŸlÄ±ÄŸÄ±
+    const [yil, ay] = ayKey.split('-');
+    const ayLabel = ayAdlari[parseInt(ay)-1] || ayKey;
+    const ayToplam = ayFaturalar.reduce((t,f) => t + (f.tutar||0), 0);
+    html += `<div style="padding:12px 0 6px 0;margin-top:8px;border-bottom:2px solid var(--accent);display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-weight:700;font-size:14px;color:var(--t1)">${ayLabel} ${yil}</span>
+      <span style="font-size:12px;color:var(--t3)">${ayFaturalar.length} kayÄ±t Â· ${p(ayToplam)}</span>
+    </div>`;
+    
+    ayFaturalar.forEach(f => {
+      html += `
+      <div class="fatura-row">
+        <div class="fatura-ikon ${ikonCls}">${ikonEmoji}</div>
+        <div class="fatura-bilgi">
+          <div class="fatura-ad">${f.cariAdi || f.aciklama || 'Fatura'}${f.faturaNo ? ` <span style="color:var(--t3);font-weight:normal;font-size:11px">(${f.faturaNo})</span>` : ''}</div>
+          <div class="fatura-meta">${f.tarih} Â· ${f.aciklama||''} 
+            ${f.dosyaUrl && f.dosyaUrl.startsWith('https://')
+              ? `<a href="${f.dosyaUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration:none;font-size:14px;padding:2px 4px;background:var(--bg);border-radius:4px" title="FaturayÄ± / FiÅŸi GÃ¶rÃ¼ntÃ¼le">ğŸ“</a>`
+              : `<label title="Bu faturaya dosya ekle" style="cursor:pointer;font-size:11px;color:var(--accent);padding:2px 6px;border:1px dashed var(--accent);border-radius:4px">
+                  + Dosya Ekle
+                  <input type="file" accept=".pdf,.html,.htm,image/*" style="display:none" onchange="faturayadosyaEkle('${f.id}','${tip}',this)">
+                 </label>`
+            }
+          </div>
+        </div>
+        <div class="fatura-tutar">
+          <div class="fatura-tutar-ana">${p(f.tutar)}</div>
+          <div class="fatura-tutar-kdv">KDV: ${p(f.kdvTutari||0)}</div>
+        </div>
+        <button onclick="faturaSil('${f.id}','${tip}')" style="background:var(--red-l);border:none;border-radius:6px;color:var(--red);font-size:12px;padding:4px 8px;cursor:pointer;flex-shrink:0">âœ•</button>
+      </div>`;
+    });
+  });
+  listeEl.innerHTML = html;
+}
+
+window.faturaSil = (id, tip) => {
+  if (!confirm('Bu kaydÄ± silmek istediÄŸinize emin misiniz?')) return;
+  faturalarDB.sil(id);
+  renderListe(tip);
+  toast('KayÄ±t silindi', 'success');
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ FÄ°NANSAL RAPOR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+window.renderRapor = () => {
+  const donem = document.getElementById('rapor-donem').value;
+  const secAy = document.getElementById('rapor-ay').value;
+  
+  let faturalar;
+  let donemLabel;
+  
+  if (donem === 'yil') {
+    const yil = secAy.slice(0,4);
+    faturalar = faturalarDB.hepsini().filter(f => f.tarih?.startsWith(yil));
+    donemLabel = yil + ' YÄ±lÄ±';
+  } else {
+    faturalar = faturalarDB.ayGore(secAy);
+    donemLabel = secAy;
+  }
+
+  // Toplam hesapla
+  let gelenTutar=0, gelenKdv=0, gidenTutar=0, gidenKdv=0, masrafTutar=0, masrafKdv=0;
+  faturalar.forEach(f => {
+    if (f.tip==='gelen_fatura')      { gelenTutar += f.tutar||0; gelenKdv += f.kdvTutari||0; }
+    else if (f.tip==='giden_fatura') { gidenTutar += f.tutar||0; gidenKdv += f.kdvTutari||0; }
+    else if (f.tip==='masraf')       { masrafTutar += f.tutar||0; masrafKdv += f.kdvTutari||0; }
+  });
+
+  const toplamGider = gelenTutar + masrafTutar;
+  const toplamGiderKdv = gelenKdv + masrafKdv;
+  const donemKar = gidenTutar - toplamGider;
+  const kdvFarki = gidenKdv - toplamGiderKdv; // Pozitif = Verecek, Negatif = Devreden
+  
+  // Genel Ã–zet
+  document.getElementById('rapor-ozet').innerHTML = `
+    <div class="rapor-card-title">ğŸ“Š Finansal Ã–zet â€” ${donemLabel}</div>
+    <div class="rapor-row"><span class="rapor-lbl">ğŸ“¤ Giden Fatura (Gelir)</span><span class="rapor-val" style="color:var(--green)">${p(gidenTutar)}</span></div>
+    <div class="rapor-row"><span class="rapor-lbl">ğŸ“¥ Gelen Fatura (AlÄ±ÅŸ)</span><span class="rapor-val" style="color:var(--red)">-${p(gelenTutar)}</span></div>
+    <div class="rapor-row"><span class="rapor-lbl">ğŸ§¾ Masraflar</span><span class="rapor-val" style="color:var(--red)">-${p(masrafTutar)}</span></div>
+    <div style="height:1px;background:var(--border);margin:6px 0"></div>
+    <div class="rapor-row"><span class="rapor-lbl" style="font-weight:700">DÃ¶nem KarÄ± / ZararÄ±</span><span class="rapor-val" style="color:${donemKar>=0?'var(--green)':'var(--red)'};font-size:18px">${donemKar>=0?'':'-'}${p(Math.abs(donemKar))}</span></div>
+  `;
+
+  // KDV Raporu
+  const kdvDurum = kdvFarki > 0 ? 'Ã–denecek KDV' : 'Devreden KDV';
+  const kdvRenk = kdvFarki > 0 ? 'var(--red)' : 'var(--green)';
+  document.getElementById('rapor-kdv').innerHTML = `
+    <div class="rapor-card-title">ğŸ›ï¸ KDV Raporu â€” ${donemLabel}</div>
+    <div class="rapor-row"><span class="rapor-lbl">Hesaplanan KDV (SatÄ±ÅŸ)</span><span class="rapor-val">${p(gidenKdv)}</span></div>
+    <div class="rapor-row"><span class="rapor-lbl">Ä°ndirilecek KDV (AlÄ±ÅŸ)</span><span class="rapor-val">${p(gelenKdv)}</span></div>
+    <div class="rapor-row"><span class="rapor-lbl">Ä°ndirilecek KDV (Masraf)</span><span class="rapor-val">${p(masrafKdv)}</span></div>
+    <div style="height:1px;background:var(--border);margin:6px 0"></div>
+    <div class="rapor-row">
+      <span class="rapor-lbl" style="font-weight:700">${kdvDurum}</span>
+      <span class="rapor-val" style="color:${kdvRenk};font-size:18px">${p(Math.abs(kdvFarki))}</span>
+    </div>
+  `;
+
+  // Gelir Vergisi (yÄ±llÄ±k bazda hesapla)
+  const yil = secAy.slice(0,4);
+  const yilFaturalar = faturalarDB.hepsini().filter(f => f.tarih?.startsWith(yil));
+  let yilGiden=0, yilGelen=0, yilMasraf=0;
+  yilFaturalar.forEach(f => {
+    if (f.tip==='giden_fatura') yilGiden += f.tutar||0;
+    else if (f.tip==='gelen_fatura') yilGelen += f.tutar||0;
+    else if (f.tip==='masraf') yilMasraf += f.tutar||0;
+  });
+  const yillikKar = yilGiden - yilGelen - yilMasraf;
+  
+  const sirketTipi = ayarlarDB.oku().sirketTipi || 'sahis';
+  let vergiSonuc;
+  
+  if (sirketTipi === 'sahis') {
+    vergiSonuc = hesapla.gelirVergisi(Math.max(0, yillikKar));
+  } else {
+    vergiSonuc = hesapla.kurumlarVergisi(Math.max(0, yillikKar));
+  }
+
+  const vergiTipi = sirketTipi === 'sahis' ? 'Gelir Vergisi (ÅahÄ±s)' : 'Kurumlar Vergisi';
+  const netKar = yillikKar - vergiSonuc.vergi;
+
+  let dilimlerHTML = '';
+  if (sirketTipi === 'sahis' && vergiSonuc.dilimler?.length) {
+    const renkler = ['#10b981','#3b82f6','#8b5cf6','#f59e0b','#ef4444'];
+    const barHTML = vergiSonuc.dilimler.filter(d=>d.tabi>0).map((d,i) =>
+      `<div style="flex:${d.tabi};background:${renkler[i]||renkler[4]}" title="%${Math.round(d.oran*100)} dilim: ${pInt(d.tabi)}"></div>`
+    ).join('');
+    const detayHTML = vergiSonuc.dilimler.filter(d=>d.tabi>0).map((d,i) =>
+      `<div class="rapor-row" style="padding:4px 0">
+        <span class="rapor-lbl" style="font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${renkler[i]||renkler[4]};margin-right:6px"></span>%${Math.round(d.oran*100)} dilim (${pInt(d.baslangic)} â€” ${d.bitis===Infinity?'âˆ':pInt(d.bitis)})</span>
+        <span class="rapor-val" style="font-size:12px">${p(d.vergi)}</span></div>`
+    ).join('');
+    dilimlerHTML = `<div class="dilim-bar">${barHTML}</div>${detayHTML}`;
+  }
+
+  document.getElementById('rapor-vergi').innerHTML = `
+    <div class="rapor-card-title">ğŸ’¼ ${vergiTipi} â€” ${yil}</div>
+    <div class="rapor-row"><span class="rapor-lbl">YÄ±llÄ±k Toplam Gelir (KDV HariÃ§)</span><span class="rapor-val">${p(yilGiden)}</span></div>
+    <div class="rapor-row"><span class="rapor-lbl">YÄ±llÄ±k Toplam Gider (AlÄ±ÅŸ + Masraf)</span><span class="rapor-val" style="color:var(--red)">-${p(yilGelen + yilMasraf)}</span></div>
+    <div style="height:1px;background:var(--border);margin:6px 0"></div>
+    <div class="rapor-row"><span class="rapor-lbl" style="font-weight:600">Vergi Ã–ncesi Net Kar</span><span class="rapor-val" style="color:${yillikKar>=0?'var(--green)':'var(--red)'}">${p(yillikKar)}</span></div>
+    ${dilimlerHTML}
+    <div style="height:1px;background:var(--border);margin:6px 0"></div>
+    <div class="rapor-row"><span class="rapor-lbl" style="font-weight:700">Ã–denecek ${vergiTipi}</span><span class="rapor-val" style="color:var(--red);font-size:16px">${p(vergiSonuc.vergi)}</span></div>
+    <div class="rapor-row"><span class="rapor-lbl">Efektif Vergi OranÄ±</span><span class="rapor-val">%${(vergiSonuc.oran*100).toFixed(1)}</span></div>
+    <div style="height:1px;background:var(--border);margin:6px 0"></div>
+    <div class="rapor-row"><span class="rapor-lbl" style="font-weight:700;font-size:15px">Vergi SonrasÄ± Net Kar</span><span class="rapor-val" style="color:${netKar>=0?'var(--green)':'var(--red)'};font-size:20px">${p(netKar)}</span></div>
+  `;
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ TOAST â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+window.toast = (msg, tip='info') => {
+  const c = document.getElementById('toastCont');
+  const el = document.createElement('div');
+  el.className = 'toast ' + tip;
+  el.textContent = msg;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+};
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// â”€â”€ Ä°LK YÃœKLEME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+renderListe('gelen_fatura');
+renderListe('giden_fatura');
+renderListe('masraf');
+
+window.addEventListener('tsx_render', () => {
+  renderListe('gelen_fatura');
+  renderListe('giden_fatura');
+  renderListe('masraf');
+});
+// â”€â”€ TRENDYOL Ã–DEMELERÄ° â”€â”€
+async function tyOdemeleriCek() {
+  const ay = ayarlarDB.oku();
+  if(!ay.tySellerId || !ay.tyApiKey){
+    document.getElementById('ty-odeme-liste').innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:10px">âš ï¸ Ayarlar sayfasÄ±ndan Trendyol API bilgilerini giriniz.</div>';
+    return;
+  }
+
+  const listEl = document.getElementById('ty-odeme-liste');
+  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Trendyol verileri alÄ±nÄ±yor...</span></div>';
+
+  try {
+    const PROXY = 'https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api';
+    const res = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sellerId: ay.tySellerId,
+        apiKey: ay.tyApiKey,
+        apiSecret: ay.tyApiSecret,
+        token: ay.tyToken || '',
+        type: 'settlements',
+        size: 500,
+        startDate: Date.now() - 5 * 86400000, // Son 5 gÃ¼n
+        endDate: Date.now() + 10 * 86400000   // Gelecek 10 gÃ¼n (Toplam 15 gÃ¼n sÄ±nÄ±rÄ±)
+      })
+    });
+
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'API HatasÄ±');
+
+    const content = data.content || [];
+    if(!content.length){
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t4)">Ã–deme kaydÄ± bulunamadÄ±.</div>';
+      return;
+    }
+
+    // Grupla (paymentDate'e gÃ¶re)
+    const gruplar = {};
+    let gelecekToplam = 0;
+    let buHaftaToplam = 0;
+    const bugunMs = Date.now();
+    const birHaftaSonraMs = bugunMs + 7 * 86400000;
+
+    content.forEach(it => {
+      const pMs = it.paymentDate;
+      if(!pMs) return;
+      const d = new Date(pMs).toLocaleDateString('tr-TR');
+      if(!gruplar[d]) gruplar[d] = { toplam: 0, items: [], ms: pMs };
+      
+      const net = it.sellerRevenue ?? it.payoutAmount ?? 0;
+      gruplar[d].toplam += net;
+      gruplar[d].items.push(it);
+
+      if(pMs >= bugunMs) {
+        gelecekToplam += net;
+        if(pMs <= birHaftaSonraMs) buHaftaToplam += net;
+      }
+    });
+
+    // SÄ±rala
+    const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[b].ms - gruplar[a].ms);
+
+    let html = '';
+    sortedDates.forEach(tarih => {
+      const g = gruplar[tarih];
+      const isPast = g.ms < bugunMs;
+      html += `
+        <div class="rapor-card" style="padding:12px; margin-bottom:8px; border-left:4px solid ${isPast ? 'var(--border2)' : 'var(--green)'}">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div>
+              <div style="font-size:13px; font-weight:700">${tarih}</div>
+              <div style="font-size:10px; color:var(--t4)">${isPast ? 'Ã–dendi' : 'Beklenen Ã–deme'}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:15px; font-weight:700; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toFixed(2)}â‚º</div>
+              <div style="font-size:10px; color:var(--t4)">${g.items.length} Ä°ÅŸlem</div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    listEl.innerHTML = html;
+    document.getElementById('ty-odeme-ozet').style.display = 'flex';
+    document.getElementById('ty-ozet-toplam').textContent = gelecekToplam.toFixed(0) + 'â‚º';
+    document.getElementById('ty-ozet-yakin').textContent = buHaftaToplam.toFixed(0) + 'â‚º';
+
+  } catch (err) {
+    listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:10px">âš ï¸ Hata: ${err.message}</div>`;
+  }
+}
+
+window.tyOdemeleriCek = tyOdemeleriCek;
+
+</script>
+</body>
+</html>

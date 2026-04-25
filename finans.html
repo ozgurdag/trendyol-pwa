@@ -326,8 +326,12 @@ async function tyOdemeleriCek() {
     const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[a].ms - gruplar[b].ms);
     const maxVal = Math.max(...Object.values(gruplar).map(g => g.toplam), 1);
 
-    // DEBUG — tüm payment date grupları
-    console.log('[DEBUG-GRUPLAR]', sortedDates.map(k=>`${k}: ${gruplar[k].toplam.toFixed(0)}₺ (${gruplar[k].items.length} item, satis:${gruplar[k].satis.toFixed(0)}, kom:${gruplar[k].komisyon.toFixed(0)})`).join(' | '));
+    // DEBUG — tüm gruplar window'a aç, her grubu ayrı logla
+    window._finGruplar = gruplar;
+    sortedDates.forEach(k => {
+      const g = gruplar[k];
+      console.log(`[GRP] ${k} → ${g.toplam.toFixed(0)}₺ | items:${g.items.length} | satis:${g.satis.toFixed(0)} | kom:${g.komisyon.toFixed(0)} | kargo:${g.kargo.toFixed(0)}`);
+    });
 
     // Grafik
     const chartDates = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 14 * 86400000 && gruplar[k].ms <= bugunMs + 21 * 86400000);

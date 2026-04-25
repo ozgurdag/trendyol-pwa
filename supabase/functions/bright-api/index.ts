@@ -66,27 +66,19 @@ Deno.serve(async (req) => {
         `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/otherfinancials/settlements?${params}`,
       ];
 
+      let lastError = 'Başarısız';
       for (const candidate of urlCandidates) {
-        // Önce Bearer, sonra Basic dene
-        const attempts = bearerHeaders
-          ? [bearerHeaders, basicHeaders]
-          : [basicHeaders];
+        const attempts = bearerHeaders ? [bearerHeaders, basicHeaders] : [basicHeaders];
         for (const hdrs of attempts) {
           const r = await fetch(candidate, { headers: hdrs });
           const t2 = await r.text();
-          let d: unknown;
-          try { d = JSON.parse(t2); } catch { d = { error: t2.slice(0, 300) }; }
-          console.log(`[settlements] ${r.status} — ${candidate} — auth:${hdrs['Authorization'].slice(0,10)}`);
           if (r.ok) {
-            return new Response(JSON.stringify(d), {
-              status: 200,
-              headers: { ...CORS, 'Content-Type': 'application/json' },
-            });
+            return new Response(t2, { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
           }
+          lastError = `URL: ${candidate.split('?')[0]} | Status: ${r.status} | Msg: ${t2.slice(0, 200)}`;
         }
       }
-      // Hiçbiri çalışmadı — son denemenin yanıtını döndür
-      return new Response(JSON.stringify({ error: 'Tüm Finance API URL\'leri başarısız — Supabase loglarını kontrol edin' }), {
+      return new Response(JSON.stringify({ error: 'Finance API başarısız', detail: lastError }), {
         status: 556,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
@@ -104,20 +96,19 @@ Deno.serve(async (req) => {
         `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/otherfinancials?${params}`,
       ];
 
+      let lastError = 'Başarısız';
       for (const candidate of urlCandidates) {
-        const r = await fetch(candidate, { headers: basicHeaders });
-        const t2 = await r.text();
-        let d: any;
-        try { d = JSON.parse(t2); } catch { d = { error: t2.slice(0, 300) }; }
-        if (r.ok) {
-          return new Response(JSON.stringify(d), {
-            status: 200,
-            headers: { ...CORS, 'Content-Type': 'application/json' },
-          });
+        const attempts = bearerHeaders ? [bearerHeaders, basicHeaders] : [basicHeaders];
+        for (const hdrs of attempts) {
+          const r = await fetch(candidate, { headers: hdrs });
+          const t2 = await r.text();
+          if (r.ok) {
+            return new Response(t2, { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
+          }
+          lastError = `URL: ${candidate.split('?')[0]} | Status: ${r.status} | Msg: ${t2.slice(0, 200)}`;
         }
-        console.warn(`[otherfinancials] ${r.status} — ${candidate} — ${t2.slice(0, 100)}`);
       }
-      return new Response(JSON.stringify({ error: 'Finance API otherfinancials başarısız' }), {
+      return new Response(JSON.stringify({ error: 'Finance API otherfinancials başarısız', detail: lastError }), {
         status: 557,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
@@ -137,20 +128,19 @@ Deno.serve(async (req) => {
         `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/cargo-invoice/${invoiceSerialNumber}/items?${params}`,
       ];
 
+      let lastError = 'Başarısız';
       for (const candidate of urlCandidates) {
-        const r = await fetch(candidate, { headers: basicHeaders });
-        const t2 = await r.text();
-        let d: any;
-        try { d = JSON.parse(t2); } catch { d = { error: t2.slice(0, 300) }; }
-        if (r.ok) {
-          return new Response(JSON.stringify(d), {
-            status: 200,
-            headers: { ...CORS, 'Content-Type': 'application/json' },
-          });
+        const attempts = bearerHeaders ? [bearerHeaders, basicHeaders] : [basicHeaders];
+        for (const hdrs of attempts) {
+          const r = await fetch(candidate, { headers: hdrs });
+          const t2 = await r.text();
+          if (r.ok) {
+            return new Response(t2, { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
+          }
+          lastError = `URL: ${candidate.split('?')[0]} | Status: ${r.status} | Msg: ${t2.slice(0, 200)}`;
         }
-        console.warn(`[cargo-invoice] ${r.status} — ${candidate} — ${t2.slice(0, 100)}`);
       }
-      return new Response(JSON.stringify({ error: 'Cargo invoice API başarısız' }), {
+      return new Response(JSON.stringify({ error: 'Cargo invoice API başarısız', detail: lastError }), {
         status: 558,
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });

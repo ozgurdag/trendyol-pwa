@@ -237,16 +237,6 @@ async function tyOdemeleriCek() {
       });
       if(setRes.content) tumContent = tumContent.concat(setRes.content);
 
-      // otherfinancials — kargo ve stopaj kesintileri için
-      const othRes = await proxyCall({
-        sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
-        type: 'otherfinancials', size: 500, startDate: araliklar[i].s, endDate: araliklar[i].e
-      });
-      if(othRes.content && othRes.content.length) {
-        console.log(`[DEBUG-OTH] chunk ${i} — ${othRes.content.length} item, ilk:`, JSON.stringify(othRes.content[0]));
-        tumContent = tumContent.concat(othRes.content);
-      }
-
       if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 600));
     }
 
@@ -254,9 +244,6 @@ async function tyOdemeleriCek() {
       listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
       return;
     }
-    // DEBUG — settlements ilk item yapısı + 30/04 grubundaki itemları gör
-    console.log('[DEBUG-SET] ilk item:', JSON.stringify(tumContent[0]));
-    console.log('[DEBUG-SET] toplam item:', tumContent.length);
 
     const gruplar = {};
     const processedIds = new Set();
@@ -326,13 +313,6 @@ async function tyOdemeleriCek() {
     const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[a].ms - gruplar[b].ms);
     const maxVal = Math.max(...Object.values(gruplar).map(g => g.toplam), 1);
 
-    // DEBUG — tüm gruplar window'a aç, her grubu ayrı logla
-    window._finGruplar = gruplar;
-    sortedDates.forEach(k => {
-      const g = gruplar[k];
-      console.log(`[GRP] ${k} → ${g.toplam.toFixed(0)}₺ | items:${g.items.length} | satis:${g.satis.toFixed(0)} | kom:${g.komisyon.toFixed(0)} | kargo:${g.kargo.toFixed(0)}`);
-    });
-
     // Grafik
     const chartDates = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 14 * 86400000 && gruplar[k].ms <= bugunMs + 21 * 86400000);
     chartEl.innerHTML = chartDates.map(k => {
@@ -345,7 +325,7 @@ async function tyOdemeleriCek() {
     }).join('');
 
     // Liste render
-    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V41-CleanSum</div>' + 
+    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V42</div>' + 
       sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
         const g = gruplar[tarih];
         const isPast = g.ms < bugunMs;
@@ -356,7 +336,7 @@ async function tyOdemeleriCek() {
               <div>
                 <div style="font-size:10px; color:var(--t4); font-weight:800">BANKA ÖDEME GÜNÜ</div>
                 <div style="font-size:17px; font-weight:800">${tarih}</div>
-                <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 BEKLENEN TOPLU ÖDEME'}</div>
+                <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 TAHMİNİ ÖDEME'}</div>
               </div>
               <div style="text-align:right">
                 <div style="font-size:24px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>

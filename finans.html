@@ -183,6 +183,31 @@ window.sekme = s => {
   if(s==='trendyol') tyOdemeleriCek();
 };
 
+// ── DAYANIKLI PROXY ÇAĞRISI (RETRY LOGIC) ──
+async function proxyCall(payload, deneme = 1) {
+  const PROXY = 'https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api';
+  try {
+    const res = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      if (res.status === 503 || res.status === 500 || res.status === 429) throw new Error(`Sunucu Hatası (${res.status})`);
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Hata (${res.status})`);
+    }
+    return await res.json();
+  } catch (err) {
+    if (deneme < 3) {
+      console.warn(`Bağlantı hatası, tekrar deneniyor... Deneme: ${deneme}`, err.message);
+      await new Promise(r => setTimeout(r, 3000));
+      return proxyCall(payload, deneme + 1);
+    }
+    throw err;
+  }
+}
+
 // ── TRENDYOL ÖDEMELERİ (STRICT GROUPING & PAYOUT CYCLE) ──
 async function tyOdemeleriCek() {
   const ay = ayarlarDB.oku();
@@ -191,7 +216,6 @@ async function tyOdemeleriCek() {
   listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Trendyol ödeme takvimi oluşturuluyor...</span></div>';
 
   try {
-    const PROXY = 'https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api';
     const startMs = new Date(new Date().getFullYear(), 0, 1).getTime();
     const endMs = Date.now() + 35 * 86400000;
     const CHUNK_SIZE = 14 * 86400000;
@@ -205,19 +229,17 @@ async function tyOdemeleriCek() {
     for(let i=0; i < araliklar.length; i++) {
       const p = Math.round(((i+1)/araliklar.length)*100);
       listEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>Takvim Hesaplanıyor %${p}</span></div>`;
-      const res = await fetch(PROXY, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
-          type: 'settlements', size: 500,
-          startDate: araliklar[i].s, endDate: araliklar[i].e
-        })
+      
+      const data = await proxyCall({
+        sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
+        type: 'settlements', size: 500,
+        startDate: araliklar[i].s, endDate: araliklar[i].e
       });
-      const data = await res.json();
+      
       if(data.content) tumContent = tumContent.concat(data.content);
-      if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 300));
+      if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 600)); // Daha güvenli hız
     }
+    // ... (rest of the processing logic remains same)
 
     if(!tumContent.length){
       listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';

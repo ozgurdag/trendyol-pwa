@@ -59,6 +59,7 @@
       <div class="fin-tab" onclick="sekme('giden')">📤 Giden Faturalar</div>
       <div class="fin-tab" onclick="sekme('masraf')">🧾 Masraflar</div>
       <div class="fin-tab" onclick="sekme('rapor')">📊 Raporlar</div>
+      <div class="fin-tab" onclick="sekme('trendyol')" id="tab-ty-payout">🗓️ Trendyol Ödemeleri</div>
     </div>
 
     <!-- ═══ GELEN FATURALAR ═══ -->
@@ -231,6 +232,31 @@
       <div class="rapor-card" id="rapor-vergi"></div>
     </div>
 
+    <!-- ═══ TRENDYOL ÖDEMELERİ ═══ -->
+    <div id="pnl-trendyol" style="display:none">
+      <div class="card mb-16">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="card-title">Ödeme Takvimi (Payouts)</div>
+          <button class="btn btn-secondary btn-sm" onclick="tyOdemeleriCek()">🔄 Güncelle</button>
+        </div>
+        <div id="ty-odeme-ozet" class="stat-row" style="display:none;margin-bottom:16px">
+          <div class="stat-box">
+            <div class="val" id="ty-ozet-toplam" style="font-size:18px">0₺</div>
+            <div class="lbl">Gelecek Toplam</div>
+          </div>
+          <div class="stat-box">
+            <div class="val" id="ty-ozet-yakin" style="font-size:18px;color:var(--green)">0₺</div>
+            <div class="lbl">Bu Hafta</div>
+          </div>
+        </div>
+        <div id="ty-odeme-liste">
+          <div style="text-align:center;padding:20px;color:var(--t4);font-size:13px">
+            Verileri çekmek için "Güncelle" butonuna basın.
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <nav class="bottom-nav">
@@ -267,13 +293,15 @@ document.getElementById('rapor-ay').value = buAy;
 // ═══════════════════════════════════════════════════════════════
 // ── SEKME YÖNETİMİ ──────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════
-const sekmeler = ['gelen','giden','masraf','rapor'];
+const sekmeler = ['gelen','giden','masraf','rapor','trendyol'];
 window.sekme = s => {
   sekmeler.forEach((id,i) => {
-    document.getElementById('pnl-'+id).style.display = s===id ? '' : 'none';
+    const el = document.getElementById('pnl-'+id);
+    if(el) el.style.display = s===id ? '' : 'none';
     document.querySelectorAll('.fin-tab')[i]?.classList.toggle('active', s===id);
   });
   if(s==='rapor') renderRapor();
+  if(s==='trendyol') tyOdemeleriCek();
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -752,6 +780,101 @@ window.addEventListener('tsx_render', () => {
   renderListe('giden_fatura');
   renderListe('masraf');
 });
+// ── TRENDYOL ÖDEMELERİ ──
+async function tyOdemeleriCek() {
+  const ay = ayarlarDB.oku();
+  if(!ay.tySellerId || !ay.tyApiKey){
+    document.getElementById('ty-odeme-liste').innerHTML = '<div style="color:var(--red);font-size:12px;text-align:center;padding:10px">⚠️ Ayarlar sayfasından Trendyol API bilgilerini giriniz.</div>';
+    return;
+  }
+
+  const listEl = document.getElementById('ty-odeme-liste');
+  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Trendyol verileri alınıyor...</span></div>';
+
+  try {
+    const PROXY = 'https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api';
+    const res = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sellerId: ay.tySellerId,
+        apiKey: ay.tyApiKey,
+        apiSecret: ay.tyApiSecret,
+        token: ay.tyToken || '',
+        type: 'settlements',
+        size: 500,
+        startDate: Date.now() - 30 * 86400000, // Son 30 gün ve gelecekler
+        endDate: Date.now() + 30 * 86400000    // Gelecek 30 gün
+      })
+    });
+
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'API Hatası');
+
+    const content = data.content || [];
+    if(!content.length){
+      listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
+      return;
+    }
+
+    // Grupla (paymentDate'e göre)
+    const gruplar = {};
+    let gelecekToplam = 0;
+    let buHaftaToplam = 0;
+    const bugunMs = Date.now();
+    const birHaftaSonraMs = bugunMs + 7 * 86400000;
+
+    content.forEach(it => {
+      const pMs = it.paymentDate;
+      if(!pMs) return;
+      const d = new Date(pMs).toLocaleDateString('tr-TR');
+      if(!gruplar[d]) gruplar[d] = { toplam: 0, items: [], ms: pMs };
+      
+      const net = it.sellerRevenue ?? it.payoutAmount ?? 0;
+      gruplar[d].toplam += net;
+      gruplar[d].items.push(it);
+
+      if(pMs >= bugunMs) {
+        gelecekToplam += net;
+        if(pMs <= birHaftaSonraMs) buHaftaToplam += net;
+      }
+    });
+
+    // Sırala
+    const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[b].ms - gruplar[a].ms);
+
+    let html = '';
+    sortedDates.forEach(tarih => {
+      const g = gruplar[tarih];
+      const isPast = g.ms < bugunMs;
+      html += `
+        <div class="rapor-card" style="padding:12px; margin-bottom:8px; border-left:4px solid ${isPast ? 'var(--border2)' : 'var(--green)'}">
+          <div style="display:flex; justify-content:space-between; align-items:center">
+            <div>
+              <div style="font-size:13px; font-weight:700">${tarih}</div>
+              <div style="font-size:10px; color:var(--t4)">${isPast ? 'Ödendi' : 'Beklenen Ödeme'}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:15px; font-weight:700; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toFixed(2)}₺</div>
+              <div style="font-size:10px; color:var(--t4)">${g.items.length} İşlem</div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    listEl.innerHTML = html;
+    document.getElementById('ty-odeme-ozet').style.display = 'flex';
+    document.getElementById('ty-ozet-toplam').textContent = gelecekToplam.toFixed(0) + '₺';
+    document.getElementById('ty-ozet-yakin').textContent = buHaftaToplam.toFixed(0) + '₺';
+
+  } catch (err) {
+    listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:10px">⚠️ Hata: ${err.message}</div>`;
+  }
+}
+
+window.tyOdemeleriCek = tyOdemeleriCek;
+
 </script>
 </body>
 </html>

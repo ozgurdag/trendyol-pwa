@@ -619,7 +619,7 @@ window.verileriCek = async () => {
   const orderKargoMap = {};
   let toplamOdeme = 0;
   
-  const CHUNK_SIZE = 13 * 24 * 60 * 60 * 1000;
+  const CHUNK_SIZE = 3 * 24 * 60 * 60 * 1000;
   const chunks = [];
   for(let t = startFull; t < endFull; t += CHUNK_SIZE){
     chunks.push({ start: t, end: Math.min(t + CHUNK_SIZE - 1, endFull) });
@@ -628,13 +628,19 @@ window.verileriCek = async () => {
   try {
     for(let cIdx = 0; cIdx < chunks.length; cIdx++){
       const chunk = chunks[cIdx];
+      // Araya 2 saniye bekleme ekle (Trendyol Bot Koruması için)
+      if(cIdx > 0) {
+        durumGoster(`Bekleniyor... (Sıradaki: ${new Date(chunk.start).toLocaleDateString('tr-TR')})`);
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      
       const chunkLabel = `${new Date(chunk.start).toLocaleDateString('tr-TR')} - ${new Date(chunk.end).toLocaleDateString('tr-TR')}`;
       const chunkProgressBase = (cIdx / chunks.length) * 100;
       const chunkProgressStep = 100 / chunks.length;
       
       durumGoster(`Tarama yapılıyor: ${chunkLabel} (${cIdx+1}/${chunks.length})`);
       
-      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 13, {size:100});
+      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 3, {size:100});
       items.forEach(it=>{
         const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         toplamOdeme+=net;
@@ -648,7 +654,7 @@ window.verileriCek = async () => {
       });
       fillEl.style.width = `${chunkProgressBase + chunkProgressStep * 0.3}%`;
 
-      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 13, {size:100});
+      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 3, {size:100});
       const kargoFaturalar = dedItems.filter(it=>{
         const tip=(it.transactionType||it.description||'').toLowerCase();
         const invoiceNo = String(it.invoiceSerialNumber || it.id || '');

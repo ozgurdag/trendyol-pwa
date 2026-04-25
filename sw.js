@@ -2,7 +2,7 @@
    Offline çalışma için tüm statik dosyaları cache'ler
 ──────────────────────────────────────────────────────────────── */
 
-const CACHE_NAME = 'satis-yonetim-v18';
+const CACHE_NAME = 'satis-yonetim-v19';
 const CACHE_FILES = [
   './',
   './index.html',

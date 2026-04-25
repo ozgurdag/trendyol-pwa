@@ -638,7 +638,7 @@ window.verileriCek = async () => {
   const kargoEslesimler = [];
   let toplamOdeme = 0;
   
-  const CHUNK_SIZE = 3 * 24 * 60 * 60 * 1000;
+  const CHUNK_SIZE = 7 * 24 * 60 * 60 * 1000;
   const chunks = [];
   for(let t = startFull; t < endFull; t += CHUNK_SIZE){
     chunks.push({ start: t, end: Math.min(t + CHUNK_SIZE - 1, endFull) });
@@ -647,7 +647,6 @@ window.verileriCek = async () => {
   try {
     for(let cIdx = 0; cIdx < chunks.length; cIdx++){
       const chunk = chunks[cIdx];
-      // Araya 2 saniye bekleme ekle (Trendyol Bot Koruması için)
       if(cIdx > 0) {
         durumGoster(`Bekleniyor... (Sıradaki: ${new Date(chunk.start).toLocaleDateString('tr-TR')})`);
         await new Promise(r => setTimeout(r, 3000));
@@ -659,7 +658,7 @@ window.verileriCek = async () => {
       
       durumGoster(`Tarama yapılıyor: ${chunkLabel} (${cIdx+1}/${chunks.length})`);
       
-      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 3, {size:500});
+      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 7, {size:500});
       items.forEach(it=>{
         const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         toplamOdeme+=net;
@@ -673,7 +672,7 @@ window.verileriCek = async () => {
       });
       fillEl.style.width = `${chunkProgressBase + chunkProgressStep * 0.3}%`;
 
-      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 3, {size:500});
+      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 7, {size:500});
       const kargoFaturalar = dedItems.filter(it=>{
         const tip=(it.transactionType||it.description||'').toLowerCase();
         const invoiceNo = String(it.invoiceSerialNumber || it.id || '');

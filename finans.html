@@ -184,107 +184,91 @@ window.sekme = s => {
 };
 
 // ── TRENDYOL ÖDEMELERİ (PREMIUM BREAKDOWN) ──
+// ── TRENDYOL ÖDEMELERİ (CHUNKED FETCH) ──
 async function tyOdemeleriCek() {
   const ay = ayarlarDB.oku();
   const listEl = document.getElementById('ty-odeme-liste');
   const chartEl = document.getElementById('ty-payout-chart');
-  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Trendyol detayları hesaplanıyor...</span></div>';
+  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Parçalı veriler çekiliyor...</span></div>';
 
   try {
     const PROXY = 'https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api';
     
-    // 1. Settlements çek (Detaylı kırılım için)
-    const res = await fetch(PROXY, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
-        type: 'settlements', size: 500,
-        startDate: Date.now() - 10 * 86400000, // Son 10 gün
-        endDate: Date.now() + 30 * 86400000    // Gelecek 30 gün
-      })
-    });
+    // 42 günlük aralığı 14 günlük 3 parçaya böl (15 gün sınırına takılmamak için)
+    const araliklar = [
+      { s: Date.now() - 14 * 86400000, e: Date.now() },
+      { s: Date.now() + 1, e: Date.now() + 14 * 86400000 },
+      { s: Date.now() + 14 * 86400000 + 1, e: Date.now() + 28 * 86400000 }
+    ];
 
-    const data = await res.json();
-    const content = data.content || [];
+    let tumContent = [];
 
-    if(!content.length){
+    for(let i=0; i < araliklar.length; i++) {
+      const res = await fetch(PROXY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
+          type: 'settlements', size: 500,
+          startDate: araliklar[i].s,
+          endDate: araliklar[i].e
+        })
+      });
+      const data = await res.json();
+      if(data.content) tumContent = tumContent.concat(data.content);
+      // Rate limit yememek için araya küçük bir bekleme
+      if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 500));
+    }
+
+    if(!tumContent.length){
       listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
       return;
     }
 
-    // 2. Verileri paymentDate'e göre grupla ve kırılımları hesapla
     const gruplar = {};
-    let bakiye = 0;
-    let gelecekToplam = 0;
-    let buHaftaToplam = 0;
-    let sonOdenen = 0;
+    let gelecekToplam = 0, buHaftaToplam = 0, sonOdenen = 0;
     const bugunMs = new Date().setHours(0,0,0,0);
     const birHaftaSonraMs = bugunMs + 7 * 86400000;
 
-    content.forEach(it => {
+    tumContent.forEach(it => {
       const pMs = it.paymentDate;
       if(!pMs) return;
       const dKey = new Date(pMs).toLocaleDateString('tr-TR');
-      
       if(!gruplar[dKey]) {
-        gruplar[dKey] = { 
-          toplam: 0, 
-          satis: 0, 
-          komisyon: 0, 
-          kargo: 0, 
-          stopaj: 0, 
-          diger: 0, 
-          items: [], 
-          ms: pMs 
-        };
+        gruplar[dKey] = { toplam: 0, satis: 0, komisyon: 0, kargo: 0, stopaj: 0, diger: 0, items: [], ms: pMs };
       }
-      
       const net = it.sellerRevenue ?? it.payoutAmount ?? 0;
       const type = (it.transactionType || '').toLowerCase();
-      const desc = (it.description || '').toLowerCase();
-
       gruplar[dKey].toplam += net;
       gruplar[dKey].items.push(it);
 
-      // Kırılım Mantığı
-      if(type === 'sale' || type === 'satis') {
-        gruplar[dKey].satis += it.grossAmount || net;
-        // Eğer grossAmount yoksa ve komisyon varsa, satis = net - komisyon - kargo vb.
-      } else if(type.includes('commission') || type.includes('komisyon')) {
-        gruplar[dKey].komisyon += net;
-      } else if(type.includes('cargo') || type.includes('kargo')) {
-        gruplar[dKey].kargo += net;
-      } else if(type.includes('withholding') || type.includes('stopaj')) {
-        gruplar[dKey].stopaj += net;
-      } else {
-        gruplar[dKey].diger += net;
-      }
+      if(type === 'sale' || type === 'satis') gruplar[dKey].satis += it.grossAmount || net;
+      else if(type.includes('commission') || type.includes('komisyon')) gruplar[dKey].komisyon += net;
+      else if(type.includes('cargo') || type.includes('kargo')) gruplar[dKey].kargo += net;
+      else if(type.includes('withholding') || type.includes('stopaj')) gruplar[dKey].stopaj += net;
+      else gruplar[dKey].diger += net;
 
       if(pMs >= bugunMs) {
         gelecekToplam += net;
         if(pMs <= birHaftaSonraMs) buHaftaToplam += net;
       } else {
-        if(sonOdenen === 0) sonOdenen = net; // En son ödenen (basit mantık)
+        if(sonOdenen === 0) sonOdenen = net;
       }
     });
 
     const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[b].ms - gruplar[a].ms);
     const maxVal = Math.max(...Object.values(gruplar).map(g => g.toplam), 1);
 
-    // Grafik
     chartEl.innerHTML = Object.keys(gruplar).sort((a,b) => gruplar[a].ms - gruplar[b].ms).map(k => {
       const h = (gruplar[k].toplam / maxVal) * 100;
       const isPast = gruplar[k].ms < bugunMs;
       return `<div class="payout-bar" style="height:${Math.max(h, 10)}%; background:${isPast?'rgba(255,255,255,0.2)':'var(--accent)'}" data-val="${gruplar[k].toplam.toFixed(0)}₺"></div>`;
     }).join('');
 
-    // Liste Render (Trendyol Style Breakdown)
     listEl.innerHTML = sortedDates.map(tarih => {
       const g = gruplar[tarih];
       const isPast = g.ms < bugunMs;
-      const isNext = !isPast && (g.ms <= bugunMs + 2 * 86400000); // Yaklaşan ilk ödeme
-
+      const isNext = !isPast && (g.ms <= bugunMs + 2 * 86400000);
       return `
         <div class="payout-card ${isPast ? 'past' : ''}" style="${isNext ? 'border:2px solid var(--green); background:rgba(16,185,129,0.05)' : ''}">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px">
@@ -298,26 +282,12 @@ async function tyOdemeleriCek() {
               <div style="font-size:10px; color:var(--t4)">${g.items.length} İşlem</div>
             </div>
           </div>
-          
           <div style="background:var(--bg); border-radius:var(--r-md); padding:10px; font-size:12px; display:grid; grid-template-columns: 1fr 1fr; gap:8px">
-            <div style="display:flex; justify-content:space-between">
-              <span style="color:var(--t4)">Satış:</span>
-              <span style="font-weight:600">${g.satis.toLocaleString('tr-TR')}₺</span>
-            </div>
-            <div style="display:flex; justify-content:space-between">
-              <span style="color:var(--t4)">Komisyon:</span>
-              <span style="font-weight:600; color:var(--red)">${g.komisyon.toLocaleString('tr-TR')}₺</span>
-            </div>
-            <div style="display:flex; justify-content:space-between">
-              <span style="color:var(--t4)">Kargo:</span>
-              <span style="font-weight:600; color:var(--red)">${g.kargo.toLocaleString('tr-TR')}₺</span>
-            </div>
-            <div style="display:flex; justify-content:space-between">
-              <span style="color:var(--t4)">Stopaj:</span>
-              <span style="font-weight:600; color:var(--red)">${g.stopaj.toLocaleString('tr-TR')}₺</span>
-            </div>
+            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Satış:</span><span style="font-weight:600">${g.satis.toLocaleString('tr-TR')}₺</span></div>
+            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:600; color:var(--red)">${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
+            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo:</span><span style="font-weight:600; color:var(--red)">${g.kargo.toLocaleString('tr-TR')}₺</span></div>
+            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:600; color:var(--red)">${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
           </div>
-          
           ${isNext ? `<div style="margin-top:10px; font-size:10px; color:var(--green); font-weight:700">💡 Bir sonraki ödemeniz tahmini olarak hesaplanmıştır.</div>` : ''}
         </div>`;
     }).join('');
@@ -330,8 +300,6 @@ async function tyOdemeleriCek() {
     listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:20px">⚠️ Hata: ${err.message}</div>`;
   }
 }
-
-window.tyOdemeleriCek = tyOdemeleriCek;
 
 window.tyOdemeleriCek = tyOdemeleriCek;
 window.toast = (msg, tip='info') => {

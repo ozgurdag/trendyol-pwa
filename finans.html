@@ -236,15 +236,6 @@ async function tyOdemeleriCek() {
         type: 'settlements', size: 500, startDate: araliklar[i].s, endDate: araliklar[i].e
       });
       if(setRes.content) tumContent = tumContent.concat(setRes.content);
-      
-      await new Promise(r => setTimeout(r, 400));
-
-      // 2. Diğer finansalları (Kargoları) çek
-      const othRes = await proxyCall({
-        sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
-        type: 'otherfinancials', size: 500, startDate: araliklar[i].s, endDate: araliklar[i].e
-      });
-      if(othRes.content) tumContent = tumContent.concat(othRes.content);
 
       if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 600));
     }
@@ -289,54 +280,19 @@ async function tyOdemeleriCek() {
       const desc = (it.description || '').toLowerCase();
       const rawNet = it.sellerRevenue ?? it.totalAmount ?? 0;
 
-      // 🛡️ V40 AGRESİF EŞLEŞTİRME
-      let matched = false;
-
-      // 1. Komisyon
+      // Kategori tespiti (sadece type/desc bazlı, negatif-tutar catch-all yok)
       if(type.includes('commission') || type.includes('komisyon') || desc.includes('komisyon')) {
         gruplar[dKey].komisyon += Math.abs(rawNet);
-        matched = true;
-      }
-      // 2. Kargo ve Platform Giderleri
-      else if(
-        type.includes('cargo') || type.includes('kargo') || 
-        desc.includes('kargo') || desc.includes('taşıma') || 
-        desc.includes('hizmet') || desc.includes('platform') || 
-        desc.includes('fee') || desc.includes('kesinti') ||
-        rawNet < 0 // Herhangi bir negatif tutar genellikle bir kesintidir
-      ) {
+      } else if(type.includes('cargo') || type.includes('kargo') || desc.includes('kargo') || desc.includes('taşıma')) {
         gruplar[dKey].kargo += Math.abs(rawNet);
-        matched = true;
-      }
-      // 3. Stopaj
-      else if(type.includes('withholding') || type.includes('stopaj') || desc.includes('stopaj')) {
+      } else if(type.includes('withholding') || type.includes('stopaj') || desc.includes('stopaj')) {
         gruplar[dKey].stopaj += Math.abs(rawNet);
-        matched = true;
+      } else if(rawNet > 0) {
+        gruplar[dKey].satis += rawNet;
       }
 
-      // 4. Satış (Sadece pozitif ve eşleşmeyenler)
-      if(!matched && (rawNet > 0 || type.includes('sale') || type.includes('satis') || desc.includes('satış'))) {
-        gruplar[dKey].satis += (it.grossAmount || rawNet);
-        
-        // Satır içi kesinti varsa onları da zorla ayır
-        const cComm = it.commissionAmount ? Math.abs(it.commissionAmount) : 0;
-        const cCarg = it.cargoAmount ? Math.abs(it.cargoAmount) : 0;
-        const cTax = it.withholdingTax ? Math.abs(it.withholdingTax) : 0;
-        
-        gruplar[dKey].komisyon += cComm;
-        gruplar[dKey].kargo += cCarg;
-        gruplar[dKey].stopaj += cTax;
-        
-        // Eğer rawNet kesilmemiş brüt ise, biz manuel düşelim
-        let actualNet = rawNet;
-        if(actualNet === (it.grossAmount || 0) && (cComm || cCarg || cTax)) {
-          actualNet = actualNet - cComm - cCarg - cTax;
-        }
-        gruplar[dKey].toplam += actualNet;
-      } else {
-        // Zaten kesinti olarak eşleşmişse toplamı azalt
-        gruplar[dKey].toplam += rawNet; 
-      }
+      // Net ödeme = tüm sellerRevenue'ların toplamı (satışlar +, kesintiler -)
+      gruplar[dKey].toplam += rawNet;
 
       gruplar[dKey].items.push(it);
 
@@ -363,7 +319,7 @@ async function tyOdemeleriCek() {
     }).join('');
 
     // Liste render
-    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V40-AggressiveMatch</div>' + 
+    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V41-CleanSum</div>' + 
       sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
         const g = gruplar[tarih];
         const isPast = g.ms < bugunMs;

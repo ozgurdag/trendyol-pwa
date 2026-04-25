@@ -259,12 +259,10 @@ async function tyOdemeleriCek() {
       const day = d.getDay();
       let nextPayout = new Date(d);
       
-      // 🛠️ TRENDYOL ÖDEME DÖNGÜSÜ (Hassas Ayar)
-      // Trendyol genellikle Cuma-Pazartesi arası hakedişleri Pazartesi, Salı-Perşembe arası hakedişleri Perşembe öder.
-      if(day === 1 || day === 4) { /* Olduğu gibi kalsın */ }
-      else if(day === 0) nextPayout.setDate(d.getDate() + 1); // Pazar -> Pzt
-      else if(day === 5 || day === 6) nextPayout.setDate(d.getDate() + (day === 5 ? 3 : 2)); // Cum-Cmt -> Pzt
-      else nextPayout.setDate(d.getDate() + (4 - day)); // Diğerleri -> Per
+      if(day === 1 || day === 4) { /* OK */ }
+      else if(day === 0) nextPayout.setDate(d.getDate() + 1);
+      else if(day === 5 || day === 6) nextPayout.setDate(d.getDate() + (day === 5 ? 3 : 2));
+      else nextPayout.setDate(d.getDate() + (4 - day));
       
       nextPayout.setHours(0,0,0,0);
       const dKey = nextPayout.toLocaleDateString('tr-TR');
@@ -274,29 +272,42 @@ async function tyOdemeleriCek() {
         gruplar[dKey] = { toplam: 0, satis: 0, komisyon: 0, kargo: 0, stopaj: 0, diger: 0, items: [], ms: realMs, gun: nextPayout.getDate() + '/' + (nextPayout.getMonth()+1) };
       }
       
-      // 💎 NET HESAPLAMA (sellerRevenue her zaman güvenilirdir)
-      const net = it.sellerRevenue ?? it.payoutAmount ?? 0;
+      // 💎 HİBRİT NET HESAPLAMA
+      let net = it.sellerRevenue ?? it.payoutAmount ?? 0;
       const type = (it.transactionType || it.transactionTypeName || '').toLowerCase();
       const desc = (it.description || '').toLowerCase();
 
-      // Kırılım Ayırma
-      if(type.includes('sale') || type.includes('satis') || desc.includes('satış') || desc.includes('sipariş')) {
-        gruplar[dKey].satis += (it.grossAmount || net);
-        // Eğer satırda komisyon/kargo gömülü ise onları da breakdown'a ekle
-        if(it.commissionAmount) gruplar[dKey].komisyon += Math.abs(it.commissionAmount);
-        if(it.cargoAmount) gruplar[dKey].kargo += Math.abs(it.cargoAmount);
-      } 
-      else if(type.includes('commission') || type.includes('komisyon') || desc.includes('komisyon')) {
+      let isDeduction = false;
+      if(type.includes('commission') || type.includes('komisyon') || desc.includes('komisyon')) {
         gruplar[dKey].komisyon += Math.abs(net);
+        isDeduction = true;
       }
-      else if(type.includes('cargo') || type.includes('kargo') || type.includes('deduction') || desc.includes('kargo') || desc.includes('taşıma') || desc.includes('export')) {
-        // Körfez ve Kargo kesintileri genellikle deduction veya export fee olarak gelir
+      else if(type.includes('cargo') || type.includes('kargo') || type.includes('deduction') || desc.includes('kargo') || desc.includes('taşıma') || desc.includes('export') || desc.includes('fee')) {
         gruplar[dKey].kargo += Math.abs(net);
+        isDeduction = true;
       }
       else if(type.includes('withholding') || type.includes('stopaj') || desc.includes('stopaj')) {
         gruplar[dKey].stopaj += Math.abs(net);
+        isDeduction = true;
       }
-      else {
+
+      if(!isDeduction && (type.includes('sale') || type.includes('satis') || desc.includes('satış') || desc.includes('sipariş'))) {
+        gruplar[dKey].satis += (it.grossAmount || net);
+        // Gömülü kesintileri tespit et ve net'ten düş (eğer net zaten düşülmemişse)
+        const comm = it.commissionAmount ? Math.abs(it.commissionAmount) : 0;
+        const carg = it.cargoAmount ? Math.abs(it.cargoAmount) : 0;
+        const tax = it.withholdingTax ? Math.abs(it.withholdingTax) : 0;
+
+        gruplar[dKey].komisyon += comm;
+        gruplar[dKey].kargo += carg;
+        gruplar[dKey].stopaj += tax;
+
+        // Eğer sellerRevenue brüt gelmişse (bazı bölgelerde), kesintileri manuel düş
+        if(net === (it.grossAmount || 0) && (comm || carg || tax)) {
+           net = net - comm - carg - tax;
+        }
+      } 
+      else if(!isDeduction) {
         gruplar[dKey].diger += net;
       }
 

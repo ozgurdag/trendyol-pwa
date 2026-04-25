@@ -197,6 +197,7 @@
 import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, bulBarcodeUrun } from './state.js';
 
 if(!auth.oturum()?.token) { window.location.href='./index.html'; }
+window._satislarDB = satislarDB;
 
 // ── ORTAK SABİTLER ────────────────────────────────────────────
 const SB_URL = 'https://zburwdqwpoxpocymkutk.supabase.co';
@@ -614,9 +615,7 @@ window.verileriCek = async () => {
   progEl.style.display='block'; fillEl.style.width='5%';
   document.getElementById('m-list').innerHTML='';
   document.getElementById('m-stats').style.display='none';
-  document.getElementById('k-stats').style.display='none';
-  document.getElementById('m-uygula-btn').style.display='none';
-  document.getElementById('k-uygula-btn').style.display='none';
+  document.getElementById('mk-sonuc').style.display='none';
   mutabakatEslesimler=[]; kargoEslesimler=[];
 
   try {

@@ -637,6 +637,7 @@ window.verileriCek = async () => {
   const mutabakatEslesimler = [];
   const kargoEslesimler = [];
   let toplamOdeme = 0;
+  let kargoApiHata = false;
   
   const CHUNK_SIZE = 7 * 24 * 60 * 60 * 1000;
   const chunks = [];

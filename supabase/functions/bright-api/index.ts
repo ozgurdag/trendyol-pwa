@@ -98,7 +98,29 @@ Deno.serve(async (req) => {
       if (endDate)            params.set('endDate',            String(endDate));
       if (transactionType)    params.set('transactionType',    transactionType);
       if (transactionSubType) params.set('transactionSubType', transactionSubType);
-      url = `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/otherfinancials?${params}`;
+
+      const urlCandidates = [
+        `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/otherfinancials?${params}`,
+        `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/otherfinancials?${params}`,
+      ];
+
+      for (const candidate of urlCandidates) {
+        const r = await fetch(candidate, { headers: basicHeaders });
+        const t2 = await r.text();
+        let d: any;
+        try { d = JSON.parse(t2); } catch { d = { error: t2.slice(0, 300) }; }
+        if (r.ok) {
+          return new Response(JSON.stringify(d), {
+            status: 200,
+            headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
+        }
+        console.warn(`[otherfinancials] ${r.status} — ${candidate} — ${t2.slice(0, 100)}`);
+      }
+      return new Response(JSON.stringify({ error: 'Finance API otherfinancials başarısız' }), {
+        status: 557,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
 
     } else if (type === 'cargo-invoice') {
       const { invoiceSerialNumber } = body;
@@ -108,7 +130,30 @@ Deno.serve(async (req) => {
           headers: { ...CORS, 'Content-Type': 'application/json' },
         });
       }
-      url = `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/cargo-invoice/${invoiceSerialNumber}/items`;
+
+      const params = new URLSearchParams({ page: String(page), size: String(size) });
+      const urlCandidates = [
+        `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/cargo-invoice/${invoiceSerialNumber}/items?${params}`,
+        `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/cargo-invoice/${invoiceSerialNumber}/items?${params}`,
+      ];
+
+      for (const candidate of urlCandidates) {
+        const r = await fetch(candidate, { headers: basicHeaders });
+        const t2 = await r.text();
+        let d: any;
+        try { d = JSON.parse(t2); } catch { d = { error: t2.slice(0, 300) }; }
+        if (r.ok) {
+          return new Response(JSON.stringify(d), {
+            status: 200,
+            headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
+        }
+        console.warn(`[cargo-invoice] ${r.status} — ${candidate} — ${t2.slice(0, 100)}`);
+      }
+      return new Response(JSON.stringify({ error: 'Cargo invoice API başarısız' }), {
+        status: 558,
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
 
     } else if (type === 'products') {
       const { barcode, approved, page: p = 0 } = body;

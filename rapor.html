@@ -183,46 +183,75 @@ function satisKar(s){
 
 // ─── Özet hesapla ─────────────────────────────────────────────────
 function ozetHesapla(satislar){
-  let adet=0,gelir=0,alis=0,net=0, tamSayi=0;
+  let adet=0, gelir=0, alis=0, net=0, tyNet=0, kargo=0;
+  let tamSayi=0, toplamSayi=satislar.length;
+  
   satislar.forEach(s=>{
-    const k=satisKar(s);if(!k)return;
+    const k=satisKar(s); if(!k) return;
     if(k.veriTam){
-      adet+=s.adet; gelir+=k.gelir; alis+=k.alis;
-      net+=k.net;
+      adet += s.adet; 
+      gelir += k.gelir; 
+      alis += k.alis;
+      tyNet += k.tySellerRevenue;
+      kargo += k.tyKargo;
+      net += k.net;
       tamSayi++;
     }
   });
-  return {adet,gelir,alis,net,roi:alis>0?net/alis:0, tamSayi, toplamSayi:satislar.length};
+  
+  return {
+    adet, gelir, alis, net, tyNet, kargo,
+    roi: alis > 0 ? net / alis : 0, 
+    tamSayi, toplamSayi,
+    avgNet: adet > 0 ? net / adet : 0
+  };
 }
 
 // ─── Özet kartları ────────────────────────────────────────────────
 function renderOzet(ozet, targetId){
   const el=document.getElementById(targetId);
-  if(!el)return;
-  const netRenk=ozet.net>=0?'var(--green)':'var(--red)';
-  const incompleteText = ozet.tamSayi < ozet.toplamSayi ? `<div style="font-size:10px;color:var(--yellow);margin-top:4px">⚠️ ${ozet.toplamSayi - ozet.tamSayi} satışın kargo/mutabakat verisi eksik</div>` : '';
+  if(!el) return;
+  
+  const netRenk = ozet.net >= 0 ? 'var(--green)' : 'var(--red)';
+  const doluluk = ozet.toplamSayi > 0 ? (ozet.tamSayi / ozet.toplamSayi) * 100 : 0;
+  
+  el.innerHTML = `
+    <div class="ozet-card full" style="background: linear-gradient(135deg, var(--bg2) 0%, rgba(0,200,100,0.05) 100%); border-color: ${netRenk}">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start">
+        <div class="lbl">Toplam Net Kar</div>
+        <div style="text-align:right">
+          <div style="font-size:10px; color:var(--t3)">VERİ DOLULUĞU</div>
+          <div style="font-size:11px; font-weight:700; color:${doluluk<100?'var(--yellow)':'var(--green)'}">${ozet.tamSayi}/${ozet.toplamSayi} Sipariş</div>
+        </div>
+      </div>
+      <div class="val" style="color:${netRenk}; font-size:28px; margin: 8px 0">${ozet.net>=0?'+':''}${p(ozet.net)}</div>
+      <div style="height:4px; background:var(--bg3); border-radius:2px; overflow:hidden">
+        <div style="width:${doluluk}%; height:100%; background:${doluluk<100?'var(--yellow)':'var(--green)'}"></div>
+      </div>
+    </div>
 
-  el.innerHTML=`
-    <div class="ozet-card full" style="border-color:${netRenk}">
-      <div class="lbl">Net Kar <span style="float:right;font-weight:normal;color:var(--t3)">(${ozet.tamSayi}/${ozet.toplamSayi} Tam)</span></div>
-      <div class="val" style="color:${netRenk};font-size:24px">${ozet.net>=0?'+':''}${p(ozet.net)}</div>
-      ${incompleteText}
-    </div>
     <div class="ozet-card">
-      <div class="lbl">Tam Satış Adedi</div>
-      <div class="val accent">${ozet.adet}</div>
+      <div class="lbl">Brüt Ciro</div>
+      <div class="val" style="color:var(--t1)">${p(ozet.gelir)}</div>
+      <div class="lbl" style="margin-top:4px; font-size:9px">TY Net: ${p(ozet.tyNet)}</div>
     </div>
+
     <div class="ozet-card">
-      <div class="lbl">Tam Satış Geliri</div>
-      <div class="val">${p(ozet.gelir)}</div>
+      <div class="lbl">Kargo Maliyeti</div>
+      <div class="val" style="color:var(--red)">-${p(ozet.kargo)}</div>
+      <div class="lbl" style="margin-top:4px; font-size:9px">Sip. Başı: ${p(ozet.adet > 0 ? ozet.kargo/ozet.adet : 0)}</div>
     </div>
+
     <div class="ozet-card">
       <div class="lbl">Alış Maliyeti</div>
       <div class="val" style="color:var(--red)">-${p(ozet.alis)}</div>
+      <div class="lbl" style="margin-top:4px; font-size:9px">Sip. Başı: ${p(ozet.adet > 0 ? ozet.alis/ozet.adet : 0)}</div>
     </div>
+
     <div class="ozet-card">
-      <div class="lbl">ROI</div>
-      <div class="val accent">${ozet.roi>0?'+':''}${(ozet.roi*100).toFixed(1)}%</div>
+      <div class="lbl">ROI & Verimlilik</div>
+      <div class="val" style="color:var(--accent)">${ozet.roi>0?'+':''}${(ozet.roi*100).toFixed(1)}%</div>
+      <div class="lbl" style="margin-top:4px; font-size:9px">Kar/Sip: ${p(ozet.avgNet)}</div>
     </div>
   `;
 }

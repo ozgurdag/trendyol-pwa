@@ -621,7 +621,8 @@ window.verileriCek = async () => {
   try {
     // ── 1. Mutabakat (Settlement) — 10 günlük chunk ──
     durumGoster('Mutabakat verisi çekiliyor…');
-    const items = await fetchDateRange('settlements', startMs, endMs, null, 10, {size:500, transactionType:'Sale'});
+    // transactionType:'Sale' filtresini kaldırıyoruz ki CargoFee ve Return'leri de görelim
+    const items = await fetchDateRange('settlements', startMs, endMs, null, 10, {size:500});
     fillEl.style.width='30%';
 
     // ── 2. Kargo Faturaları (otherfinancials) — 10 günlük chunk ──
@@ -629,7 +630,7 @@ window.verileriCek = async () => {
     let dedItems = [];
     let kargoApiHata = false;
     try {
-      dedItems = await fetchDateRange('otherfinancials', startMs, endMs, null, 10, {size:500, transactionType:'DeductionInvoices'});
+      dedItems = await fetchDateRange('otherfinancials', startMs, endMs, null, 10, {size:500});
     } catch(cheErr){
       if(String(cheErr.message).includes('CheApiBusinessException')) kargoApiHata = true;
       else throw cheErr;
@@ -639,20 +640,39 @@ window.verileriCek = async () => {
     // ── 3. Kargo Fatura Detayları ──
     const kargoFaturalar = dedItems.filter(it=>{
       const tip=(it.transactionType||it.description||'').toLowerCase();
-      return tip.includes('kargo fatura')||tip.includes('kargo faturası');
-    });
+      const invoiceNo = String(it.invoiceSerialNumber || it.id || '');
+      const docNo = String(it.documentNumber || '');
+      
+      return tip.includes('kargo') || tip.includes('cargo') || tip.includes('taşımacılık') || 
+             invoiceNo.startsWith('DDA') || docNo.startsWith('DDA') ||
+             it.transactionType === 'DeductionInvoices';
+    }).map(it => ({
+      ...it, 
+      serial: it.invoiceSerialNumber || it.documentNumber || it.id 
+    }));
+
     const orderKargoMap = {};
+    const faturaSerials = new Set(); // Aynı faturayı tekrar çekme
+    
     if(kargoFaturalar.length){
       durumGoster(`Kargo fatura detayları çekiliyor… (${kargoFaturalar.length} fatura)`);
       for(let i=0;i<kargoFaturalar.length;i++){
-        const serialNo=kargoFaturalar[i].id;
-        if(!serialNo) continue;
+        const serialNo = kargoFaturalar[i].serial;
+        if(!serialNo || faturaSerials.has(serialNo)) continue;
+        faturaSerials.add(serialNo);
+        
         try {
-          const res=await proxyCall({type:'cargo-invoice', invoiceSerialNumber:serialNo});
-          (res.content||res.items||[]).forEach(ci=>{
-            if(ci.orderNumber) orderKargoMap[String(ci.orderNumber)]=(orderKargoMap[String(ci.orderNumber)]||0)+Math.abs(ci.amount||0);
-          });
+          const items=await fetchAllPages({type:'cargo-invoice', invoiceSerialNumber:serialNo});
+          if(items && items.length) {
+            items.forEach(ci=>{
+              if(ci.orderNumber) {
+                const orderNo = String(ci.orderNumber);
+                orderKargoMap[orderNo] = (orderKargoMap[orderNo]||0) + Math.abs(ci.amount||0);
+              }
+            });
+          }
         } catch(e){ console.warn(`cargo-invoice ${serialNo}:`,e.message); }
+        if(i > 0 && i % 5 === 0) await new Promise(r => setTimeout(r, 200)); // Rate limit protection
         fillEl.style.width=`${50+35*((i+1)/kargoFaturalar.length)}%`;
       }
     }
@@ -662,14 +682,37 @@ window.verileriCek = async () => {
     durumGoster('Satışlarla eşleştiriliyor…');
     const kayitliSatislar=satislarDB.hepsini();
 
-    // Mutabakat eşleştirme
+    // Mutabakat ve Kargo (Sipariş bazlı) eşleştirme
     let toplamOdeme=0;
     const orderNetMap={};
+    
+    // Settlement (items) içinden gelenleri işle
     items.forEach(it=>{
       const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
       toplamOdeme+=net;
-      if(it.orderNumber) orderNetMap[String(it.orderNumber)]=(orderNetMap[String(it.orderNumber)]||0)+net;
+      const type = (it.transactionType || '').toLowerCase();
+      const desc = (it.description || '').toLowerCase();
+      
+      // Eğer bu bir kargo kesintisiyse (Settlement içinde gelmişse)
+      if ((type === 'cargofee' || type === 'kargoucreti' || desc.includes('kargo')) && it.orderNumber) {
+        const orderNo = String(it.orderNumber);
+        orderKargoMap[orderNo] = (orderKargoMap[orderNo] || 0) + Math.abs(net);
+      } else if(it.orderNumber) {
+        orderNetMap[String(it.orderNumber)]=(orderNetMap[String(it.orderNumber)]||0)+net;
+      }
     });
+
+    // otherfinancials (dedItems) içinden doğrudan sipariş numarası olan kargo ücretlerini de al
+    dedItems.forEach(it => {
+      const type = (it.transactionType || '').toLowerCase();
+      const desc = (it.description || '').toLowerCase();
+      if ((type === 'cargofee' || desc.includes('kargo')) && it.orderNumber) {
+        const orderNo = String(it.orderNumber);
+        orderKargoMap[orderNo] = (orderKargoMap[orderNo] || 0) + Math.abs(it.amount || 0);
+      }
+    });
+
+    // Satışlarla eşleştir
     Object.entries(orderNetMap).forEach(([orderNo,netTutar])=>{
       const eslesen=kayitliSatislar.filter(s=>String(s.tyOrderNumber)===orderNo);
       if(!eslesen.length) return;

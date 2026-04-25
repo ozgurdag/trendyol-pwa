@@ -183,13 +183,12 @@ window.sekme = s => {
   if(s==='trendyol') tyOdemeleriCek();
 };
 
-// ── TRENDYOL ÖDEMELERİ (PREMIUM BREAKDOWN) ──
-// ── TRENDYOL ÖDEMELERİ (SMART BREAKDOWN & GROUPING) ──
+// ── TRENDYOL ÖDEMELERİ (STRICT GROUPING & PAYOUT CYCLE) ──
 async function tyOdemeleriCek() {
   const ay = ayarlarDB.oku();
   const listEl = document.getElementById('ty-odeme-liste');
   const chartEl = document.getElementById('ty-payout-chart');
-  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Trendyol verileri işleniyor...</span></div>';
+  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Trendyol ödeme takvimi oluşturuluyor...</span></div>';
 
   try {
     const PROXY = 'https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api';
@@ -205,7 +204,7 @@ async function tyOdemeleriCek() {
     let tumContent = [];
     for(let i=0; i < araliklar.length; i++) {
       const p = Math.round(((i+1)/araliklar.length)*100);
-      listEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>Veriler Hesaplanıyor %${p}</span></div>`;
+      listEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>Takvim Hesaplanıyor %${p}</span></div>`;
       const res = await fetch(PROXY, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -231,37 +230,50 @@ async function tyOdemeleriCek() {
     const birHaftaSonraMs = bugunMs + 7 * 86400000;
 
     tumContent.forEach(it => {
-      const pMs = it.paymentDate;
+      let pMs = it.paymentDate;
       if(!pMs) return;
       
-      // Ödeme Tarihi Formatla
+      // 🛠️ TRENDYOL ÖDEME GÜNÜ SİMÜLASYONU (Pazartesi & Perşembe)
       const d = new Date(pMs);
-      const dKey = d.toLocaleDateString('tr-TR');
+      const day = d.getDay(); // 0:Paz, 1:Pazt, 2:Sal, 3:Çar, 4:Per, 5:Cum, 6:Cmt
       
+      let nextPayout = new Date(d);
+      if(day === 1 || day === 4) {
+        // Zaten ödeme günü
+      } else if(day === 0) { // Pazar -> Pazartesi
+        nextPayout.setDate(d.getDate() + 1);
+      } else if(day === 2 || day === 3) { // Sal, Çar -> Perşembe
+        nextPayout.setDate(d.getDate() + (4 - day));
+      } else { // Cum, Cmt -> Pazartesi
+        nextPayout.setDate(d.getDate() + (day === 5 ? 3 : 2));
+      }
+      
+      nextPayout.setHours(0,0,0,0);
+      const dKey = nextPayout.toLocaleDateString('tr-TR');
+      const realMs = nextPayout.getTime();
+
       if(!gruplar[dKey]) {
-        gruplar[dKey] = { toplam: 0, satis: 0, komisyon: 0, kargo: 0, stopaj: 0, diger: 0, items: [], ms: pMs, gun: d.getDate() + '/' + (d.getMonth()+1) };
+        gruplar[dKey] = { toplam: 0, satis: 0, komisyon: 0, kargo: 0, stopaj: 0, diger: 0, items: [], ms: realMs, gun: nextPayout.getDate() + '/' + (nextPayout.getMonth()+1) };
       }
       
       const net = it.sellerRevenue ?? it.payoutAmount ?? 0;
-      const type = (it.transactionType || '').toLowerCase();
+      const type = (it.transactionType || it.transactionTypeName || '').toLowerCase();
       const desc = (it.description || '').toLowerCase();
 
-      // Akıllı Kalem Ayırma (Daha Agresif)
-      if(type === 'sale' || type === 'satis' || desc.includes('satış') || desc.includes('sale')) {
-        // Tek bir satırda tüm kesintiler olabilir (bazı API sürümlerinde)
-        const brute = it.grossAmount || it.totalAmount || net;
-        gruplar[dKey].satis += brute;
-        if(it.commissionAmount) gruplar[dKey].komisyon += it.commissionAmount;
-        if(it.cargoAmount) gruplar[dKey].kargo += it.cargoAmount;
+      // Detaylı Kırılım
+      if(type.includes('sale') || type.includes('satis') || desc.includes('satış')) {
+        gruplar[dKey].satis += (it.grossAmount || net);
+        if(it.commissionAmount) gruplar[dKey].komisyon += Math.abs(it.commissionAmount);
+        if(it.cargoAmount) gruplar[dKey].kargo += Math.abs(it.cargoAmount);
       } 
       else if(type.includes('commission') || type.includes('komisyon') || desc.includes('komisyon')) {
-        gruplar[dKey].komisyon += net;
+        gruplar[dKey].komisyon += Math.abs(net);
       }
-      else if(type.includes('cargo') || type.includes('kargo') || desc.includes('kargo') || desc.includes('taşıma')) {
-        gruplar[dKey].kargo += net;
+      else if(type.includes('cargo') || type.includes('kargo') || desc.includes('taşıma') || desc.includes('cargo')) {
+        gruplar[dKey].kargo += Math.abs(net);
       }
-      else if(type.includes('withholding') || type.includes('stopaj') || desc.includes('stopaj')) {
-        gruplar[dKey].stopaj += net;
+      else if(type.includes('withholding') || type.includes('stopaj')) {
+        gruplar[dKey].stopaj += Math.abs(net);
       }
       else {
         gruplar[dKey].diger += net;
@@ -270,9 +282,9 @@ async function tyOdemeleriCek() {
       gruplar[dKey].toplam += net;
       gruplar[dKey].items.push(it);
 
-      if(pMs >= bugunMs) {
+      if(realMs >= bugunMs) {
         gelecekToplam += net;
-        if(pMs <= birHaftaSonraMs) buHaftaToplam += net;
+        if(realMs <= birHaftaSonraMs) buHaftaToplam += net;
       } else {
         yillikOdenen += net;
       }
@@ -282,7 +294,7 @@ async function tyOdemeleriCek() {
     const maxVal = Math.max(...Object.values(gruplar).map(g => g.toplam), 1);
 
     // Grafik
-    const chartDates = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 7 * 86400000 && gruplar[k].ms <= bugunMs + 15 * 86400000);
+    const chartDates = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 14 * 86400000 && gruplar[k].ms <= bugunMs + 21 * 86400000);
     chartEl.innerHTML = chartDates.map(k => {
       const g = gruplar[k];
       const h = (g.toplam / maxVal) * 100;
@@ -292,29 +304,29 @@ async function tyOdemeleriCek() {
       </div>`;
     }).join('');
 
-    // Liste: Sadece Bugünden sonrasını ve son 10 günü göster
+    // Liste
     listEl.innerHTML = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
       const g = gruplar[tarih];
       const isPast = g.ms < bugunMs;
-      const isNext = !isPast && (g.ms <= bugunMs + 4 * 86400000); // 4 gün tolerans
+      const isNext = !isPast && (g.ms <= bugunMs + 5 * 86400000);
       return `
         <div class="payout-card ${isPast ? 'past' : ''}" style="${isNext ? 'border:2px solid var(--green); background:rgba(16,185,129,0.06)' : ''}">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px">
             <div>
-              <div style="font-size:10px; color:var(--t4); font-weight:800">ÖDEME TARİHİ</div>
-              <div style="font-size:16px; font-weight:800">${tarih}</div>
-              <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 BEKLENEN ÖDEME'}</div>
+              <div style="font-size:10px; color:var(--t4); font-weight:800">BANKA ÖDEME GÜNÜ</div>
+              <div style="font-size:17px; font-weight:800">${tarih}</div>
+              <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 BEKLENEN TOPLU ÖDEME'}</div>
             </div>
             <div style="text-align:right">
-              <div style="font-size:22px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
-              <div style="font-size:10px; color:var(--t4)">${g.items.length} İşlem</div>
+              <div style="font-size:24px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
+              <div style="font-size:10px; color:var(--t4)">${g.items.length} Sipariş Paketi</div>
             </div>
           </div>
           <div style="background:var(--bg); border-radius:var(--r-md); padding:10px; font-size:12px; display:grid; grid-template-columns: 1fr 1fr; gap:8px; border:1px solid var(--border)">
-            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
-            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700; color:var(--red)">${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
-            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo:</span><span style="font-weight:700; color:var(--red)">${g.kargo.toLocaleString('tr-TR')}₺</span></div>
-            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:700; color:var(--red)">${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
+            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
+            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700; color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
+            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo:</span><span style="font-weight:700; color:var(--red)">-${g.kargo.toLocaleString('tr-TR')}₺</span></div>
+            <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:700; color:var(--red)">-${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
           </div>
         </div>`;
     }).join('');
@@ -324,15 +336,9 @@ async function tyOdemeleriCek() {
     document.getElementById('ty-ozet-odenen').innerHTML = `<span style="font-size:10px;opacity:0.6;display:block">2026 TOPLAM</span>${yillikOdenen.toLocaleString('tr-TR')}₺`;
 
   } catch (err) {
-    listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:20px">⚠️ Veriler işlenirken hata: ${err.message}</div>`;
+    listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:20px">⚠️ Takvim Hatası: ${err.message}</div>`;
   }
 }
-
-window.tyOdemeleriCek = tyOdemeleriCek;
-
-window.tyOdemeleriCek = tyOdemeleriCek;
-
-window.tyOdemeleriCek = tyOdemeleriCek;
 
 window.tyOdemeleriCek = tyOdemeleriCek;
 window.toast = (msg, tip='info') => {

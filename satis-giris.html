@@ -634,7 +634,7 @@ window.verileriCek = async () => {
       
       durumGoster(`Tarama yapılıyor: ${chunkLabel} (${cIdx+1}/${chunks.length})`);
       
-      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 14, {size:500});
+      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 13, {size:100});
       items.forEach(it=>{
         const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         toplamOdeme+=net;
@@ -648,7 +648,7 @@ window.verileriCek = async () => {
       });
       fillEl.style.width = `${chunkProgressBase + chunkProgressStep * 0.3}%`;
 
-      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 14, {size:500});
+      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 13, {size:100});
       const kargoFaturalar = dedItems.filter(it=>{
         const tip=(it.transactionType||it.description||'').toLowerCase();
         const invoiceNo = String(it.invoiceSerialNumber || it.id || '');

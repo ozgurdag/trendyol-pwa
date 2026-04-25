@@ -652,7 +652,7 @@ window.mutabakatCek = async () => {
       const eslesmeSayisi = mutabakatEslesimler.length;
       const donemSatislar=satislarDB.aralik(document.getElementById('m-start').value,document.getElementById('m-end').value);
       const hesaplananKar=donemSatislar.reduce((t,s)=>{
-        if(s.tySellerRevenue!=null) return t+s.tySellerRevenue-(s.alisMaliyeti||0)*s.adet;
+        if(s.tySellerRevenue!=null&&s.tyKargo!=null) return t+s.tySellerRevenue-s.tyKargo-(s.alisMaliyeti||0)*s.adet;
         return t;
       },0);
       const delta=toplamOdeme-hesaplananKar;
@@ -746,15 +746,15 @@ window.kargoVerisiCek = async () => {
       fillEl.style.width=`${30+60*((i+1)/kargoFaturalar.length)}%`;
     }
 
-    // Adım 3: Satışlarla eşleştir (aynı siparişte birden fazla satır varsa tyNetTutar oranında bölünür)
+    // Adım 3: Satışlarla eşleştir (çok ürünlü siparişlerde gercekFiyat*adet oranında bölünür)
     const kayitliSatislar = satislarDB.hepsini();
     kargoEslesimler = [];
     Object.entries(orderKargoMap).forEach(([orderNo, kargo]) => {
       const eslesen = kayitliSatislar.filter(s => String(s.tyOrderNumber) === orderNo);
       if(!eslesen.length) return;
-      const toplamNet = eslesen.reduce((t, s) => t + (s.tySellerRevenue || 0), 0);
+      const toplamGelir = eslesen.reduce((t, s) => t + (s.gercekFiyat||0)*(s.adet||1), 0);
       eslesen.forEach(s => {
-        const oran = toplamNet > 0 ? (s.snapshot?.tyNetTutar || 0) / toplamNet : 1 / eslesen.length;
+        const oran = toplamGelir > 0 ? ((s.gercekFiyat||0)*(s.adet||1)) / toplamGelir : 1 / eslesen.length;
         kargoEslesimler.push({id: s.id, tyKargo: kargo * oran});
       });
     });

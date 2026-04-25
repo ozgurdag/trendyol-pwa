@@ -803,8 +803,8 @@ async function tyOdemeleriCek() {
         token: ay.tyToken || '',
         type: 'settlements',
         size: 500,
-        startDate: Date.now() - 30 * 86400000, // Son 30 gün ve gelecekler
-        endDate: Date.now() + 30 * 86400000    // Gelecek 30 gün
+        startDate: Date.now() - 5 * 86400000, // Son 5 gün
+        endDate: Date.now() + 10 * 86400000   // Gelecek 10 gün (Toplam 15 gün sınırı)
       })
     });
 

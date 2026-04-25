@@ -185,8 +185,10 @@ function satisKar(s){
 function ozetHesapla(satislar){
   let adet=0, gelir=0, alis=0, net=0, tyNet=0, kargo=0;
   let tamSayi=0, toplamSayi=satislar.length;
+  const siparisNoSet = new Set();
   
   satislar.forEach(s=>{
+    if(s.tyOrderNumber) siparisNoSet.add(s.tyOrderNumber);
     const k=satisKar(s); if(!k) return;
     if(k.veriTam){
       adet += s.adet; 
@@ -203,6 +205,7 @@ function ozetHesapla(satislar){
     adet, gelir, alis, net, tyNet, kargo,
     roi: alis > 0 ? net / alis : 0, 
     tamSayi, toplamSayi,
+    siparisSayisi: siparisNoSet.size,
     avgNet: adet > 0 ? net / adet : 0
   };
 }
@@ -249,9 +252,15 @@ function renderOzet(ozet, targetId){
     </div>
 
     <div class="ozet-card">
+      <div class="lbl">Hacim & Adet</div>
+      <div class="val" style="color:var(--accent)">${ozet.adet} <span style="font-size:11px; color:var(--t3); font-weight:normal">Ürün</span></div>
+      <div class="lbl" style="margin-top:4px; font-size:9px">${ozet.siparisSayisi} Benzersiz Sipariş</div>
+    </div>
+
+    <div class="ozet-card">
       <div class="lbl">ROI & Verimlilik</div>
       <div class="val" style="color:var(--accent)">${ozet.roi>0?'+':''}${(ozet.roi*100).toFixed(1)}%</div>
-      <div class="lbl" style="margin-top:4px; font-size:9px">Kar/Sip: ${p(ozet.avgNet)}</div>
+      <div class="lbl" style="margin-top:4px; font-size:9px">Sip. Başı Kar: ${p(ozet.avgNet)}</div>
     </div>
   `;
 }

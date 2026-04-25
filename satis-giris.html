@@ -147,6 +147,11 @@
               <input class="form-input" type="date" id="m-end" style="width:100%">
             </div>
           </div>
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(7,'m')">7 gün</button>
+            <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(30,'m')">30 gün</button>
+            <button class="btn btn-ghost" style="flex:2;font-size:11px;background:rgba(99,102,241,0.1);color:var(--accent)" onclick="tarih2026()">📅 2026 Başından Beri</button>
+          </div>
           <button class="btn btn-primary btn-full" id="mk-cek-btn" onclick="verileriCek()">📥 Mutabakat + Kargo Verilerini Çek</button>
           <div class="prog-bar" id="m-prog"><div class="prog-fill" id="m-prog-fill" style="width:0%"></div></div>
           <div id="mk-durum" style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center;display:none"></div>
@@ -228,12 +233,16 @@ window.toast = (msg, tip='info') => {
 };
 
 window.hizliTarih = (gun, pfx) => {
-  const d = new Date();
-  const end = d.toISOString().slice(0,10);
-  d.setDate(d.getDate() - gun);
-  const start = d.toISOString().slice(0,10);
-  document.getElementById(`${pfx}-start`).value = start;
-  document.getElementById(`${pfx}-end`).value = end;
+  const d2 = new Date();
+  const d1 = new Date(); d1.setDate(d1.getDate() - gun);
+  const s = d1.toISOString().slice(0,10);
+  const e = d2.toISOString().slice(0,10);
+  document.getElementById(pfx+'-start').value = s;
+  document.getElementById(pfx+'-end').value = e;
+};
+window.tarih2026 = () => {
+  document.getElementById('m-start').value = '2026-01-01';
+  document.getElementById('m-end').value = new Date().toISOString().slice(0,10);
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -275,12 +284,6 @@ const _otuzOnce = new Date(_bugun - 30*86400000);
   document.getElementById(`${pfx}-end`).value   = _bugun.toISOString().slice(0,10);
 });
 
-window.hizliTarih = (gun, pfx) => {
-  const b = new Date(), s = new Date(b - gun*86400000);
-  document.getElementById(`${pfx}-end`).value   = b.toISOString().slice(0,10);
-  document.getElementById(`${pfx}-start`).value = s.toISOString().slice(0,10);
-};
-
 async function proxyCall(body){
   const res = await fetch(PROXY, {
     method:'POST',
@@ -300,12 +303,12 @@ async function fetchAllPages(baseBody, progressEl){
     totalPages = data.totalPages||1;
     all = all.concat(data.content||data.items||[]);
     page++;
-    if(progressEl) progressEl.style.width=`${10+80*(page/totalPages)}%`;
+    if(progressEl && typeof progressEl !== 'string') progressEl.style.width=`${10+80*(page/totalPages)}%`;
   }
   return all;
 }
 
-async function fetchDateRange(type, startMs, endMs, fillEl, chunkDays=30, extraBody={}){
+async function fetchDateRange(type, startMs, endMs, filterType, chunkDays=30, extraBody={}){
   const CHUNK = chunkDays*86400000;
   const chunks=[]; let cur=startMs;
   while(cur<endMs){ chunks.push({start:cur, end:Math.min(cur+CHUNK,endMs)}); cur+=CHUNK; }
@@ -313,7 +316,6 @@ async function fetchDateRange(type, startMs, endMs, fillEl, chunkDays=30, extraB
   for(let i=0;i<chunks.length;i++){
     const part = await fetchAllPages({type, ...extraBody, startDate:chunks[i].start, endDate:chunks[i].end}, null);
     all = all.concat(part);
-    if(fillEl) fillEl.style.width=`${10+80*((i+1)/chunks.length)}%`;
   }
   return all;
 }
@@ -412,12 +414,10 @@ window.siparisleriCek = async () => {
   document.querySelectorAll('.s-dtab').forEach((b,i)=>{b.classList.toggle('active',i===0);});
 
   try {
-    // 7 günlük chunk — status filtresi yalnızca "Yalnızca Teslim" modunda API'ye gönderilir
     const filtre = document.getElementById('s-durum').value;
     const extraParams = filtre === 'teslim' ? {status:'Delivered'} : {};
-    const content = await fetchDateRange('orders', startMs, endMs, fillEl, 7, extraParams);
+    const content = await fetchDateRange('orders', startMs, endMs, null, 7, extraParams);
     fillEl.style.width='100%';
-    // İstemci tarafı filtre: aktif modda iade/iptal hariç tut
     const filtreli = content.filter(pkg=>{
       if(filtre==='aktif') return AKTIF_DURUMLAR.includes(pkg.status);
       return true;
@@ -446,7 +446,6 @@ window.siparisleriCek = async () => {
           eslesti, aktarildi:mevcutTyIds.has(lineId)});
       });
     });
-    // Deduplicate by line id (aynı line birden fazla chunk'ta gelebilir)
     const _seen = new Set();
     satirlar = satirlar.filter(s=>{ if(_seen.has(s.id)) return false; _seen.add(s.id); return true; });
     setTimeout(()=>progEl.style.display='none',500);
@@ -490,7 +489,6 @@ function guncelleSiperisStat(){
   document.getElementById('ss-eslesme').textContent  = eslesme;
   document.getElementById('ss-aktarildi').textContent= aktarildi;
   document.getElementById('s-stats').style.display   = satirlar.length?'flex':'none';
-  // Durum tab sayaçları
   const cnt = {tum:satirlar.length,yeni:0,islem:0,kargo:0,teslim:0,iade:0};
   satirlar.forEach(s=>{ const g=DURUM_GRUBU[s.durum]; if(g) cnt[g]++; });
   Object.entries(cnt).forEach(([k,v])=>{ const el=document.getElementById(`sdt-${k}`); if(el) el.textContent=v; });
@@ -596,123 +594,95 @@ window.sifirlaVeAktar = async () => {
   secilenleriAktar();
 };
 
-let mutabakatEslesimler = [];
-
-// ── Birleşik Veri Çekme (Mutabakat + Kargo) ──────────────────
-let kargoEslesimler = [];
-// mutabakatUygula / kargoUygula kaldırıldı — verileriCek otomatik uygular
-
-function durumGoster(msg){ const el=document.getElementById('mk-durum'); if(el){el.textContent=msg;el.style.display=msg?'block':'none';} }
-
 window.verileriCek = async () => {
   const ay2=ayarlarDB.oku();
   if(!ay2.tySellerId){ toast('API bilgileri eksik','error'); return; }
-  const startMs=new Date(document.getElementById('m-start').value).getTime();
-  const endMs  =new Date(document.getElementById('m-end').value).getTime()+86399999;
-  if(!startMs||!endMs){ toast('Tarih seçin','error'); return; }
+  
+  const startVal = document.getElementById('m-start').value;
+  const endVal = document.getElementById('m-end').value;
+  if(!startVal || !endVal){ toast('Tarih seçin','error'); return; }
+  
+  const startFull = new Date(startVal + 'T00:00:00').getTime();
+  const endFull = new Date(endVal + 'T23:59:59').getTime();
+  
   const btn=document.getElementById('mk-cek-btn'); btn.disabled=true;
   const progEl=document.getElementById('m-prog'), fillEl=document.getElementById('m-prog-fill');
-  progEl.style.display='block'; fillEl.style.width='5%';
+  progEl.style.display='block'; fillEl.style.width='0%';
+  
   document.getElementById('m-list').innerHTML='';
   document.getElementById('m-stats').style.display='none';
   document.getElementById('mk-sonuc').style.display='none';
-  mutabakatEslesimler=[]; kargoEslesimler=[];
-
+  
+  const orderNetMap = {};
+  const orderKargoMap = {};
+  let toplamOdeme = 0;
+  
+  const CHUNK_SIZE = 14 * 24 * 60 * 60 * 1000;
+  const chunks = [];
+  for(let t = startFull; t < endFull; t += CHUNK_SIZE){
+    chunks.push({ start: t, end: Math.min(t + CHUNK_SIZE - 1, endFull) });
+  }
+  
   try {
-    // ── 1. Mutabakat (Settlement) — 10 günlük chunk ──
-    durumGoster('Mutabakat verisi çekiliyor…');
-    // transactionType:'Sale' filtresini kaldırıyoruz ki CargoFee ve Return'leri de görelim
-    const items = await fetchDateRange('settlements', startMs, endMs, null, 10, {size:500});
-    fillEl.style.width='30%';
-
-    // ── 2. Kargo Faturaları (otherfinancials) — 10 günlük chunk ──
-    durumGoster('Kargo faturaları çekiliyor…');
-    let dedItems = [];
-    let kargoApiHata = false;
-    try {
-      dedItems = await fetchDateRange('otherfinancials', startMs, endMs, null, 10, {size:500});
-    } catch(cheErr){
-      if(String(cheErr.message).includes('CheApiBusinessException')) kargoApiHata = true;
-      else throw cheErr;
-    }
-    fillEl.style.width='50%';
-
-    // ── 3. Kargo Fatura Detayları ──
-    const kargoFaturalar = dedItems.filter(it=>{
-      const tip=(it.transactionType||it.description||'').toLowerCase();
-      const invoiceNo = String(it.invoiceSerialNumber || it.id || '');
-      const docNo = String(it.documentNumber || '');
+    for(let cIdx = 0; cIdx < chunks.length; cIdx++){
+      const chunk = chunks[cIdx];
+      const chunkLabel = `${new Date(chunk.start).toLocaleDateString('tr-TR')} - ${new Date(chunk.end).toLocaleDateString('tr-TR')}`;
+      const chunkProgressBase = (cIdx / chunks.length) * 100;
+      const chunkProgressStep = 100 / chunks.length;
       
-      return tip.includes('kargo') || tip.includes('cargo') || tip.includes('taşımacılık') || 
-             invoiceNo.startsWith('DDA') || docNo.startsWith('DDA') ||
-             it.transactionType === 'DeductionInvoices';
-    }).map(it => ({
-      ...it, 
-      serial: it.invoiceSerialNumber || it.documentNumber || it.id 
-    }));
+      durumGoster(`Tarama yapılıyor: ${chunkLabel} (${cIdx+1}/${chunks.length})`);
+      
+      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 14, {size:500});
+      items.forEach(it=>{
+        const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
+        toplamOdeme+=net;
+        const type = (it.transactionType || '').toLowerCase();
+        const desc = (it.description || '').toLowerCase();
+        if ((type === 'cargofee' || type === 'kargoucreti' || desc.includes('kargo')) && it.orderNumber) {
+          orderKargoMap[String(it.orderNumber)] = (orderKargoMap[String(it.orderNumber)] || 0) + Math.abs(net);
+        } else if(it.orderNumber) {
+          orderNetMap[String(it.orderNumber)]=(orderNetMap[String(it.orderNumber)]||0)+net;
+        }
+      });
+      fillEl.style.width = `${chunkProgressBase + chunkProgressStep * 0.3}%`;
 
-    const orderKargoMap = {};
-    const faturaSerials = new Set(); // Aynı faturayı tekrar çekme
-    
-    if(kargoFaturalar.length){
-      durumGoster(`Kargo fatura detayları çekiliyor… (${kargoFaturalar.length} fatura)`);
-      for(let i=0;i<kargoFaturalar.length;i++){
+      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 14, {size:500});
+      const kargoFaturalar = dedItems.filter(it=>{
+        const tip=(it.transactionType||it.description||'').toLowerCase();
+        const invoiceNo = String(it.invoiceSerialNumber || it.id || '');
+        const docNo = String(it.documentNumber || '');
+        return tip.includes('kargo') || tip.includes('cargo') || tip.includes('taşımacılık') || 
+               invoiceNo.startsWith('DDA') || docNo.startsWith('DDA') ||
+               it.transactionType === 'DeductionInvoices';
+      }).map(it => ({ ...it, serial: it.invoiceSerialNumber || it.documentNumber || it.id }));
+
+      const faturaSerials = new Set();
+      for(let i=0; i<kargoFaturalar.length; i++){
         const serialNo = kargoFaturalar[i].serial;
         if(!serialNo || faturaSerials.has(serialNo)) continue;
         faturaSerials.add(serialNo);
-        
         try {
           const items=await fetchAllPages({type:'cargo-invoice', invoiceSerialNumber:serialNo});
-          if(items && items.length) {
-            items.forEach(ci=>{
-              if(ci.orderNumber) {
-                const orderNo = String(ci.orderNumber);
-                orderKargoMap[orderNo] = (orderKargoMap[orderNo]||0) + Math.abs(ci.amount||0);
-              }
-            });
-          }
+          if(items) items.forEach(ci=>{
+            if(ci.orderNumber) orderKargoMap[String(ci.orderNumber)] = (orderKargoMap[String(ci.orderNumber)]||0) + Math.abs(ci.amount||0);
+          });
         } catch(e){ console.warn(`cargo-invoice ${serialNo}:`,e.message); }
-        if(i > 0 && i % 5 === 0) await new Promise(r => setTimeout(r, 200)); // Rate limit protection
-        fillEl.style.width=`${50+35*((i+1)/kargoFaturalar.length)}%`;
+        if(i % 5 === 0) await new Promise(r => setTimeout(r, 100));
       }
-    }
-    fillEl.style.width='90%';
-
-    // ── 4. Eşleştirme ──
-    durumGoster('Satışlarla eşleştiriliyor…');
-    const kayitliSatislar=satislarDB.hepsini();
-
-    // Mutabakat ve Kargo (Sipariş bazlı) eşleştirme
-    let toplamOdeme=0;
-    const orderNetMap={};
-    
-    // Settlement (items) içinden gelenleri işle
-    items.forEach(it=>{
-      const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
-      toplamOdeme+=net;
-      const type = (it.transactionType || '').toLowerCase();
-      const desc = (it.description || '').toLowerCase();
       
-      // Eğer bu bir kargo kesintisiyse (Settlement içinde gelmişse)
-      if ((type === 'cargofee' || type === 'kargoucreti' || desc.includes('kargo')) && it.orderNumber) {
-        const orderNo = String(it.orderNumber);
-        orderKargoMap[orderNo] = (orderKargoMap[orderNo] || 0) + Math.abs(net);
-      } else if(it.orderNumber) {
-        orderNetMap[String(it.orderNumber)]=(orderNetMap[String(it.orderNumber)]||0)+net;
-      }
-    });
+      dedItems.forEach(it => {
+        const type = (it.transactionType || '').toLowerCase();
+        const desc = (it.description || '').toLowerCase();
+        if ((type === 'cargofee' || desc.includes('kargo')) && it.orderNumber) {
+          orderKargoMap[String(it.orderNumber)] = (orderKargoMap[String(it.orderNumber)] || 0) + Math.abs(it.amount || 0);
+        }
+      });
+      
+      fillEl.style.width = `${chunkProgressBase + chunkProgressStep}%`;
+    }
 
-    // otherfinancials (dedItems) içinden doğrudan sipariş numarası olan kargo ücretlerini de al
-    dedItems.forEach(it => {
-      const type = (it.transactionType || '').toLowerCase();
-      const desc = (it.description || '').toLowerCase();
-      if ((type === 'cargofee' || desc.includes('kargo')) && it.orderNumber) {
-        const orderNo = String(it.orderNumber);
-        orderKargoMap[orderNo] = (orderKargoMap[orderNo] || 0) + Math.abs(it.amount || 0);
-      }
-    });
-
-    // Satışlarla eşleştir
+    durumGoster('Eşleştiriliyor ve kaydediliyor…');
+    const kayitliSatislar=satislarDB.hepsini();
     Object.entries(orderNetMap).forEach(([orderNo,netTutar])=>{
       const eslesen=kayitliSatislar.filter(s=>String(s.tyOrderNumber)===orderNo);
       if(!eslesen.length) return;

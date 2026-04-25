@@ -1,0 +1,5 @@
+[functions.bright-api]
+verify_jwt = false
+
+[functions.trendyol-proxy]
+verify_jwt = false

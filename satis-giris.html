@@ -594,6 +594,8 @@ window.sifirlaVeAktar = async () => {
   secilenleriAktar();
 };
 
+function durumGoster(msg){ const el=document.getElementById('mk-durum'); if(el){el.textContent=msg;el.style.display=msg?'block':'none';} }
+
 window.verileriCek = async () => {
   const ay2=ayarlarDB.oku();
   if(!ay2.tySellerId){ toast('API bilgileri eksik','error'); return; }

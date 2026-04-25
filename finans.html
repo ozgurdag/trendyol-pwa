@@ -208,12 +208,12 @@ async function proxyCall(payload, deneme = 1) {
   }
 }
 
-// ── TRENDYOL ÖDEMELERİ (STRICT GROUPING & PAYOUT CYCLE) ──
+// ── TRENDYOL ÖDEMELERİ (FULL DUAL-CHANNEL SYNC - V39) ──
 async function tyOdemeleriCek() {
   const ay = ayarlarDB.oku();
   const listEl = document.getElementById('ty-odeme-liste');
   const chartEl = document.getElementById('ty-payout-chart');
-  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Trendyol ödeme takvimi oluşturuluyor...</span></div>';
+  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Finansal veriler (Ödemeler + Kargolar) taranıyor...</span></div>';
 
   try {
     const startMs = new Date(new Date().getFullYear(), 0, 1).getTime();
@@ -228,18 +228,26 @@ async function tyOdemeleriCek() {
     let tumContent = [];
     for(let i=0; i < araliklar.length; i++) {
       const p = Math.round(((i+1)/araliklar.length)*100);
-      listEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>Takvim Hesaplanıyor %${p}</span></div>`;
+      listEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>Veriler Çekiliyor %${p}</span></div>`;
       
-      const data = await proxyCall({
+      // 1. Ödemeleri çek
+      const setRes = await proxyCall({
         sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
-        type: 'settlements', size: 500,
-        startDate: araliklar[i].s, endDate: araliklar[i].e
+        type: 'settlements', size: 500, startDate: araliklar[i].s, endDate: araliklar[i].e
       });
+      if(setRes.content) tumContent = tumContent.concat(setRes.content);
       
-      if(data.content) tumContent = tumContent.concat(data.content);
-      if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 600)); // Daha güvenli hız
+      await new Promise(r => setTimeout(r, 400));
+
+      // 2. Diğer finansalları (Kargoları) çek
+      const othRes = await proxyCall({
+        sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
+        type: 'otherfinancials', size: 500, startDate: araliklar[i].s, endDate: araliklar[i].e
+      });
+      if(othRes.content) tumContent = tumContent.concat(othRes.content);
+
+      if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 600));
     }
-    // ... (rest of the processing logic remains same)
 
     if(!tumContent.length){
       listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
@@ -247,25 +255,27 @@ async function tyOdemeleriCek() {
     }
 
     const gruplar = {};
-    const processedIds = new Set(); // 🛡️ Çift kayıt koruması
+    const processedIds = new Set();
     let gelecekToplam = 0, buHaftaToplam = 0, yillikOdenen = 0;
     const bugunMs = new Date().setHours(0,0,0,0);
     const birHaftaSonraMs = bugunMs + 7 * 86400000;
 
     tumContent.forEach(it => {
-      // Her işlemi tekil ID ile takip et
-      const uniqueId = it.id || (it.transactionDate + '_' + it.grossAmount + '_' + it.description);
+      // De-duplication using more robust key
+      const uniqueId = (it.id || it.transactionId || '') + '_' + (it.transactionDate || '') + '_' + (it.grossAmount || it.totalAmount || 0);
       if(processedIds.has(uniqueId)) return;
       processedIds.add(uniqueId);
 
       let pMs = it.paymentDate;
+      // Other financials'ta bazen paymentDate boştur, transactionDate kullan
+      if(!pMs) pMs = it.transactionDate;
       if(!pMs) return;
       
       const d = new Date(pMs);
       const day = d.getDay();
       let nextPayout = new Date(d);
       
-      if(day === 1 || day === 4) { /* Pazartesi/Perşembe OK */ }
+      if(day === 1 || day === 4) { /* OK */ }
       else if(day === 0) nextPayout.setDate(d.getDate() + 1);
       else if(day === 5 || day === 6) nextPayout.setDate(d.getDate() + (day === 5 ? 3 : 2));
       else nextPayout.setDate(d.getDate() + (4 - day));
@@ -278,17 +288,16 @@ async function tyOdemeleriCek() {
         gruplar[dKey] = { toplam: 0, satis: 0, komisyon: 0, kargo: 0, stopaj: 0, diger: 0, items: [], ms: realMs, gun: nextPayout.getDate() + '/' + (nextPayout.getMonth()+1) };
       }
       
-      // 💎 GARANTİLİ NET HESAPLAMA (V38)
       const type = (it.transactionType || it.transactionTypeName || '').toLowerCase();
       const desc = (it.description || '').toLowerCase();
-      const rawNet = it.sellerRevenue ?? 0;
+      const rawNet = it.sellerRevenue ?? it.totalAmount ?? 0;
 
       let isDeduction = false;
       if(type.includes('commission') || type.includes('komisyon') || desc.includes('komisyon')) {
         gruplar[dKey].komisyon += Math.abs(rawNet);
         isDeduction = true;
       }
-      else if(type.includes('cargo') || type.includes('kargo') || type.includes('deduction') || desc.includes('kargo') || desc.includes('taşıma') || desc.includes('export') || desc.includes('fee')) {
+      else if(type.includes('cargo') || type.includes('kargo') || type.includes('deduction') || desc.includes('kargo') || desc.includes('taşıma') || desc.includes('export') || desc.includes('fee') || desc.includes('kesinti')) {
         gruplar[dKey].kargo += Math.abs(rawNet);
         isDeduction = true;
       }
@@ -297,15 +306,11 @@ async function tyOdemeleriCek() {
         isDeduction = true;
       }
 
-      if(!isDeduction && (type.includes('sale') || type.includes('satis') || desc.includes('satış'))) {
-        const brute = it.grossAmount || rawNet;
-        gruplar[dKey].satis += brute;
-        
-        // Gömülü kesintileri zorla ayıkla
+      if(!isDeduction && (type.includes('sale') || type.includes('satis') || desc.includes('satış') || desc.includes('sipariş'))) {
+        gruplar[dKey].satis += (it.grossAmount || rawNet);
         const comm = it.commissionAmount ? Math.abs(it.commissionAmount) : 0;
         const carg = it.cargoAmount ? Math.abs(it.cargoAmount) : 0;
         const tax = it.withholdingTax ? Math.abs(it.withholdingTax) : 0;
-
         gruplar[dKey].komisyon += comm;
         gruplar[dKey].kargo += carg;
         gruplar[dKey].stopaj += tax;
@@ -314,8 +319,6 @@ async function tyOdemeleriCek() {
         gruplar[dKey].diger += rawNet;
       }
 
-      // 🧮 TOPLAM NETİ HER SEFERİNDE YENİDEN HESAPLA (Kesin Çözüm)
-      // Bu blok her kartın toplamını kuruşu kuruşuna netleştirir
       gruplar[dKey].toplam += rawNet;
       gruplar[dKey].items.push(it);
 
@@ -342,7 +345,7 @@ async function tyOdemeleriCek() {
     }).join('');
 
     // Liste render
-    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V38-NetFix</div>' + 
+    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V39-FullSync</div>' + 
       sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
         const g = gruplar[tarih];
         const isPast = g.ms < bugunMs;
@@ -357,13 +360,13 @@ async function tyOdemeleriCek() {
               </div>
               <div style="text-align:right">
                 <div style="font-size:24px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
-                <div style="font-size:10px; color:var(--t4)">${g.items.length} Sipariş Paketi</div>
+                <div style="font-size:10px; color:var(--t4)">${g.items.length} İşlem Paketi</div>
               </div>
             </div>
             <div style="background:var(--bg); border-radius:var(--r-md); padding:10px; font-size:12px; display:grid; grid-template-columns: 1fr 1fr; gap:8px; border:1px solid var(--border)">
               <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
               <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700; color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
-              <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo:</span><span style="font-weight:700; color:var(--red)">-${g.kargo.toLocaleString('tr-TR')}₺</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo/Kesinti:</span><span style="font-weight:700; color:var(--red)">-${g.kargo.toLocaleString('tr-TR')}₺</span></div>
               <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:700; color:var(--red)">-${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
             </div>
           </div>`;

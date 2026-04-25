@@ -152,13 +152,11 @@
           <div id="mk-durum" style="font-size:11px;color:var(--t3);margin-top:6px;text-align:center;display:none"></div>
         </div>
         <div class="stat-row" id="m-stats" style="display:none">
-          <div class="stat-box"><div class="val" id="ms-toplam">0</div><div class="lbl">İşlem</div></div>
-          <div class="stat-box"><div class="val" id="ms-odeme">—</div><div class="lbl">Net Ödeme</div></div>
-          <div class="stat-box"><div class="val" id="ms-hesap">—</div><div class="lbl">Hesaplanan</div></div>
+          <div class="stat-box"><div class="val" id="ms-odeme">—</div><div class="lbl">TY Net Ödeme</div></div>
+          <div class="stat-box"><div class="val" id="ms-mut">0</div><div class="lbl">Mut. Uyg.</div></div>
+          <div class="stat-box"><div class="val" id="ms-kargo">0</div><div class="lbl">Kargo Uyg.</div></div>
         </div>
-        <button id="m-uygula-btn" onclick="mutabakatUygula()" style="display:none;width:100%;margin-bottom:8px;padding:12px;background:var(--green);border:none;border-radius:var(--r-md);color:#fff;font-size:13px;font-weight:700;cursor:pointer"></button>
-        <div id="k-stats" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px;margin-bottom:8px;font-size:12px;line-height:1.8"></div>
-        <button id="k-uygula-btn" onclick="kargoUygula()" style="display:none;width:100%;margin-bottom:12px;padding:12px;background:var(--accent);border:none;border-radius:var(--r-md);color:#fff;font-size:13px;font-weight:700;cursor:pointer"></button>
+        <div id="mk-sonuc" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-md);padding:10px;margin-bottom:8px;font-size:12px;line-height:1.9"></div>
         <div id="m-list"></div>
       </div>
 
@@ -597,17 +595,11 @@ window.sifirlaVeAktar = async () => {
   secilenleriAktar();
 };
 
-// ── Mutabakat ─────────────────────────────────────────────────
 let mutabakatEslesimler = [];
-window.mutabakatUygula = () => {
-  const sayi = satislarDB.netTutarlariUygula(mutabakatEslesimler);
-  if(sayi) toast(`✅ ${sayi} satışa gerçek TY değeri uygulandı`, 'success');
-  else toast('Eşleşen kayıtlı satış bulunamadı', 'info');
-  document.getElementById('m-uygula-btn').style.display = 'none';
-};
 
 // ── Birleşik Veri Çekme (Mutabakat + Kargo) ──────────────────
 let kargoEslesimler = [];
+// mutabakatUygula / kargoUygula kaldırıldı — verileriCek otomatik uygular
 
 function durumGoster(msg){ const el=document.getElementById('mk-durum'); if(el){el.textContent=msg;el.style.display=msg?'block':'none';} }
 
@@ -703,51 +695,47 @@ window.verileriCek = async () => {
     fillEl.style.width='100%';
     setTimeout(()=>{ progEl.style.display='none'; durumGoster(''); },600);
 
-    // ── 5. İstatistikler ──
-    const donemSatislar=satislarDB.aralik(document.getElementById('m-start').value,document.getElementById('m-end').value);
-    const hesaplananKar=donemSatislar.reduce((t,s)=>{
+    // ── 5. Otomatik Uygula ──
+    durumGoster('Satışlara uygulanıyor…');
+    const mutSayi = mutabakatEslesimler.length ? satislarDB.netTutarlariUygula(mutabakatEslesimler) : 0;
+    const kargoSayi = kargoEslesimler.length ? satislarDB.kargoUygula(kargoEslesimler) : 0;
+
+    // ── 6. Özet ──
+    const tumSatislar = satislarDB.hepsini();
+    const donemSatislar = satislarDB.aralik(document.getElementById('m-start').value, document.getElementById('m-end').value);
+    const mutEksik = donemSatislar.filter(s=>s.tySellerRevenue==null).length;
+    const kargoEksik = donemSatislar.filter(s=>s.tyKargo==null).length;
+    const hesaplananKar = donemSatislar.reduce((t,s)=>{
       if(s.tySellerRevenue!=null&&s.tyKargo!=null) return t+s.tySellerRevenue-s.tyKargo-(s.alisMaliyeti||0)*s.adet;
       return t;
     },0);
-    const delta=toplamOdeme-hesaplananKar;
-    document.getElementById('ms-toplam').textContent=items.length;
-    document.getElementById('ms-odeme').textContent=toplamOdeme.toFixed(0)+'₺';
-    document.getElementById('ms-hesap').textContent=hesaplananKar.toFixed(0)+'₺';
+    const delta = toplamOdeme - hesaplananKar;
+
+    document.getElementById('ms-odeme').textContent = toplamOdeme.toFixed(0)+'₺';
+    document.getElementById('ms-mut').textContent   = mutSayi;
+    document.getElementById('ms-kargo').textContent = kargoSayi;
     document.getElementById('m-stats').style.display='flex';
 
-    // Mutabakat uygula butonu
-    if(mutabakatEslesimler.length){
-      const mb=document.getElementById('m-uygula-btn');
-      mb.textContent=`✅ ${mutabakatEslesimler.length} satışa TY net ödeme değerini uygula`;
-      mb.style.display='block';
-    }
+    const sonucEl = document.getElementById('mk-sonuc');
+    const satirlar2 = [
+      mutSayi   ? `✅ <b>${mutSayi}</b> satışa TY net ödeme uygulandı` : null,
+      kargoSayi ? `✅ <b>${kargoSayi}</b> satışa kargo bedeli uygulandı` : null,
+      kargoApiHata ? '⚠️ Kargo API erişimi yok (CHE) — kargo uygulanamadı' : null,
+      mutEksik  ? `⚠️ <b>${mutEksik}</b> satışın mutabakat verisi yok` : null,
+      kargoEksik ? `⚠️ <b>${kargoEksik}</b> satışın kargo bilgisi yok` : null,
+    ].filter(Boolean);
+    sonucEl.innerHTML = satirlar2.join('<br>');
+    sonucEl.style.display = 'block';
 
-    // Kargo istatistik + uygula
-    const kstats=document.getElementById('k-stats');
-    if(kargoApiHata){
-      kstats.innerHTML='⚠️ Kargo API erişimi yok (CHE). Mutabakat verileri güncellendi.';
-    } else {
-      kstats.innerHTML=`Kargo faturaları: <b>${kargoFaturalar.length}</b> &nbsp;|&nbsp; `+
-        `Siparişler: <b>${Object.keys(orderKargoMap).length}</b> &nbsp;|&nbsp; `+
-        `Eşleşen satış: <b>${kargoEslesimler.length}</b>`;
-    }
-    kstats.style.display='block';
-    if(kargoEslesimler.length){
-      const kb=document.getElementById('k-uygula-btn');
-      kb.textContent=`🚚 ${kargoEslesimler.length} satışa kargo bedelini uygula`;
-      kb.style.display='block';
-    }
-
-    // Özet liste
-    const cont=document.getElementById('m-list');
-    cont.innerHTML=`<div class="card mb-12" style="border-color:${delta>=0?'var(--green)':'var(--red)'}">
+    const cont = document.getElementById('m-list');
+    cont.innerHTML = `<div class="card mb-12" style="border-color:${delta>=0?'var(--green)':'var(--red)'}">
       <div style="font-size:13px;font-weight:600">Dönem Özeti</div>
       <div style="font-size:12px;color:var(--t3);margin-top:6px;line-height:1.8">
-        TY net ödeme: <b>${toplamOdeme.toFixed(2)}₺</b> &nbsp;·&nbsp; Mutabakat: <b>${mutabakatEslesimler.length}</b> satış<br>
-        Kargo eşleşme: <b>${kargoEslesimler.length}</b> satış<br>
-        Hesaplanan kar: <b>${hesaplananKar.toFixed(2)}₺</b> &nbsp; Fark: <span class="${delta>=0?'delta-pos':'delta-neg'}">${delta>=0?'+':''}${delta.toFixed(2)}₺</span>
+        TY net ödeme: <b>${toplamOdeme.toFixed(2)}₺</b><br>
+        Hesaplanan kar (tam veri olan satışlar): <b>${hesaplananKar.toFixed(2)}₺</b><br>
+        Fark: <span class="${delta>=0?'delta-pos':'delta-neg'}">${delta>=0?'+':''}${delta.toFixed(2)}₺</span>
       </div></div>`
-      +items.slice(0,100).map(it=>{
+      + items.slice(0,100).map(it=>{
         const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
         const tarih=it.transactionDate?new Date(it.transactionDate).toISOString().slice(0,10):'—';
         return `<div class="mut-row"><div style="display:flex;justify-content:space-between;align-items:center">
@@ -757,17 +745,11 @@ window.verileriCek = async () => {
         </div></div>`;
       }).join('');
 
-    toast(`Mutabakat: ${items.length} işlem, Kargo: ${kargoEslesimler.length} eşleşme`,'success');
+    toast(`✅ Mutabakat: ${mutSayi}, Kargo: ${kargoSayi} satışa uygulandı`,'success');
   } catch(e){ progEl.style.display='none'; durumGoster(''); toast('Hata: '+e.message,'error'); console.error(e); }
   finally { btn.disabled=false; }
 };
 
-window.kargoUygula = () => {
-  if(!kargoEslesimler.length) return;
-  const sayi = satislarDB.kargoUygula(kargoEslesimler);
-  toast(`${sayi} satışa gerçek kargo bedeli uygulandı`,'success');
-  document.getElementById('k-uygula-btn').style.display='none';
-};
 
 // ── Fiyat Güncellemeleri ──────────────────────────────────────
 let fiyatFarklar=[];

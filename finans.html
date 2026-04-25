@@ -184,23 +184,31 @@ window.sekme = s => {
 };
 
 // ── TRENDYOL ÖDEMELERİ (PREMIUM BREAKDOWN) ──
-// ── TRENDYOL ÖDEMELERİ (CHUNKED FETCH & IMPROVED UI) ──
+// ── TRENDYOL ÖDEMELERİ (YEARLY FULL FETCH) ──
 async function tyOdemeleriCek() {
   const ay = ayarlarDB.oku();
   const listEl = document.getElementById('ty-odeme-liste');
   const chartEl = document.getElementById('ty-payout-chart');
-  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Veriler analiz ediliyor...</span></div>';
+  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>2026 Yılı ödemeleri taranıyor...</span></div>';
 
   try {
     const PROXY = 'https://zburwdqwpoxpocymkutk.supabase.co/functions/v1/bright-api';
-    const araliklar = [
-      { s: Date.now() - 14 * 86400000, e: Date.now() },
-      { s: Date.now() + 1, e: Date.now() + 14 * 86400000 },
-      { s: Date.now() + 14 * 86400000 + 1, e: Date.now() + 28 * 86400000 }
-    ];
+    
+    // 1 Ocak 2026'dan başla, bugünden 30 gün sonrasına kadar git
+    const startMs = new Date(new Date().getFullYear(), 0, 1).getTime();
+    const endMs = Date.now() + 30 * 86400000;
+    const CHUNK_SIZE = 14 * 86400000;
+    
+    const araliklar = [];
+    for(let t = startMs; t < endMs; t += CHUNK_SIZE) {
+      araliklar.push({ s: t, e: Math.min(t + CHUNK_SIZE - 1, endMs) });
+    }
 
     let tumContent = [];
     for(let i=0; i < araliklar.length; i++) {
+      const progress = Math.round(((i+1)/araliklar.length)*100);
+      listEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>Veriler Çekiliyor %${progress}</span></div>`;
+      
       const res = await fetch(PROXY, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -212,7 +220,7 @@ async function tyOdemeleriCek() {
       });
       const data = await res.json();
       if(data.content) tumContent = tumContent.concat(data.content);
-      if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 400));
+      if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 350));
     }
 
     if(!tumContent.length){
@@ -221,7 +229,7 @@ async function tyOdemeleriCek() {
     }
 
     const gruplar = {};
-    let gelecekToplam = 0, buHaftaToplam = 0, toplamOdenen = 0;
+    let gelecekToplam = 0, buHaftaToplam = 0, yillikOdenen = 0;
     const bugunMs = new Date().setHours(0,0,0,0);
     const birHaftaSonraMs = bugunMs + 7 * 86400000;
 
@@ -248,16 +256,16 @@ async function tyOdemeleriCek() {
         gelecekToplam += net;
         if(pMs <= birHaftaSonraMs) buHaftaToplam += net;
       } else {
-        toplamOdenen += net;
+        yillikOdenen += net;
       }
     });
 
-    // Sıralama: Yakından Uzağa (Ascending)
     const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[a].ms - gruplar[b].ms);
     const maxVal = Math.max(...Object.values(gruplar).map(g => g.toplam), 1);
 
-    // Grafik
-    chartEl.innerHTML = sortedDates.map(k => {
+    // Grafik: Sadece son 7 gün ve gelecek 15 günü göster (tüm yılı göstermek grafiği bozar)
+    const chartDates = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 7 * 86400000 && gruplar[k].ms <= bugunMs + 15 * 86400000);
+    chartEl.innerHTML = chartDates.map(k => {
       const g = gruplar[k];
       const h = (g.toplam / maxVal) * 100;
       const isPast = g.ms < bugunMs;
@@ -266,8 +274,8 @@ async function tyOdemeleriCek() {
       </div>`;
     }).join('');
 
-    // Liste
-    listEl.innerHTML = sortedDates.map(tarih => {
+    // Liste: Sadece Bugünden sonrasını ve son 10 günü detaylı göster (geçmişi çok şişirmeyelim)
+    listEl.innerHTML = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
       const g = gruplar[tarih];
       const isPast = g.ms < bugunMs;
       const isNext = !isPast && (g.ms <= bugunMs + 3 * 86400000);
@@ -275,13 +283,13 @@ async function tyOdemeleriCek() {
         <div class="payout-card ${isPast ? 'past' : ''}" style="${isNext ? 'border:2px solid var(--green); background:rgba(16,185,129,0.06)' : ''}">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px">
             <div>
-              <div style="font-size:10px; color:var(--t4); font-weight:800; letter-spacing:0.5px">ÖDEME TARİHİ</div>
+              <div style="font-size:10px; color:var(--t4); font-weight:800">ÖDEME TARİHİ</div>
               <div style="font-size:16px; font-weight:800">${tarih}</div>
               <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 BEKLENEN ÖDEME'}</div>
             </div>
             <div style="text-align:right">
               <div style="font-size:22px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
-              <div style="font-size:10px; color:var(--t4)">${g.items.length} Sipariş Detayı</div>
+              <div style="font-size:10px; color:var(--t4)">${g.items.length} İşlem</div>
             </div>
           </div>
           <div style="background:var(--bg); border-radius:var(--r-md); padding:10px; font-size:12px; display:grid; grid-template-columns: 1fr 1fr; gap:8px; border:1px solid var(--border)">
@@ -290,18 +298,19 @@ async function tyOdemeleriCek() {
             <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo:</span><span style="font-weight:700; color:var(--red)">${g.kargo.toLocaleString('tr-TR')}₺</span></div>
             <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:700; color:var(--red)">${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
           </div>
-          ${isNext ? `<div style="margin-top:10px; font-size:10px; color:var(--green); font-weight:700; display:flex; align-items:center; gap:4px">🚀 Sıradaki ilk ödemeniz!</div>` : ''}
         </div>`;
     }).join('');
 
     document.getElementById('ty-ozet-toplam').textContent = gelecekToplam.toLocaleString('tr-TR') + '₺';
     document.getElementById('ty-ozet-yakin').textContent = buHaftaToplam.toLocaleString('tr-TR') + '₺';
-    document.getElementById('ty-ozet-odenen').textContent = toplamOdenen.toLocaleString('tr-TR') + '₺';
+    document.getElementById('ty-ozet-odenen').innerHTML = `<span style="font-size:10px;opacity:0.6;display:block">2026 TOPLAM</span>${yillikOdenen.toLocaleString('tr-TR')}₺`;
 
   } catch (err) {
     listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:20px">⚠️ Hata oluştu: ${err.message}</div>`;
   }
 }
+
+window.tyOdemeleriCek = tyOdemeleriCek;
 
 window.tyOdemeleriCek = tyOdemeleriCek;
 

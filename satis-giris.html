@@ -97,11 +97,11 @@
             <button class="btn btn-ghost" style="flex:1;font-size:11px" onclick="hizliTarih(365,'s')">1 yıl</button>
           </div>
           <div style="margin-bottom:10px">
-            <div style="font-size:11px;color:var(--t3);margin-bottom:4px">Durum</div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:4px">Çekme Modu</div>
             <select class="form-select" id="s-durum" style="width:100%">
-              <option value="teslim">Teslim Edilenler (Delivered)</option>
-              <option value="aktif">Tüm Aktif</option>
-              <option value="hepsi">Hepsi (iade dahil)</option>
+              <option value="hepsi">Tüm Siparişler (iade dahil)</option>
+              <option value="aktif">Aktif Siparişler</option>
+              <option value="teslim">Yalnızca Teslim Edilenler</option>
             </select>
           </div>
           <button class="btn btn-primary btn-full" id="s-cek-btn" onclick="siparisleriCek()">🔄 Siparişleri Getir</button>
@@ -419,14 +419,14 @@ window.siparisleriCek = async () => {
   document.querySelectorAll('.s-dtab').forEach((b,i)=>{b.classList.toggle('active',i===0);});
 
   try {
-    // 7 günlük chunk + status API'ye gönderilir (lastModifiedDate filtresi — TY davranışı)
+    // 7 günlük chunk — status filtresi yalnızca "Yalnızca Teslim" modunda API'ye gönderilir
     const filtre = document.getElementById('s-durum').value;
-    const apiStatus = filtre === 'teslim' ? 'Delivered' : filtre === 'aktif' ? null : null;
-    const content = await fetchDateRange('orders', startMs, endMs, fillEl, 7, apiStatus ? {status: apiStatus} : {});
+    const extraParams = filtre === 'teslim' ? {status:'Delivered'} : {};
+    const content = await fetchDateRange('orders', startMs, endMs, fillEl, 7, extraParams);
     fillEl.style.width='100%';
+    // İstemci tarafı filtre: aktif modda iade/iptal hariç tut
     const filtreli = content.filter(pkg=>{
-      if(filtre==='teslim') return TESLIM_DURUMLAR.includes(pkg.status);
-      if(filtre==='aktif')  return AKTIF_DURUMLAR.includes(pkg.status);
+      if(filtre==='aktif') return AKTIF_DURUMLAR.includes(pkg.status);
       return true;
     });
     const mevcutTyIds = satislarDB.tyIdleri();

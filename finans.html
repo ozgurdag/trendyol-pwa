@@ -244,6 +244,9 @@ async function tyOdemeleriCek() {
       listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
       return;
     }
+    // DEBUG — Console'da ilk settlement item'ının yapısını gör, sonra kaldır
+    console.log('[DEBUG] ilk item:', JSON.stringify(tumContent[0]));
+    console.log('[DEBUG] toplam item:', tumContent.length);
 
     const gruplar = {};
     const processedIds = new Set();

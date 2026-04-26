@@ -252,6 +252,20 @@ async function tyOdemeleriCek() {
     const haftaMs = 7 * 86400000;
     const HAFTA_ETIKET = ['Bu Hafta', 'Gelecek Hafta', '2. Hafta', '3. Hafta', '4. Hafta', '5. Hafta', '6. Hafta', '7. Hafta'];
 
+    // DEBUG: paymentOrderId dağılımı
+    { const poidStats = {gecmis_poid_var:0, gecmis_poid_yok:0, gelecek_poid_var:0, gelecek_poid_yok:0};
+      tumContent.forEach(it => {
+        const pMs = it.paymentDate || it.transactionDate; if(!pMs) return;
+        const gg = pMs >= bugunMs;
+        const pp = it.paymentOrderId != null;
+        if(gg && pp) poidStats.gelecek_poid_var++;
+        else if(gg && !pp) poidStats.gelecek_poid_yok++;
+        else if(!gg && pp) poidStats.gecmis_poid_var++;
+        else poidStats.gecmis_poid_yok++;
+      });
+      console.log('[DEBUG-POID2]', JSON.stringify(poidStats), '— örnek geçmiş paid:', JSON.stringify(tumContent.find(it => (it.paymentDate||it.transactionDate) < bugunMs)));
+    }
+
     tumContent.forEach(it => {
       const uniqueId = (it.id || it.transactionId || '') + '_' + (it.transactionDate || '') + '_' + (it.credit || it.grossAmount || it.totalAmount || 0);
       if(processedIds.has(uniqueId)) return;

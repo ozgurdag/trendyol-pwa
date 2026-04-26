@@ -1078,8 +1078,8 @@ export const logDB = {
 /* ── AYARLAR DB ── */
 export const ayarlarDB = {
   varsayilan:{
-    kargoBaremEsik1:150,kargoBaremUcret1:51.492,
-    kargoBaremEsik2:300,kargoBaremUcret2:88.488,
+    kargoBaremEsik1:200,kargoBaremUcret1:51.492,
+    kargoBaremEsik2:350,kargoBaremUcret2:88.488,
     platformAyniGun:8.388,platformNormal:13.188,
     hedefKarROI:0.30,kargoFirma:'Aras',ayniGunKargo:false,
     saticiTipiKey:'KadinGir',
@@ -1120,8 +1120,8 @@ export const hesapla = {
 
   gercekKargoBedeli(fiyat, desi, ayarlar, kargoFU) {
     if ((desi||1) > 10) return kargoFU || 100.716;
-    if (fiyat < (ayarlar.kargoBaremEsik1 || 150)) return ayarlar.kargoBaremUcret1 || 51.492;
-    if (fiyat < (ayarlar.kargoBaremEsik2 || 300)) return ayarlar.kargoBaremUcret2 || 88.488;
+    if (fiyat < (ayarlar.kargoBaremEsik1 || 200)) return ayarlar.kargoBaremUcret1 || 51.492;
+    if (fiyat < (ayarlar.kargoBaremEsik2 || 350)) return ayarlar.kargoBaremUcret2 || 88.488;
     return kargoFU || 100.716;
   },
 

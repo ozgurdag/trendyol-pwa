@@ -273,7 +273,7 @@ async function tyOdemeleriCek() {
       const realMs = nextPayout.getTime();
 
       if(!gruplar[dKey]) {
-        gruplar[dKey] = { toplam: 0, satis: 0, komisyon: 0, kargo: 0, stopaj: 0, diger: 0, items: [], ms: realMs, gun: nextPayout.getDate() + '/' + (nextPayout.getMonth()+1) };
+        gruplar[dKey] = { toplam: 0, satis: 0, komisyon: 0, kargo: 0, stopaj: 0, diger: 0, items: [], ms: realMs, gun: nextPayout.getDate() + '/' + (nextPayout.getMonth()+1), pkgCredits: {} };
       }
       
       const type = (it.transactionType || it.transactionTypeName || '').toLowerCase();
@@ -291,10 +291,13 @@ async function tyOdemeleriCek() {
       } else if(type.includes('withholding') || type.includes('stopaj') || desc.includes('stopaj')) {
         gruplar[dKey].stopaj += Math.abs(rawNet);
       } else if(rawNet > 0) {
-        // Brüt satış: credit varsa onu kullan (settlements), yoksa rawNet
         gruplar[dKey].satis += (it.credit || rawNet);
-        // Komisyon: settlements'ta her satırda commissionAmount gömülü
         if(it.commissionAmount) gruplar[dKey].komisyon += Math.abs(it.commissionAmount);
+        // Gelecek ödemeler için paket bazında kargo tahmini
+        if(realMs >= bugunMs && it.shipmentPackageId) {
+          const pkg = String(it.shipmentPackageId);
+          gruplar[dKey].pkgCredits[pkg] = (gruplar[dKey].pkgCredits[pkg] || 0) + (it.credit || 0);
+        }
       }
 
       // Net ödeme = tüm sellerRevenue'ların toplamı (satışlar +, kesintiler -)
@@ -310,22 +313,43 @@ async function tyOdemeleriCek() {
       }
     });
 
+    // Gelecek gruplar için kargo tahmini hesapla (kargo barem ayarlarından)
+    Object.values(gruplar).forEach(g => {
+      if(g.ms >= bugunMs && Object.keys(g.pkgCredits).length) {
+        g.estimatedKargo = Object.values(g.pkgCredits).reduce((sum, pkgPrice) => {
+          return sum + hesapla.gercekKargoBedeli(pkgPrice, 1, ay);
+        }, 0);
+        g.estimatedNet = Math.max(0, g.toplam - g.estimatedKargo);
+      }
+    });
+
+    // Gelecek toplam hakediş de kargo tahminini içersin
+    gelecekToplam = Object.entries(gruplar).reduce((sum, [, g]) => {
+      if(g.ms >= bugunMs) return sum + (g.estimatedNet ?? g.toplam);
+      return sum;
+    }, 0);
+    buHaftaToplam = Object.entries(gruplar).reduce((sum, [, g]) => {
+      if(g.ms >= bugunMs && g.ms <= birHaftaSonraMs) return sum + (g.estimatedNet ?? g.toplam);
+      return sum;
+    }, 0);
+
     const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[a].ms - gruplar[b].ms);
-    const maxVal = Math.max(...Object.values(gruplar).map(g => g.toplam), 1);
+    const maxVal = Math.max(...Object.values(gruplar).map(g => g.estimatedNet ?? g.toplam), 1);
 
     // Grafik
     const chartDates = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 14 * 86400000 && gruplar[k].ms <= bugunMs + 21 * 86400000);
     chartEl.innerHTML = chartDates.map(k => {
       const g = gruplar[k];
-      const h = (g.toplam / maxVal) * 100;
+      const displayVal = g.estimatedNet ?? g.toplam;
+      const h = (displayVal / maxVal) * 100;
       const isPast = g.ms < bugunMs;
-      return `<div class="payout-bar" style="height:${Math.max(h, 12)}%; background:${isPast?'rgba(255,255,255,0.15)':'var(--accent)'}" data-val="${g.toplam.toFixed(0)}₺">
+      return `<div class="payout-bar" style="height:${Math.max(h, 12)}%; background:${isPast?'rgba(255,255,255,0.15)':'var(--accent)'}" data-val="${displayVal.toFixed(0)}₺">
         <span style="position:absolute; bottom:-18px; left:50%; transform:translateX(-50%); font-size:8px; color:var(--t4); font-weight:600">${g.gun}</span>
       </div>`;
     }).join('');
 
     // Liste render
-    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V42</div>' + 
+    listEl.innerHTML = '<div style="font-size:9px; text-align:right; opacity:0.3; margin-bottom:5px">Sistem Versiyonu: V43</div>' + 
       sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(tarih => {
         const g = gruplar[tarih];
         const isPast = g.ms < bugunMs;
@@ -339,14 +363,14 @@ async function tyOdemeleriCek() {
                 <div class="payout-status ${isPast ? 'past' : 'future'}">${isPast ? '✅ ÖDENDİ' : '🕒 TAHMİNİ ÖDEME'}</div>
               </div>
               <div style="text-align:right">
-                <div style="font-size:24px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${g.toplam.toLocaleString('tr-TR')}₺</div>
-                <div style="font-size:10px; color:var(--t4)">${g.items.length} İşlem Paketi</div>
+                <div style="font-size:24px; font-weight:900; color:${isPast ? 'var(--t2)' : 'var(--green)'}">${(g.estimatedNet ?? g.toplam).toLocaleString('tr-TR')}₺</div>
+                <div style="font-size:10px; color:var(--t4)">${Object.keys(g.pkgCredits||{}).length || g.items.length} Paket</div>
               </div>
             </div>
             <div style="background:var(--bg); border-radius:var(--r-md); padding:10px; font-size:12px; display:grid; grid-template-columns: 1fr 1fr; gap:8px; border:1px solid var(--border)">
               <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
               <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700; color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
-              <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Kargo/Kesinti:</span><span style="font-weight:700; color:var(--red)">-${g.kargo.toLocaleString('tr-TR')}₺</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">${isPast ? 'Kargo/Kesinti' : 'Tahmini Kargo'}:</span><span style="font-weight:700; color:var(--red)">-${(isPast ? g.kargo : (g.estimatedKargo||0)).toLocaleString('tr-TR')}₺</span></div>
               <div style="display:flex; justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:700; color:var(--red)">-${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
             </div>
           </div>`;

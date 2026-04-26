@@ -244,6 +244,27 @@ async function tyOdemeleriCek() {
     const processedIds = new Set();
     const bugunMs = new Date().setHours(0,0,0,0);
 
+    // Türk resmi tatilleri — TY bu günlerde ödeme yapmaz
+    const TATILLER = new Set([
+      '2026-01-01',
+      '2026-03-20','2026-03-21','2026-03-22', // Ramazan Bayramı
+      '2026-04-23',                            // 23 Nisan
+      '2026-05-01',                            // 1 Mayıs
+      '2026-05-19',                            // 19 Mayıs
+      '2026-05-26','2026-05-27','2026-05-28','2026-05-29','2026-05-30', // Kurban Bayramı
+      '2026-07-15','2026-08-30','2026-10-29',
+    ]);
+    function dStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    function nextOdemeGunu(ms) {
+      const d = new Date(ms); d.setHours(0,0,0,0);
+      for(let i = 0; i < 14; i++) {
+        const day = d.getDay();
+        if((day === 1 || day === 4) && !TATILLER.has(dStr(d))) return d.getTime();
+        d.setDate(d.getDate() + 1);
+      }
+      return d.getTime();
+    }
+
     tumContent.forEach(it => {
       const uniqueId = String(it.id||it.transactionId||'') + '_' + String(it.transactionDate||'') + '_' + String(it.credit||0);
       if(processedIds.has(uniqueId)) return;
@@ -266,10 +287,11 @@ async function tyOdemeleriCek() {
         gunLabel = d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
         isFuture = false;
       } else {
-        // paymentOrderId null = henüz ödeme emri yok = BEKLEMEDE
-        const d = new Date(pMs); d.setHours(0,0,0,0);
-        dKey     = 'pend_' + d.getTime();
-        realMs   = d.getTime();
+        // paymentOrderId null = beklemede — paymentDate'i Pzt/Per'e yuvarla (tatil hariç)
+        const odemeMs = nextOdemeGunu(pMs);
+        const d = new Date(odemeMs);
+        dKey     = 'pend_' + odemeMs;
+        realMs   = odemeMs;
         gunLabel = d.getDate() + '/' + (d.getMonth()+1);
         isFuture = true;
       }
@@ -324,7 +346,7 @@ async function tyOdemeleriCek() {
 
     // Liste — son 30 gün ödendi + tüm bekleyen
     const listKeys = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 30 * 86400000);
-    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V46</div>' +
+    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V47</div>' +
       listKeys.map(k => {
         const g      = gruplar[k];
         const isPast = !g.isFuture;

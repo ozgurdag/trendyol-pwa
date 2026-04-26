@@ -136,7 +136,7 @@
             <div style="font-size:18px;font-weight:800" id="ty-ozet-yakin">0₺</div>
           </div>
           <div>
-            <div style="font-size:10px;opacity:0.7;font-weight:700">SON ÖDENEN</div>
+            <div style="font-size:10px;opacity:0.7;font-weight:700">2026 TOPLAM</div>
             <div style="font-size:18px;font-weight:800" id="ty-ozet-odenen">0₺</div>
           </div>
         </div>
@@ -378,7 +378,7 @@ async function tyOdemeleriCek() {
 
     document.getElementById('ty-ozet-toplam').textContent = gelecekToplam.toLocaleString('tr-TR') + '₺';
     document.getElementById('ty-ozet-yakin').textContent = buHaftaToplam.toLocaleString('tr-TR') + '₺';
-    document.getElementById('ty-ozet-odenen').innerHTML = `<span style="font-size:10px;opacity:0.6;display:block">2026 TOPLAM</span>${yillikOdenen.toLocaleString('tr-TR')}₺`;
+    document.getElementById('ty-ozet-odenen').textContent = yillikOdenen.toLocaleString('tr-TR') + '₺';
 
   } catch (err) {
     listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:20px">⚠️ Takvim Hatası: ${err.message}</div>`;

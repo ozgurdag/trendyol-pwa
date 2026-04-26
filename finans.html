@@ -244,6 +244,11 @@ async function tyOdemeleriCek() {
       listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
       return;
     }
+    // DEBUG: gelecekteki itemlarda paymentOrderId var mı?
+    const bugunMs2 = new Date().setHours(0,0,0,0);
+    const futureItems = tumContent.filter(it => (it.paymentDate||0) >= bugunMs2);
+    console.log('[DEBUG-POID] toplam gelecek item:', futureItems.length);
+    console.log('[DEBUG-POID] ilk 5:', futureItems.slice(0,5).map(it=>`paymentOrderId:${it.paymentOrderId} paymentDate:${it.paymentDate} credit:${it.credit}`).join(' | '));
 
     const gruplar = {};
     const processedIds = new Set();

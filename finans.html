@@ -208,203 +208,163 @@ async function proxyCall(payload, deneme = 1) {
   }
 }
 
-// ── TRENDYOL ÖDEMELERİ (FULL DUAL-CHANNEL SYNC - V39) ──
+// ── TRENDYOL ÖDEMELERİ — V46 ──
 async function tyOdemeleriCek() {
   const ay = ayarlarDB.oku();
   const listEl = document.getElementById('ty-odeme-liste');
   const chartEl = document.getElementById('ty-payout-chart');
-  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Finansal veriler (Ödemeler + Kargolar) taranıyor...</span></div>';
+  listEl.innerHTML = '<div class="ai-loading"><div class="spinner"></div><span>Finansal veriler taranıyor...</span></div>';
 
   try {
     const startMs = new Date(new Date().getFullYear(), 0, 1).getTime();
     const endMs = Date.now() + 35 * 86400000;
     const CHUNK_SIZE = 14 * 86400000;
-    
+
     const araliklar = [];
-    for(let t = startMs; t < endMs; t += CHUNK_SIZE) {
+    for(let t = startMs; t < endMs; t += CHUNK_SIZE)
       araliklar.push({ s: t, e: Math.min(t + CHUNK_SIZE - 1, endMs) });
-    }
 
     let tumContent = [];
-    for(let i=0; i < araliklar.length; i++) {
-      const p = Math.round(((i+1)/araliklar.length)*100);
-      listEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>Veriler Çekiliyor %${p}</span></div>`;
-      
-      // 1. Ödemeleri çek
+    for(let i = 0; i < araliklar.length; i++) {
+      listEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div><span>Veriler Çekiliyor %${Math.round(((i+1)/araliklar.length)*100)}</span></div>`;
       const setRes = await proxyCall({
         sellerId: ay.tySellerId, apiKey: ay.tyApiKey, apiSecret: ay.tyApiSecret,
         type: 'settlements', size: 500, startDate: araliklar[i].s, endDate: araliklar[i].e
       });
       if(setRes.content) tumContent = tumContent.concat(setRes.content);
-
       if(i < araliklar.length - 1) await new Promise(r => setTimeout(r, 600));
     }
 
-    if(!tumContent.length){
+    if(!tumContent.length) {
       listEl.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t4)">Ödeme kaydı bulunamadı.</div>';
       return;
     }
 
     const gruplar = {};
     const processedIds = new Set();
-    let gelecekToplam = 0, buHaftaToplam = 0, yillikOdenen = 0;
     const bugunMs = new Date().setHours(0,0,0,0);
-    const haftaMs = 7 * 86400000;
-    const HAFTA_ETIKET = ['Bu Hafta', 'Gelecek Hafta', '2. Hafta', '3. Hafta', '4. Hafta', '5. Hafta', '6. Hafta', '7. Hafta'];
-
-    // DEBUG: paymentOrderId dağılımı
-    { const poidStats = {gecmis_poid_var:0, gecmis_poid_yok:0, gelecek_poid_var:0, gelecek_poid_yok:0};
-      tumContent.forEach(it => {
-        const pMs = it.paymentDate || it.transactionDate; if(!pMs) return;
-        const gg = pMs >= bugunMs;
-        const pp = it.paymentOrderId != null;
-        if(gg && pp) poidStats.gelecek_poid_var++;
-        else if(gg && !pp) poidStats.gelecek_poid_yok++;
-        else if(!gg && pp) poidStats.gecmis_poid_var++;
-        else poidStats.gecmis_poid_yok++;
-      });
-      console.log('[DEBUG-POID2]', JSON.stringify(poidStats), '— örnek geçmiş paid:', JSON.stringify(tumContent.find(it => (it.paymentDate||it.transactionDate) < bugunMs)));
-    }
 
     tumContent.forEach(it => {
-      const uniqueId = (it.id || it.transactionId || '') + '_' + (it.transactionDate || '') + '_' + (it.credit || it.grossAmount || it.totalAmount || 0);
+      const uniqueId = String(it.id||it.transactionId||'') + '_' + String(it.transactionDate||'') + '_' + String(it.credit||0);
       if(processedIds.has(uniqueId)) return;
       processedIds.add(uniqueId);
 
       const pMs = it.paymentDate || it.transactionDate;
       if(!pMs) return;
 
-      const rawNet = it.sellerRevenue != null ? it.sellerRevenue
-                   : it.totalAmount   != null ? it.totalAmount
-                   : (it.credit || 0) - (it.debt || 0);
+      const sellerRev  = it.sellerRevenue ?? 0;
+      const credit     = it.credit || 0;
+      const commission = Math.abs(it.commissionAmount || 0);
 
       let dKey, realMs, gunLabel, isFuture;
 
-      // paymentOrderId null ise TY henüz batch'e atmamış = ödenmemiş
-      const isActuallyPaid = it.paymentOrderId != null && pMs < bugunMs;
-
-      if(!isActuallyPaid) {
-        // Gelecek/bekleyen: haftalık bucket
-        const refMs = pMs >= bugunMs ? pMs : bugunMs;
-        const wIdx = Math.floor((refMs - bugunMs) / haftaMs);
-        const wStart = new Date(bugunMs + wIdx * haftaMs);
-        const wEnd   = new Date(bugunMs + (wIdx + 1) * haftaMs - 1);
-        const fmt = d => d.getDate() + '/' + (d.getMonth()+1);
-        dKey = `w_${wIdx}`;
-        realMs = wStart.getTime();
-        gunLabel = (HAFTA_ETIKET[wIdx] || `${wIdx+1}. Hafta`) + ` (${fmt(wStart)}–${fmt(wEnd)})`;
-        isFuture = true;
-      } else {
-        // Gerçekten ödenmiş: per-date (Mon/Thu ayarlaması)
-        const d = new Date(pMs);
-        const day = d.getDay();
-        const np = new Date(d);
-        if(day === 1 || day === 4) { /* OK */ }
-        else if(day === 0) np.setDate(d.getDate() + 1);
-        else if(day === 5 || day === 6) np.setDate(d.getDate() + (day === 5 ? 3 : 2));
-        else np.setDate(d.getDate() + (4 - day));
-        np.setHours(0,0,0,0);
-        dKey = np.toLocaleDateString('tr-TR');
-        realMs = np.getTime();
-        gunLabel = np.getDate() + '/' + (np.getMonth()+1);
+      if(it.paymentOrderId != null) {
+        // paymentOrderId dolu = TY ödeme emri oluşturmuş = ÖDENDİ
+        dKey = 'paid_' + it.paymentOrderId;
+        const d = new Date(pMs); d.setHours(0,0,0,0);
+        realMs   = d.getTime();
+        gunLabel = d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
         isFuture = false;
+      } else {
+        // paymentOrderId null = henüz ödeme emri yok = BEKLEMEDE
+        const d = new Date(pMs); d.setHours(0,0,0,0);
+        dKey     = 'pend_' + d.getTime();
+        realMs   = d.getTime();
+        gunLabel = d.getDate() + '/' + (d.getMonth()+1);
+        isFuture = true;
       }
 
-      if(!gruplar[dKey]) {
-        gruplar[dKey] = { toplam:0, satis:0, komisyon:0, kargo:0, stopaj:0, items:[], ms:realMs, gun:gunLabel, isFuture, pkgCredits:{} };
-      }
+      if(!gruplar[dKey])
+        gruplar[dKey] = { toplam:0, satis:0, komisyon:0, items:[], ms:realMs, gun:gunLabel, isFuture, pkgCredits:{} };
 
-      const type = (it.transactionType || it.transactionTypeName || '').toLowerCase();
-      const desc = (it.description || '').toLowerCase();
-
-      if(type.includes('komisyon') || type.includes('commission') || desc.includes('komisyon')) {
-        gruplar[dKey].komisyon += Math.abs(rawNet);
-      } else if(type.includes('kargo') || type.includes('cargo') || desc.includes('kargo') || desc.includes('taşıma')) {
-        gruplar[dKey].kargo += Math.abs(rawNet);
-      } else if(type.includes('stopaj') || type.includes('withholding') || desc.includes('stopaj')) {
-        gruplar[dKey].stopaj += Math.abs(rawNet);
-      } else if(rawNet > 0) {
-        gruplar[dKey].satis += (it.credit || rawNet);
-        if(it.commissionAmount) gruplar[dKey].komisyon += Math.abs(it.commissionAmount);
-        if(isFuture && it.shipmentPackageId) {
-          const pkg = String(it.shipmentPackageId);
-          gruplar[dKey].pkgCredits[pkg] = (gruplar[dKey].pkgCredits[pkg] || 0) + (it.credit || 0);
-        }
-      }
-
-      gruplar[dKey].toplam += rawNet;
+      gruplar[dKey].satis     += credit;
+      gruplar[dKey].komisyon  += commission;
+      gruplar[dKey].toplam    += sellerRev;
       gruplar[dKey].items.push(it);
 
-      if(isFuture) {
-        gelecekToplam += rawNet;
-        if(realMs < bugunMs + haftaMs) buHaftaToplam += rawNet;
-      } else {
-        yillikOdenen += rawNet;
+      if(credit > 0 && it.shipmentPackageId) {
+        const pkg = String(it.shipmentPackageId);
+        gruplar[dKey].pkgCredits[pkg] = (gruplar[dKey].pkgCredits[pkg] || 0) + credit;
       }
     });
 
-    // Gelecek haftalık gruplar için kargo tahmini
+    // Kargo tahmini — sadece bekleyen (paymentOrderId null) gruplar
     Object.values(gruplar).forEach(g => {
-      if(g.isFuture && Object.keys(g.pkgCredits).length) {
-        g.estimatedKargo = Object.values(g.pkgCredits).reduce((s, p) => s + hesapla.gercekKargoBedeli(p, 1, ay), 0);
-        g.estimatedNet = Math.max(0, g.toplam - g.estimatedKargo);
-      }
+      if(!g.isFuture) return;
+      const pkgList = Object.values(g.pkgCredits);
+      g.estimatedKargo = pkgList.length
+        ? pkgList.reduce((s, p) => s + hesapla.gercekKargoBedeli(p, 1, ay), 0)
+        : 0;
+      g.estimatedNet = Math.max(0, g.toplam - g.estimatedKargo);
     });
 
-    gelecekToplam = Object.values(gruplar).filter(g=>g.isFuture).reduce((s,g)=>s+(g.estimatedNet??g.toplam),0);
-    buHaftaToplam = Object.values(gruplar).filter(g=>g.isFuture&&g.ms<bugunMs+haftaMs).reduce((s,g)=>s+(g.estimatedNet??g.toplam),0);
+    // Özet sayılar
+    let gelecekToplam = 0, yakinToplam = 0, yillikOdenen = 0;
+    const yediGun = 7 * 86400000;
+    Object.values(gruplar).forEach(g => {
+      const net = g.isFuture ? g.estimatedNet : g.toplam;
+      if(g.isFuture) { gelecekToplam += net; if(g.ms < bugunMs + yediGun) yakinToplam += net; }
+      else yillikOdenen += net;
+    });
 
     const sortedDates = Object.keys(gruplar).sort((a,b) => gruplar[a].ms - gruplar[b].ms);
-    const maxVal = Math.max(...Object.values(gruplar).map(g => g.estimatedNet ?? g.toplam), 1);
+    const maxVal = Math.max(...Object.values(gruplar).map(g => g.isFuture ? g.estimatedNet : g.toplam), 1);
 
-    // Grafik — geçmiş 14 gün per-date + gelecek haftalar
-    const chartKeys = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 14 * 86400000);
+    // Grafik — son 30 gün ödendi + tüm bekleyen
+    const chartKeys = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 30 * 86400000);
     chartEl.innerHTML = chartKeys.map(k => {
       const g = gruplar[k];
-      const val = g.estimatedNet ?? g.toplam;
-      const h = (val / maxVal) * 100;
-      const isPast = !g.isFuture;
-      const shortLabel = isPast ? g.gun : (HAFTA_ETIKET[parseInt(k.replace('w_',''))]||k).replace(' Hafta','H').replace('Bu ','Bu').replace('Gelecek ','GH');
-      return `<div class="payout-bar" style="height:${Math.max(h,12)}%;background:${isPast?'rgba(255,255,255,0.15)':'var(--accent)'}">
-        <span style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--t4);font-weight:600">${shortLabel}</span>
+      const val = g.isFuture ? g.estimatedNet : g.toplam;
+      const h   = (val / maxVal) * 100;
+      const lbl = g.gun.split('/').slice(0,2).join('/');
+      return `<div class="payout-bar" style="height:${Math.max(h,12)}%;background:${g.isFuture?'var(--accent)':'rgba(255,255,255,0.15)'}">
+        <span style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:8px;color:var(--t4);font-weight:600">${lbl}</span>
       </div>`;
     }).join('');
 
-    // Liste render
-    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">Sistem Versiyonu: V45</div>' +
-      sortedDates.filter(k => gruplar[k].ms >= bugunMs - 10 * 86400000).map(k => {
-        const g = gruplar[k];
+    // Liste — son 30 gün ödendi + tüm bekleyen
+    const listKeys = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 30 * 86400000);
+    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V46</div>' +
+      listKeys.map(k => {
+        const g      = gruplar[k];
         const isPast = !g.isFuture;
-        const displayAmt = (g.estimatedNet ?? g.toplam);
-        const isNext = g.isFuture && g.ms < bugunMs + haftaMs;
+        const amt    = isPast ? g.toplam : g.estimatedNet;
+        const isNext = g.isFuture && g.ms < bugunMs + yediGun;
+        const pkgCnt = Object.keys(g.pkgCredits).length || g.items.length;
+        const detay  = isPast
+          ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
+             <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700;color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
+             <div style="display:flex;justify-content:space-between;grid-column:span 2"><span style="color:var(--t4);font-size:10px;opacity:0.6">* Kargo faturası ayrıca düşülür (DDA)</span><span></span></div>`
+          : `<div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
+             <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700;color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
+             <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Tahmini Kargo:</span><span style="font-weight:700;color:var(--red)">-${g.estimatedKargo.toLocaleString('tr-TR')}₺</span></div>
+             <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Tahmini Net:</span><span style="font-weight:700;color:var(--green)">${g.estimatedNet.toLocaleString('tr-TR')}₺</span></div>`;
         return `
           <div class="payout-card ${isPast?'past':''}" style="${isNext?'border:2px solid var(--green);background:rgba(16,185,129,0.06)':''}">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
               <div>
-                <div style="font-size:10px;color:var(--t4);font-weight:800">${isPast?'BANKA ÖDEME GÜNÜ':'TAHMİNİ ÖDEME DÖNEMİ'}</div>
+                <div style="font-size:10px;color:var(--t4);font-weight:800">${isPast?'BANKA ÖDEME GÜNÜ':'TAHMİNİ ÖDEME GÜNÜ'}</div>
                 <div style="font-size:17px;font-weight:800">${g.gun}</div>
-                <div class="payout-status ${isPast?'past':'future'}">${isPast?'✅ ÖDENDİ':'🕒 TAHMİNİ'}</div>
+                <div class="payout-status ${isPast?'past':'future'}">${isPast?'✅ ÖDENDİ':'🕒 BEKLEMEDE'}</div>
               </div>
               <div style="text-align:right">
-                <div style="font-size:24px;font-weight:900;color:${isPast?'var(--t2)':'var(--green)'}">${displayAmt.toLocaleString('tr-TR')}₺</div>
-                <div style="font-size:10px;color:var(--t4)">${Object.keys(g.pkgCredits||{}).length||g.items.length} Paket</div>
+                <div style="font-size:24px;font-weight:900;color:${isPast?'var(--t2)':'var(--green)'}">${amt.toLocaleString('tr-TR')}₺</div>
+                <div style="font-size:10px;color:var(--t4)">${pkgCnt} Paket</div>
               </div>
             </div>
             <div style="background:var(--bg);border-radius:var(--r-md);padding:10px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px;border:1px solid var(--border)">
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700;color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">${isPast?'Kargo/Kesinti':'Tahmini Kargo'}:</span><span style="font-weight:700;color:var(--red)">-${(isPast?g.kargo:(g.estimatedKargo||0)).toLocaleString('tr-TR')}₺</span></div>
-              <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Stopaj:</span><span style="font-weight:700;color:var(--red)">-${g.stopaj.toLocaleString('tr-TR')}₺</span></div>
+              ${detay}
             </div>
           </div>`;
       }).join('');
 
     document.getElementById('ty-ozet-toplam').textContent = gelecekToplam.toLocaleString('tr-TR') + '₺';
-    document.getElementById('ty-ozet-yakin').textContent = buHaftaToplam.toLocaleString('tr-TR') + '₺';
-    document.getElementById('ty-ozet-odenen').textContent = yillikOdenen.toLocaleString('tr-TR') + '₺';
+    document.getElementById('ty-ozet-yakin').textContent = yakinToplam.toLocaleString('tr-TR') + '₺';
+    document.getElementById('ty-ozet-odened') && (document.getElementById('ty-ozet-odened').textContent = yillikOdenen.toLocaleString('tr-TR') + '₺');
+    document.getElementById('ty-ozet-odenen') && (document.getElementById('ty-ozet-odenen').textContent = yillikOdenen.toLocaleString('tr-TR') + '₺');
 
   } catch (err) {
-    listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:20px">⚠️ Takvim Hatası: ${err.message}</div>`;
+    listEl.innerHTML = `<div style="color:var(--red); font-size:12px; text-align:center; padding:20px">⚠️ Hata: ${err.message}</div>`;
   }
 }
 

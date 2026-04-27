@@ -287,11 +287,10 @@ async function tyOdemeleriCek() {
         gunLabel = d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
         isFuture = false;
       } else {
-        // paymentOrderId null = beklemede — paymentDate'i Pzt/Per'e yuvarla (tatil hariç)
-        const odemeMs = nextOdemeGunu(pMs);
-        const d = new Date(odemeMs);
-        dKey     = 'pend_' + odemeMs;
-        realMs   = odemeMs;
+        // paymentOrderId null = beklemede — TY'nin ham paymentDate değerini kullan
+        const d = new Date(pMs); d.setHours(0,0,0,0);
+        dKey     = 'pend_' + d.getTime();
+        realMs   = d.getTime();
         gunLabel = d.getDate() + '/' + (d.getMonth()+1);
         isFuture = true;
       }
@@ -346,7 +345,7 @@ async function tyOdemeleriCek() {
 
     // Liste — son 30 gün ödendi + tüm bekleyen
     const listKeys = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 30 * 86400000);
-    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V47</div>' +
+    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V48</div>' +
       listKeys.map(k => {
         const g      = gruplar[k];
         const isPast = !g.isFuture;

@@ -167,7 +167,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, faturalarDB, ayarlarDB, satislarDB, hesapla, sbStorageUpload } from './state.js';
+import { auth, faturalarDB, ayarlarDB, satislarDB, listingDB, hesapla, sbStorageUpload } from './state.js';
 if(!auth.oturum()?.token) window.location.href='./index.html';
 
 const ayarlar = ayarlarDB.oku();
@@ -377,7 +377,106 @@ window.toast = (msg, tip='info') => {
 
 // Basitleştirilmiş diğer fonksiyonlar
 window.renderListe = (tip) => { /* Liste render kodu */ };
-window.renderRapor = () => { /* Rapor render kodu */ };
+window.renderRapor = () => {
+  const ay = ayarlarDB.oku();
+  const ozetEl = document.getElementById('rapor-ozet');
+  if(!ozetEl) return;
+
+  // Dönem başlangıç tarihleri (YYYY-MM-DD)
+  const bugun = new Date();
+  const fmt = d => d.toISOString().slice(0,10);
+  const pazartesi = new Date(bugun);
+  pazartesi.setDate(bugun.getDate() - (bugun.getDay() === 0 ? 6 : bugun.getDay() - 1));
+  const ARALIKLAR = {
+    gunluk:   { b: fmt(bugun),                        e: fmt(bugun),  label: 'Günlük'  },
+    haftalik: { b: fmt(pazartesi),                    e: fmt(bugun),  label: 'Haftalık' },
+    aylik:    { b: fmt(bugun).slice(0,7) + '-01',     e: fmt(bugun),  label: 'Aylık'   },
+    yillik:   { b: fmt(bugun).slice(0,4) + '-01-01',  e: fmt(bugun),  label: 'Yıllık'  },
+    tumu:     { b: '2000-01-01',                      e: '9999-12-31', label: 'Tümü'   },
+  };
+
+  function satisOzetle(liste) {
+    let ciro=0, alis=0, kom=0, kargo=0, platform=0, adet=0;
+    liste.forEach(s => {
+      const fiyat  = s.gercekFiyat || 0;
+      const qty    = s.adet || 1;
+      const tutar  = fiyat * qty;
+      ciro   += tutar;
+      adet   += qty;
+      alis   += s.alisMaliyeti || 0;
+
+      // Komisyon — gerçek varsa kullan, yoksa listing oranı
+      if(s.tyKomisyon != null) {
+        kom += s.tyKomisyon;
+      } else {
+        const l = s.tip === 'listing' ? listingDB.bul(s.hedefId) : null;
+        kom += tutar * (l?.komisyon || 0.04);
+      }
+
+      // Kargo — gerçek varsa kullan, yoksa barem
+      if(s.tyKargo != null) {
+        kargo += s.tyKargo;
+      } else {
+        const l = s.tip === 'listing' ? listingDB.bul(s.hedefId) : null;
+        kargo += hesapla.gercekKargoBedeli(fiyat, l?.desi || 1, ay);
+      }
+
+      // Platform ücreti (sipariş başına bir kez)
+      const l = s.tip === 'listing' ? listingDB.bul(s.hedefId) : null;
+      const agk = l?.ayniGunKargo ?? ay.ayniGunKargo ?? false;
+      platform += agk ? (ay.platformAyniGun || 8.388) : (ay.platformNormal || 13.188);
+    });
+    const net = ciro - alis - kom - kargo - platform;
+    return { ciro, alis, kom, kargo, platform, net, adet, sayi: liste.length };
+  }
+
+  function faturaToplam(liste) {
+    const topla = tip => liste.filter(f=>f.tip===tip).reduce((s,f)=>s+(f.tutar||0), 0);
+    return { gelen: topla('gelen'), giden: topla('giden'), masraf: topla('masraf') };
+  }
+
+  function renderDonem(periyer) {
+    localStorage.setItem('rapor_periyer', periyer);
+    const { b, e, label } = ARALIKLAR[periyer];
+    const s = satisOzetle(satislarDB.aralik(b, e));
+    const f = faturaToplam(faturalarDB.aralik(b, e));
+    const genelNet = s.net + f.gelen - f.giden - f.masraf;
+    const kr = v => v >= 0 ? 'var(--green)' : 'var(--red)';
+    const satir = (lbl, val, renk='') =>
+      `<div class="rapor-row"><span class="rapor-lbl">${lbl}</span><span class="rapor-val"${renk?` style="color:${renk}"`:''}>${val}</span></div>`;
+
+    ozetEl.innerHTML = `
+      <div class="rapor-card-title">📊 Tahmini Kar/Zarar — ${label}</div>
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+        ${Object.entries(ARALIKLAR).map(([k,v])=>`<button onclick="window._rRapor('${k}')" style="padding:5px 11px;border-radius:20px;border:1px solid var(--border);background:${k===periyer?'var(--accent)':'var(--bg3)'};color:${k===periyer?'#fff':'var(--t2)'};font-size:12px;font-weight:600;cursor:pointer">${v.label}</button>`).join('')}
+      </div>
+      ${satir('Satış Adedi', `${s.sayi} sipariş / ${s.adet} adet`)}
+      ${satir('Ciro', p(s.ciro))}
+      ${satir('Alış Maliyeti', '-' + p(s.alis), 'var(--red)')}
+      ${satir('Komisyon' + (s.sayi&&!satislarDB.aralik(b,e).some(x=>x.tyKomisyon!=null)?' (tahmini)':''), '-' + p(s.kom), 'var(--red)')}
+      ${satir('Kargo' + (s.sayi&&!satislarDB.aralik(b,e).some(x=>x.tyKargo!=null)?' (barem tahmini)':''), '-' + p(s.kargo), 'var(--red)')}
+      ${satir('Platform Ücreti', '-' + p(s.platform), 'var(--red)')}
+      <div class="rapor-row" style="border-top:2px solid var(--border);margin-top:2px">
+        <span class="rapor-lbl" style="font-weight:700">Satış Net</span>
+        <span class="rapor-val" style="color:${kr(s.net)};font-size:16px">${p(s.net)}</span>
+      </div>
+      ${f.gelen+f.giden+f.masraf > 0 ? `
+        <div style="margin-top:10px;font-size:11px;font-weight:800;color:var(--t4);letter-spacing:0.5px">FATURALAR</div>
+        ${f.gelen  > 0 ? satir('Gelen', '+' + p(f.gelen), 'var(--green)') : ''}
+        ${f.giden  > 0 ? satir('Giden', '-' + p(f.giden), 'var(--red)') : ''}
+        ${f.masraf > 0 ? satir('Masraf', '-' + p(f.masraf), 'var(--red)') : ''}
+      ` : ''}
+      <div style="margin-top:8px;padding:12px;background:${genelNet>=0?'rgba(16,185,129,0.08)':'rgba(239,68,68,0.08)'};border-radius:var(--r-md);border:1px solid ${genelNet>=0?'var(--green)':'var(--red)'}">
+        <div style="font-size:11px;color:var(--t4);font-weight:800;margin-bottom:4px">GENEL TAHMİNİ KAR/ZARAR</div>
+        <div style="font-size:24px;font-weight:900;color:${kr(genelNet)}">${p(genelNet)}</div>
+        ${s.sayi > 0 ? `<div style="font-size:11px;color:var(--t4);margin-top:2px">Ortalama: ${p(genelNet/s.sayi)} / sipariş</div>` : ''}
+      </div>
+      <div style="font-size:10px;color:var(--t4);margin-top:8px;opacity:0.6">* Kargo barem: &lt;${ay.kargoBaremEsik1||200}₺ → ${(ay.kargoBaremUcret1||51.492).toFixed(2)}₺ | &lt;${ay.kargoBaremEsik2||350}₺ → ${(ay.kargoBaremUcret2||88.488).toFixed(2)}₺ | üstü → ${(100.716).toFixed(2)}₺</div>`;
+  }
+
+  window._rRapor = renderDonem;
+  renderDonem(localStorage.getItem('rapor_periyer') || 'aylik');
+};
 window.faturaKaydet = (tip) => { /* Kaydetme kodu */ };
 window.dosyaIsle = (files, tip) => { /* AI dosya işleme */ };
 

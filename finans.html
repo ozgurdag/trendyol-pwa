@@ -180,7 +180,7 @@ window.sekme = s => {
   });
   document.querySelectorAll('.fin-tab').forEach(t => t.classList.toggle('active', t.textContent.toLowerCase().includes(s.substring(0,3))));
   if(s==='rapor') renderRapor();
-  if(s==='trendyol') tyOdemeleriCek();
+  if(s==='trendyol' && !document.getElementById('ty-odeme-liste')?.dataset.yuklendi) tyOdemeleriCek();
 };
 
 // ── DAYANIKLI PROXY ÇAĞRISI (RETRY LOGIC) ──
@@ -358,6 +358,7 @@ async function tyOdemeleriCek() {
           </div>`;
       }).join('');
 
+    document.getElementById('ty-odeme-liste').dataset.yuklendi = '1';
     document.getElementById('ty-ozet-toplam').textContent = gelecekToplam.toLocaleString('tr-TR') + '₺';
     document.getElementById('ty-ozet-yakin').textContent = yakinToplam.toLocaleString('tr-TR') + '₺';
     document.getElementById('ty-ozet-odened') && (document.getElementById('ty-ozet-odened').textContent = yillikOdenen.toLocaleString('tr-TR') + '₺');

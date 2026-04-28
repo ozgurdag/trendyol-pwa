@@ -138,7 +138,7 @@
 <div class="toast-container" id="toastCont"></div>
 
 <script type="module">
-import { auth, stokDB, listingDB, setlerDB, satislarDB } from './state.js';
+import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, hesapla } from './state.js';
 
 if(!auth.oturum()?.token) window.location.href='./index.html';
 
@@ -183,31 +183,56 @@ function satisKar(s){
 
 // ─── Özet hesapla ─────────────────────────────────────────────────
 function ozetHesapla(satislar){
+  const ay = ayarlarDB.oku();
   let adet=0, gelir=0, alis=0, net=0, tyNet=0, kargo=0;
   let tamSayi=0, toplamSayi=satislar.length;
   const siparisNoSet = new Set();
-  
+
+  // Tahmini (barem) sayaçları — TÜM satışlar için
+  let tCiro=0, tAlis=0, tKom=0, tKargo=0, tPlatform=0;
+
   satislar.forEach(s=>{
     if(s.tyOrderNumber) siparisNoSet.add(s.tyOrderNumber);
     const k=satisKar(s); if(!k) return;
     if(k.veriTam){
-      adet += s.adet; 
-      gelir += k.gelir; 
+      adet += s.adet;
+      gelir += k.gelir;
       alis += k.alis;
       tyNet += k.tySellerRevenue;
       kargo += k.tyKargo;
       net += k.net;
       tamSayi++;
     }
+
+    // Tahmini hesap — her satış için
+    const fiyat = s.gercekFiyat || 0;
+    const qty   = s.adet || 1;
+    const tutar = fiyat * qty;
+    tCiro += tutar;
+    tAlis += s.alisMaliyeti || 0;
+    const l = s.tip === 'listing' ? listingDB.bul(s.hedefId) : null;
+    tKom  += s.tyKomisyon != null ? s.tyKomisyon : tutar * (l?.komisyon || 0.04);
+    tKargo+= s.tyKargo    != null ? s.tyKargo    : hesapla.gercekKargoBedeli(fiyat, l?.desi || 1, ay);
+    tPlatform += (l?.ayniGunKargo ?? ay.ayniGunKargo) ? (ay.platformAyniGun||8.388) : (ay.platformNormal||13.188);
   });
-  
+
   return {
     adet, gelir, alis, net, tyNet, kargo,
     kesinti: gelir - tyNet,
-    roi: alis > 0 ? net / alis : 0, 
+    roi: alis > 0 ? net / alis : 0,
     tamSayi, toplamSayi,
     siparisSayisi: siparisNoSet.size,
-    avgNet: adet > 0 ? net / adet : 0
+    avgNet: adet > 0 ? net / adet : 0,
+    // Tahmini alanlar
+    tahmini: {
+      net:      tCiro - tAlis - tKom - tKargo - tPlatform,
+      ciro:     tCiro,
+      alis:     tAlis,
+      kom:      tKom,
+      kargo:    tKargo,
+      platform: tPlatform,
+      sayi:     toplamSayi,
+    },
   };
 }
 
@@ -269,6 +294,28 @@ function renderOzet(ozet, targetId){
       <div class="val" style="color:var(--accent)">${ozet.roi>0?'+':''}${(ozet.roi*100).toFixed(1)}%</div>
       <div class="lbl" style="margin-top:4px; font-size:9px">Sip. Başı Kar: ${p(ozet.avgNet)}</div>
     </div>
+
+    ${ozet.tahmini && ozet.tahmini.sayi > 0 ? (() => {
+      const t = ozet.tahmini;
+      const ay = ayarlarDB.oku();
+      const renk = t.net >= 0 ? 'var(--green)' : 'var(--red)';
+      const eksikSayi = t.sayi - ozet.tamSayi;
+      return `
+    <div class="ozet-card full" style="margin-top:4px;border-color:${renk};background:linear-gradient(135deg,var(--bg2) 0%,${t.net>=0?'rgba(0,200,100,0.04)':'rgba(239,68,68,0.04)'} 100%)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div class="lbl" style="color:var(--t3)">TAHMİNİ KAR/ZARAR <span style="font-weight:400;opacity:.7">(${t.sayi} sipariş)</span></div>
+        ${eksikSayi > 0 ? `<div style="font-size:9px;color:var(--yellow);font-weight:700">${eksikSayi} sipariş barem ile tahmin edildi</div>` : ''}
+      </div>
+      <div style="font-size:26px;font-weight:900;font-family:var(--mono);color:${renk};margin-bottom:10px">${t.net>=0?'+':''}${p(t.net)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;color:var(--t3)">
+        <div>Ciro: <b style="color:var(--t2)">${p(t.ciro)}</b></div>
+        <div>Alış: <b style="color:var(--red)">-${p(t.alis)}</b></div>
+        <div>Komisyon: <b style="color:var(--red)">-${p(t.kom)}</b></div>
+        <div>Kargo: <b style="color:var(--red)">-${p(t.kargo)}</b></div>
+        <div style="grid-column:span 2;opacity:.6;font-size:10px;margin-top:2px">Barem: &lt;${ay.kargoBaremEsik1||200}₺→${(ay.kargoBaremUcret1||51.492).toFixed(2)}₺ | &lt;${ay.kargoBaremEsik2||350}₺→${(ay.kargoBaremUcret2||88.488).toFixed(2)}₺ | üstü→100.72₺</div>
+      </div>
+    </div>`;
+    })() : ''}
   `;
 }
 

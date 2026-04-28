@@ -244,27 +244,6 @@ async function tyOdemeleriCek() {
     const processedIds = new Set();
     const bugunMs = new Date().setHours(0,0,0,0);
 
-    // Türk resmi tatilleri — TY bu günlerde ödeme yapmaz
-    const TATILLER = new Set([
-      '2026-01-01',
-      '2026-03-20','2026-03-21','2026-03-22', // Ramazan Bayramı
-      '2026-04-23',                            // 23 Nisan
-      '2026-05-01',                            // 1 Mayıs
-      '2026-05-19',                            // 19 Mayıs
-      '2026-05-26','2026-05-27','2026-05-28','2026-05-29','2026-05-30', // Kurban Bayramı
-      '2026-07-15','2026-08-30','2026-10-29',
-    ]);
-    function dStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-    function nextOdemeGunu(ms) {
-      const d = new Date(ms); d.setHours(0,0,0,0);
-      for(let i = 0; i < 14; i++) {
-        const day = d.getDay();
-        if((day === 1 || day === 4) && !TATILLER.has(dStr(d))) return d.getTime();
-        d.setDate(d.getDate() + 1);
-      }
-      return d.getTime();
-    }
-
     tumContent.forEach(it => {
       const uniqueId = String(it.id||it.transactionId||'') + '_' + String(it.transactionDate||'') + '_' + String(it.credit||0);
       if(processedIds.has(uniqueId)) return;
@@ -275,7 +254,7 @@ async function tyOdemeleriCek() {
 
       const sellerRev  = it.sellerRevenue ?? 0;
       const credit     = it.credit || 0;
-      const commission = Math.abs(it.commissionAmount || 0);
+      const commission = it.commissionAmount || 0; // işaret korunuyor: satışta negatif, iadede pozitif
 
       let dKey, realMs, gunLabel, isFuture;
 
@@ -345,7 +324,7 @@ async function tyOdemeleriCek() {
 
     // Liste — son 30 gün ödendi + tüm bekleyen
     const listKeys = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 30 * 86400000);
-    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V48</div>' +
+    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V49</div>' +
       listKeys.map(k => {
         const g      = gruplar[k];
         const isPast = !g.isFuture;
@@ -354,10 +333,10 @@ async function tyOdemeleriCek() {
         const pkgCnt = Object.keys(g.pkgCredits).length || g.items.length;
         const detay  = isPast
           ? `<div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
-             <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700;color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
+             <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700;color:var(--red)">-${Math.abs(g.komisyon).toLocaleString('tr-TR')}₺</span></div>
              <div style="display:flex;justify-content:space-between;grid-column:span 2"><span style="color:var(--t4);font-size:10px;opacity:0.6">* Kargo faturası ayrıca düşülür (DDA)</span><span></span></div>`
           : `<div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Brüt Satış:</span><span style="font-weight:700">${g.satis.toLocaleString('tr-TR')}₺</span></div>
-             <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700;color:var(--red)">-${g.komisyon.toLocaleString('tr-TR')}₺</span></div>
+             <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Komisyon:</span><span style="font-weight:700;color:var(--red)">-${Math.abs(g.komisyon).toLocaleString('tr-TR')}₺</span></div>
              <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Tahmini Kargo:</span><span style="font-weight:700;color:var(--red)">-${g.estimatedKargo.toLocaleString('tr-TR')}₺</span></div>
              <div style="display:flex;justify-content:space-between"><span style="color:var(--t4)">Tahmini Net:</span><span style="font-weight:700;color:var(--green)">${g.estimatedNet.toLocaleString('tr-TR')}₺</span></div>`;
         return `

@@ -208,7 +208,7 @@ async function proxyCall(payload, deneme = 1) {
   }
 }
 
-// ── TRENDYOL ÖDEMELERİ — V46 ──
+// ── TRENDYOL ÖDEMELERİ — V50 ──
 async function tyOdemeleriCek() {
   const ay = ayarlarDB.oku();
   const listEl = document.getElementById('ty-odeme-liste');
@@ -266,11 +266,10 @@ async function tyOdemeleriCek() {
         gunLabel = d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
         isFuture = false;
       } else {
-        // paymentOrderId null = beklemede — TY'nin ham paymentDate değerini kullan
-        const d = new Date(pMs); d.setHours(0,0,0,0);
-        dKey     = 'pend_' + d.getTime();
-        realMs   = d.getTime();
-        gunLabel = d.getDate() + '/' + (d.getMonth()+1);
+        // paymentOrderId null = beklemede — tüm bekleyenleri tek grupta topla
+        dKey     = 'pend_all';
+        realMs   = bugunMs;
+        gunLabel = 'Beklemede';
         isFuture = true;
       }
 
@@ -324,7 +323,7 @@ async function tyOdemeleriCek() {
 
     // Liste — son 30 gün ödendi + tüm bekleyen
     const listKeys = sortedDates.filter(k => gruplar[k].ms >= bugunMs - 30 * 86400000);
-    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V49</div>' +
+    listEl.innerHTML = '<div style="font-size:9px;text-align:right;opacity:0.3;margin-bottom:5px">V50</div>' +
       listKeys.map(k => {
         const g      = gruplar[k];
         const isPast = !g.isFuture;
@@ -343,8 +342,8 @@ async function tyOdemeleriCek() {
           <div class="payout-card ${isPast?'past':''}" style="${isNext?'border:2px solid var(--green);background:rgba(16,185,129,0.06)':''}">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
               <div>
-                <div style="font-size:10px;color:var(--t4);font-weight:800">${isPast?'BANKA ÖDEME GÜNÜ':'TAHMİNİ ÖDEME GÜNÜ'}</div>
-                <div style="font-size:17px;font-weight:800">${g.gun}</div>
+                <div style="font-size:10px;color:var(--t4);font-weight:800">${isPast?'BANKA ÖDEME GÜNÜ':'TAHMİNİ TOPLAM ÖDEME'}</div>
+                <div style="font-size:17px;font-weight:800">${isPast ? g.gun : 'Yakında'}</div>
                 <div class="payout-status ${isPast?'past':'future'}">${isPast?'✅ ÖDENDİ':'🕒 BEKLEMEDE'}</div>
               </div>
               <div style="text-align:right">

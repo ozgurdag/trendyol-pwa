@@ -235,8 +235,8 @@ window.manuelSync = async () => {
   btn.textContent = '⏳ Syncing...'; btn.disabled = true;
   try{
     const sonuc = await otomatikFiyatSync(true);
-    showBanner(sonuc);
-    renderKartlar();
+    if(sonuc?.hata) showToast('TY ürün API hatası: ' + JSON.parse(sonuc.hata)?.[0]?.message || sonuc.hata, 'error');
+    else { showBanner(sonuc); renderKartlar(); }
   } catch(e){ showToast('Sync hatası: '+e.message,'error'); }
   finally{ btn.textContent='🔄 Sync'; btn.disabled=false; }
 };
@@ -314,7 +314,9 @@ renderKartlar();
 // Otomatik sync (cooldown varsa atlar)
 (async()=>{
   const sonuc = await otomatikFiyatSync();
-  if(!sonuc?.atlandi){
+  if(sonuc?.hata){
+    showToast('TY ürün API geçici hatalı, katalog yerel veriden yüklendi', 'info');
+  } else if(!sonuc?.atlandi){
     showBanner(sonuc);
     renderKartlar();
   }

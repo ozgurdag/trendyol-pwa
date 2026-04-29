@@ -57,6 +57,20 @@
 .payout-status{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:700;letter-spacing:0.5px}
 .payout-status.future{background:rgba(16,185,129,0.15);color:var(--green)}
 .payout-status.past{background:var(--bg3);color:var(--t3)}
+
+/* Alt sekmeler */
+.sub-tabs{display:flex;gap:4px;margin-bottom:12px;background:var(--bg2);border-radius:var(--r-md);padding:4px}
+.sub-tab{flex:1;padding:7px 6px;text-align:center;font-size:11px;font-weight:700;border-radius:var(--r-sm);cursor:pointer;border:none;background:transparent;color:var(--t3);transition:all .15s}
+.sub-tab.active{background:var(--bg3);color:var(--t1);box-shadow:0 1px 4px rgba(0,0,0,0.18)}
+/* Fatura önizleme satırı */
+.onizleme-row{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r-md);padding:10px;margin-bottom:8px}
+.onizleme-row input{background:var(--bg);border:1px solid var(--border2);border-radius:var(--r-sm);padding:6px 10px;font-size:12px;color:var(--t1);width:100%}
+/* Alt tip badge */
+.altbadge{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;letter-spacing:.3px;margin-left:4px}
+.altbadge.trendyol{background:rgba(99,102,241,.15);color:var(--accent)}
+.altbadge.masraf{background:rgba(245,158,11,.15);color:#f59e0b}
+.altbadge.malzeme{background:rgba(16,185,129,.15);color:var(--green)}
+.altbadge.giden{background:rgba(239,68,68,.12);color:var(--red)}
 </style>
 </head>
 <body>
@@ -69,55 +83,67 @@
     <div class="fin-tabs">
       <div class="fin-tab active" onclick="sekme('gelen')">📥 Gelen</div>
       <div class="fin-tab" onclick="sekme('giden')">📤 Giden</div>
-      <div class="fin-tab" onclick="sekme('masraf')">🧾 Masraf</div>
       <div class="fin-tab" onclick="sekme('rapor')">📊 Rapor</div>
       <div class="fin-tab" onclick="sekme('trendyol')" id="tab-ty-payout">🗓️ TY Ödemeleri</div>
     </div>
 
-    <!-- PNL GELEN -->
+    <!-- PNL GELEN — alt bölümler: Tümü / Trendyol / Masraf / Malzeme -->
     <div id="pnl-gelen">
-       <div class="card mb-16">
-          <div class="card-title mb-12">Gelen Fatura</div>
-          <div class="upload-zone" onclick="document.getElementById('dosya-gelen').click()">
-            <div class="upload-icon">📄</div><div class="upload-text">Dosya Yükle</div>
-          </div>
-          <input type="file" id="dosya-gelen" multiple style="display:none" onchange="dosyaIsle(this.files,'gelen_fatura')">
-          <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('gelen_fatura')">✓ Kaydet</button>
-       </div>
-       <div class="card"><div id="liste-gelen"></div></div>
+      <div class="sub-tabs" id="gelen-sub-tabs">
+        <button class="sub-tab active" onclick="gelenAlt('tumu',this)">Tümü</button>
+        <button class="sub-tab" onclick="gelenAlt('trendyol',this)">🛒 Trendyol</button>
+        <button class="sub-tab" onclick="gelenAlt('masraf',this)">🧾 Masraf</button>
+        <button class="sub-tab" onclick="gelenAlt('malzeme',this)">📦 Malzeme</button>
+      </div>
+
+      <!-- Yükleme formu — tümü görünümünde gizli -->
+      <div class="card mb-16" id="gelen-yukle-kart" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <div class="card-title" style="margin:0;flex:1">Fatura Ekle</div>
+          <select id="gelen-alt-sec" class="form-select" style="width:auto;font-size:12px">
+            <option value="trendyol">🛒 Trendyol</option>
+            <option value="masraf">🧾 Masraf</option>
+            <option value="malzeme">📦 Malzeme</option>
+          </select>
+        </div>
+        <div class="upload-zone" id="gelen-drop-zone" onclick="document.getElementById('dosya-gelen').click()"
+             ondragover="event.preventDefault();this.classList.add('dragover')"
+             ondragleave="this.classList.remove('dragover')"
+             ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsle(event.dataTransfer.files)">
+          <div class="upload-icon">📄</div>
+          <div class="upload-text">Dosyaları buraya sürükle veya tıkla</div>
+          <div class="upload-sub">PDF, JPG, PNG desteklenir</div>
+        </div>
+        <input type="file" id="dosya-gelen" multiple style="display:none" accept=".pdf,.jpg,.jpeg,.png"
+               onchange="dosyaIsle(this.files)">
+        <div id="gelen-onizleme" style="margin-top:10px"></div>
+        <button class="btn btn-primary btn-full mt-8" id="gelen-kaydet-btn" onclick="faturaKaydet()" style="display:none">✓ Kaydet</button>
+      </div>
+
+      <div class="card"><div id="liste-gelen"></div></div>
     </div>
 
     <!-- PNL GİDEN -->
     <div id="pnl-giden" style="display:none">
        <div class="card mb-16">
           <div class="card-title mb-12">Giden Fatura</div>
-          <div class="upload-zone" onclick="document.getElementById('dosya-giden').click()">
-            <div class="upload-icon">📄</div><div class="upload-text">Dosya Yükle</div>
+          <div class="upload-zone" onclick="document.getElementById('dosya-giden').click()"
+               ondragover="event.preventDefault();this.classList.add('dragover')"
+               ondragleave="this.classList.remove('dragover')"
+               ondrop="event.preventDefault();this.classList.remove('dragover');dosyaIsleGiden(event.dataTransfer.files)">
+            <div class="upload-icon">📤</div><div class="upload-text">Dosya Yükle</div>
           </div>
-          <input type="file" id="dosya-giden" multiple style="display:none" onchange="dosyaIsle(this.files,'giden_fatura')">
-          <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('giden_fatura')">✓ Kaydet</button>
+          <input type="file" id="dosya-giden" multiple style="display:none" accept=".pdf,.jpg,.jpeg,.png"
+                 onchange="dosyaIsleGiden(this.files)">
+          <div id="giden-onizleme" style="margin-top:10px"></div>
+          <button class="btn btn-primary btn-full mt-8" id="giden-kaydet-btn" onclick="faturaKaydetGiden()" style="display:none">✓ Kaydet</button>
        </div>
        <div class="card"><div id="liste-giden"></div></div>
-    </div>
-
-    <!-- PNL MASRAF -->
-    <div id="pnl-masraf" style="display:none">
-       <div class="card mb-16">
-          <div class="card-title mb-12">Masraf Kaydı</div>
-          <div class="upload-zone" onclick="document.getElementById('dosya-masraf').click()">
-            <div class="upload-icon">🧾</div><div class="upload-text">Dosya Yükle</div>
-          </div>
-          <input type="file" id="dosya-masraf" multiple style="display:none" onchange="dosyaIsle(this.files,'masraf')">
-          <button class="btn btn-primary btn-full mt-8" onclick="faturaKaydet('masraf')">✓ Kaydet</button>
-       </div>
-       <div class="card"><div id="liste-masraf"></div></div>
     </div>
 
     <!-- PNL RAPOR -->
     <div id="pnl-rapor" style="display:none">
       <div class="rapor-card" id="rapor-ozet"></div>
-      <div class="rapor-card" id="rapor-kdv"></div>
-      <div class="rapor-card" id="rapor-vergi"></div>
     </div>
 
     <!-- ═══ TRENDYOL ÖDEMELERİ (PREMIUM) ═══ -->
@@ -174,13 +200,15 @@ const ayarlar = ayarlarDB.oku();
 const p = n => (+n).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+'₺';
 
 window.sekme = s => {
-  ['gelen','giden','masraf','rapor','trendyol'].forEach(id => {
+  ['gelen','giden','rapor','trendyol'].forEach(id => {
     const el = document.getElementById('pnl-'+id);
     if(el) el.style.display = s===id ? '' : 'none';
   });
   document.querySelectorAll('.fin-tab').forEach(t => t.classList.toggle('active', t.textContent.toLowerCase().includes(s.substring(0,3))));
   if(s==='rapor') renderRapor();
   if(s==='trendyol' && !document.getElementById('ty-odeme-liste')?.dataset.yuklendi) tyOdemeleriCek();
+  if(s==='gelen') { renderListe('gelen'); gelenAlt('tumu'); }
+  if(s==='giden') renderListe('giden');
 };
 
 // ── DAYANIKLI PROXY ÇAĞRISI (RETRY LOGIC) ──
@@ -375,8 +403,224 @@ window.toast = (msg, tip='info') => {
   c.appendChild(el); setTimeout(() => el.remove(), 3000);
 };
 
-// Basitleştirilmiş diğer fonksiyonlar
-window.renderListe = (tip) => { /* Liste render kodu */ };
+// ── ALT TİP ETİKETLERİ ──────────────────────────────────────────
+const ALT_ETIKET = {
+  trendyol: { ikon:'🛒', ad:'Trendyol', cls:'trendyol' },
+  masraf:   { ikon:'🧾', ad:'Masraf',   cls:'masraf'   },
+  malzeme:  { ikon:'📦', ad:'Malzeme',  cls:'malzeme'  },
+  giden:    { ikon:'📤', ad:'Giden',    cls:'giden'    },
+};
+function altBadge(f){
+  if(f.tip==='giden') return `<span class="altbadge giden">📤 Giden</span>`;
+  const at = f.altTip || (f.tip==='masraf' ? 'masraf' : 'trendyol');
+  const e = ALT_ETIKET[at] || ALT_ETIKET.trendyol;
+  return `<span class="altbadge ${e.cls}">${e.ikon} ${e.ad}</span>`;
+}
+
+// ── FATURA LİSTESİ ───────────────────────────────────────────────
+let aktifAlt = 'tumu'; // tumu | trendyol | masraf | malzeme
+
+window.gelenAlt = (alt, btnEl) => {
+  aktifAlt = alt;
+  document.querySelectorAll('#gelen-sub-tabs .sub-tab').forEach(b => b.classList.remove('active'));
+  if(btnEl) btnEl.classList.add('active');
+  const yukleKart = document.getElementById('gelen-yukle-kart');
+  if(yukleKart) yukleKart.style.display = alt === 'tumu' ? 'none' : '';
+  if(alt !== 'tumu') {
+    const sec = document.getElementById('gelen-alt-sec');
+    if(sec && alt !== 'tumu') sec.value = alt;
+  }
+  renderListe('gelen');
+};
+
+window.renderListe = (tip) => {
+  if(tip==='gelen') {
+    const listEl = document.getElementById('liste-gelen');
+    if(!listEl) return;
+    let liste = faturalarDB.hepsini().filter(f => f.tip==='gelen' || f.tip==='masraf');
+    if(aktifAlt !== 'tumu') {
+      liste = liste.filter(f => {
+        const at = f.altTip || (f.tip==='masraf' ? 'masraf' : 'trendyol');
+        return at === aktifAlt;
+      });
+    }
+    liste.sort((a,b) => (b.tarih||'').localeCompare(a.tarih||''));
+    if(!liste.length){
+      listEl.innerHTML = '<div style="text-align:center;color:var(--t4);padding:24px;font-size:12px">Kayıt yok</div>';
+      return;
+    }
+    listEl.innerHTML = liste.map(f => {
+      const at = f.altTip || (f.tip==='masraf' ? 'masraf' : 'trendyol');
+      const e  = ALT_ETIKET[at] || ALT_ETIKET.trendyol;
+      return `<div class="fatura-row">
+        <div class="fatura-ikon gelen">${e.ikon}</div>
+        <div class="fatura-bilgi">
+          <div class="fatura-ad">${f.aciklama||f.cariAdi||f.faturaNo||'Fatura'}${aktifAlt==='tumu'?altBadge(f):''}</div>
+          <div class="fatura-meta">${f.tarih||''}${f.faturaNo?' · '+f.faturaNo:''}</div>
+        </div>
+        <div class="fatura-tutar">
+          <div class="fatura-tutar-ana" style="color:var(--green)">+${p(f.tutar||0)}</div>
+          ${f.kdvTutari>0?`<div class="fatura-tutar-kdv">KDV: ${p(f.kdvTutari)}</div>`:''}
+        </div>
+        <button onclick="faturaFiyatSil('${f.id}')" style="background:none;border:none;color:var(--t4);font-size:16px;cursor:pointer;padding:4px;flex-shrink:0" title="Sil">🗑</button>
+      </div>`;
+    }).join('');
+  } else if(tip==='giden') {
+    const listEl = document.getElementById('liste-giden');
+    if(!listEl) return;
+    let liste = faturalarDB.hepsini().filter(f => f.tip==='giden');
+    liste.sort((a,b) => (b.tarih||'').localeCompare(a.tarih||''));
+    if(!liste.length){
+      listEl.innerHTML = '<div style="text-align:center;color:var(--t4);padding:24px;font-size:12px">Kayıt yok</div>';
+      return;
+    }
+    listEl.innerHTML = liste.map(f => `<div class="fatura-row">
+      <div class="fatura-ikon giden">📤</div>
+      <div class="fatura-bilgi">
+        <div class="fatura-ad">${f.aciklama||f.cariAdi||f.faturaNo||'Fatura'}</div>
+        <div class="fatura-meta">${f.tarih||''}${f.faturaNo?' · '+f.faturaNo:''}</div>
+      </div>
+      <div class="fatura-tutar">
+        <div class="fatura-tutar-ana" style="color:var(--red)">-${p(f.tutar||0)}</div>
+        ${f.kdvTutari>0?`<div class="fatura-tutar-kdv">KDV: ${p(f.kdvTutari)}</div>`:''}
+      </div>
+      <button onclick="faturaFiyatSil('${f.id}')" style="background:none;border:none;color:var(--t4);font-size:16px;cursor:pointer;padding:4px;flex-shrink:0" title="Sil">🗑</button>
+    </div>`).join('');
+  }
+};
+
+window.faturaFiyatSil = (id) => {
+  if(!confirm('Bu faturayı silmek istediğinize emin misiniz?')) return;
+  faturalarDB.sil(id);
+  renderListe('gelen'); renderListe('giden');
+  toast('Fatura silindi');
+};
+
+// ── FATURA YÜKLEME — GELEN ────────────────────────────────────────
+let bekleyenler = []; // {dosyaAdi, tutar, tarih, aciklama, kdv, file}
+
+window.dosyaIsle = (files) => {
+  Array.from(files).forEach(f => {
+    const ad = f.name.replace(/\.[^.]+$/,'');
+    bekleyenler.push({ dosyaAdi: f.name, tutar:'', tarih: new Date().toISOString().slice(0,10), aciklama: ad, kdv:'', file: f });
+  });
+  document.getElementById('dosya-gelen').value='';
+  renderOnizleme();
+};
+
+function renderOnizleme() {
+  const el = document.getElementById('gelen-onizleme');
+  const kaydetBtn = document.getElementById('gelen-kaydet-btn');
+  if(!bekleyenler.length){ el.innerHTML=''; kaydetBtn.style.display='none'; return; }
+  kaydetBtn.style.display='';
+  el.innerHTML = bekleyenler.map((b,i) => `
+    <div class="onizleme-row">
+      <div style="font-size:11px;color:var(--t4);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ${b.dosyaAdi}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <div>
+          <div style="font-size:10px;color:var(--t4);margin-bottom:3px">Tutar (₺)</div>
+          <input type="number" min="0" step="0.01" placeholder="0.00" value="${b.tutar}"
+            oninput="bekleyenler[${i}].tutar=this.value" style="width:100%;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--t4);margin-bottom:3px">Tarih</div>
+          <input type="date" value="${b.tarih}"
+            oninput="bekleyenler[${i}].tarih=this.value" style="width:100%;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center">
+        <div>
+          <div style="font-size:10px;color:var(--t4);margin-bottom:3px">Açıklama / Cari</div>
+          <input type="text" placeholder="Fatura açıklaması" value="${b.aciklama}"
+            oninput="bekleyenler[${i}].aciklama=this.value" style="width:100%;box-sizing:border-box">
+        </div>
+        <button onclick="bekleyenler.splice(${i},1);renderOnizleme()"
+          style="background:var(--red-l,rgba(239,68,68,.12));border:none;color:var(--red);border-radius:var(--r-sm);padding:6px 10px;cursor:pointer;margin-top:14px">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+window.faturaKaydet = async () => {
+  if(!bekleyenler.length){ toast('Önce dosya seçin','error'); return; }
+  const altTip = document.getElementById('gelen-alt-sec')?.value || 'trendyol';
+  const btn = document.getElementById('gelen-kaydet-btn');
+  btn.disabled = true; btn.textContent = '⏳ Kaydediliyor...';
+  let kaydedilen = 0;
+  for(const b of bekleyenler){
+    const tutar = parseFloat(b.tutar)||0;
+    let dosyaUrl = null;
+    try { dosyaUrl = await sbStorageUpload('faturalar', Date.now()+'_'+b.dosyaAdi, b.file); } catch(e){}
+    faturalarDB.ekle({ tip:'gelen', altTip, tutar, tarih: b.tarih, aciklama: b.aciklama, dosyaUrl });
+    kaydedilen++;
+  }
+  bekleyenler = [];
+  renderOnizleme();
+  renderListe('gelen');
+  btn.disabled=false; btn.textContent='✓ Kaydet';
+  toast(`${kaydedilen} fatura kaydedildi ✓`, 'success');
+};
+
+// ── FATURA YÜKLEME — GİDEN ───────────────────────────────────────
+let bekleyenlerGiden = [];
+
+window.dosyaIsleGiden = (files) => {
+  Array.from(files).forEach(f => {
+    const ad = f.name.replace(/\.[^.]+$/,'');
+    bekleyenlerGiden.push({ dosyaAdi: f.name, tutar:'', tarih: new Date().toISOString().slice(0,10), aciklama: ad, file: f });
+  });
+  document.getElementById('dosya-giden').value='';
+  renderOnizlemeGiden();
+};
+
+function renderOnizlemeGiden() {
+  const el = document.getElementById('giden-onizleme');
+  const btn = document.getElementById('giden-kaydet-btn');
+  if(!bekleyenlerGiden.length){ el.innerHTML=''; btn.style.display='none'; return; }
+  btn.style.display='';
+  el.innerHTML = bekleyenlerGiden.map((b,i) => `
+    <div class="onizleme-row">
+      <div style="font-size:11px;color:var(--t4);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ${b.dosyaAdi}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <div>
+          <div style="font-size:10px;color:var(--t4);margin-bottom:3px">Tutar (₺)</div>
+          <input type="number" min="0" step="0.01" placeholder="0.00" value="${b.tutar}"
+            oninput="bekleyenlerGiden[${i}].tutar=this.value" style="width:100%;box-sizing:border-box">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--t4);margin-bottom:3px">Tarih</div>
+          <input type="date" value="${b.tarih}"
+            oninput="bekleyenlerGiden[${i}].tarih=this.value" style="width:100%;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center">
+        <div>
+          <div style="font-size:10px;color:var(--t4);margin-bottom:3px">Açıklama / Cari</div>
+          <input type="text" placeholder="Fatura açıklaması" value="${b.aciklama}"
+            oninput="bekleyenlerGiden[${i}].aciklama=this.value" style="width:100%;box-sizing:border-box">
+        </div>
+        <button onclick="bekleyenlerGiden.splice(${i},1);renderOnizlemeGiden()"
+          style="background:var(--red-l,rgba(239,68,68,.12));border:none;color:var(--red);border-radius:var(--r-sm);padding:6px 10px;cursor:pointer;margin-top:14px">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+window.faturaKaydetGiden = async () => {
+  if(!bekleyenlerGiden.length){ toast('Önce dosya seçin','error'); return; }
+  const btn = document.getElementById('giden-kaydet-btn');
+  btn.disabled=true; btn.textContent='⏳ Kaydediliyor...';
+  for(const b of bekleyenlerGiden){
+    const tutar = parseFloat(b.tutar)||0;
+    let dosyaUrl = null;
+    try { dosyaUrl = await sbStorageUpload('faturalar', Date.now()+'_'+b.dosyaAdi, b.file); } catch(e){}
+    faturalarDB.ekle({ tip:'giden', tutar, tarih: b.tarih, aciklama: b.aciklama, dosyaUrl });
+  }
+  bekleyenlerGiden=[];
+  renderOnizlemeGiden();
+  renderListe('giden');
+  btn.disabled=false; btn.textContent='✓ Kaydet';
+  toast('Faturalar kaydedildi ✓', 'success');
+};
+
 window.renderRapor = () => {
   const ay = ayarlarDB.oku();
   const ozetEl = document.getElementById('rapor-ozet');
@@ -431,8 +675,16 @@ window.renderRapor = () => {
   }
 
   function faturaToplam(liste) {
-    const topla = tip => liste.filter(f=>f.tip===tip).reduce((s,f)=>s+(f.tutar||0), 0);
-    return { gelen: topla('gelen'), giden: topla('giden'), masraf: topla('masraf') };
+    // gelen/Trendyol: TY'den alınan ödemeler (gelir)
+    const gelenToplam = liste.filter(f =>
+      (f.tip==='gelen' && (!f.altTip || f.altTip==='trendyol'))
+    ).reduce((s,f)=>s+(f.tutar||0), 0);
+    // masraf: gelen/masraf + gelen/malzeme + eski tip:'masraf' (gider)
+    const masrafToplam = liste.filter(f =>
+      f.tip==='masraf' || (f.tip==='gelen' && (f.altTip==='masraf' || f.altTip==='malzeme'))
+    ).reduce((s,f)=>s+(f.tutar||0), 0);
+    const gidenToplam = liste.filter(f=>f.tip==='giden').reduce((s,f)=>s+(f.tutar||0), 0);
+    return { gelen: gelenToplam, giden: gidenToplam, masraf: masrafToplam };
   }
 
   function renderDonem(periyer) {
@@ -480,7 +732,7 @@ window.renderRapor = () => {
 window.faturaKaydet = (tip) => { /* Kaydetme kodu */ };
 window.dosyaIsle = (files, tip) => { /* AI dosya işleme */ };
 
-sekme('trendyol');
+sekme('gelen');
 </script>
 </body>
 </html>

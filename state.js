@@ -222,7 +222,7 @@ export async function supabasedenYukle(){
 
     if(rF.ok){ const d=await rF.json(); if(d?.length) {
       set(DB_KEYS.faturalar, d.map(f=>({
-        id:f.id, tip:f.tip, tarih:f.tarih, faturaNo:f.fatura_no||'', tutar:f.tutar||0,
+        id:f.id, tip:f.tip, altTip:f.alt_tip||null, tarih:f.tarih, faturaNo:f.fatura_no||'', tutar:f.tutar||0,
         kdvTutari:f.kdv_tutari||0, kdvOrani:f.kdv_orani||20,
         aciklama:f.aciklama||'', cariAdi:f.cari_adi||'', dosyaUrl:f.dosya_url||null,
       })));
@@ -939,15 +939,23 @@ export const faturalarDB = {
   hepsini(){ return get(DB_KEYS.faturalar)||[]; },
   bul(id){ return this.hepsini().find(f=>f.id===id); },
   tipGore(tip){ return this.hepsini().filter(f=>f.tip===tip); },
+  // gelen faturalar: tip='gelen', altTip='trendyol'|'masraf'|'malzeme'
+  // eski masraf: tip='masraf' → artık tip='gelen', altTip='masraf' olarak kaydedilmeli
+  gelenler(altTip){
+    return this.hepsini().filter(f => {
+      if(altTip) return (f.tip==='gelen'&&f.altTip===altTip)||(altTip==='masraf'&&f.tip==='masraf');
+      return f.tip==='gelen'||f.tip==='masraf';
+    });
+  },
   aralik(b,e){ return this.hepsini().filter(f=>f.tarih>=b&&f.tarih<=e); },
   ayGore(ayStr){ return this.hepsini().filter(f=>f.tarih?.startsWith(ayStr)); },
 
   ekle(f){
     const yeni={id:uid(), ...f, tarih:f.tarih||today(), olusturma:Date.now()};
     set(DB_KEYS.faturalar,[...this.hepsini(),yeni]);
-    logDB.ekle('fatura_eklendi', `${yeni.faturaNo?`[${yeni.faturaNo}] `:''}${yeni.aciklama||yeni.cariAdi||'Fatura'} — ${(yeni.tutar||0).toFixed(2)}₺ (${yeni.tip||'?'})`);
+    logDB.ekle('fatura_eklendi', `${yeni.faturaNo?`[${yeni.faturaNo}] `:''}${yeni.aciklama||yeni.cariAdi||'Fatura'} — ${(yeni.tutar||0).toFixed(2)}₺ (${yeni.tip||'?'}${yeni.altTip?'/'+yeni.altTip:''})`);
     sbPost('faturalar',{
-      id:yeni.id, tip:yeni.tip, tarih:yeni.tarih, fatura_no:yeni.faturaNo||'',
+      id:yeni.id, tip:yeni.tip, alt_tip:yeni.altTip||null, tarih:yeni.tarih, fatura_no:yeni.faturaNo||'',
       tutar:yeni.tutar||0, kdv_tutari:yeni.kdvTutari||0,
       kdv_orani:yeni.kdvOrani||20, aciklama:yeni.aciklama||'',
       cari_adi:yeni.cariAdi||'', dosya_url:yeni.dosyaUrl||null,
@@ -959,6 +967,7 @@ export const faturalarDB = {
     set(DB_KEYS.faturalar,this.hepsini().map(f=>f.id===id?{...f,...d}:f));
     const v={};
     if(d.tip!==undefined)       v.tip=d.tip;
+    if(d.altTip!==undefined)    v.alt_tip=d.altTip;
     if(d.tarih!==undefined)     v.tarih=d.tarih;
     if(d.faturaNo!==undefined)  v.fatura_no=d.faturaNo;
     if(d.tutar!==undefined)     v.tutar=d.tutar;

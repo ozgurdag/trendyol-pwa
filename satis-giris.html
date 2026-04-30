@@ -204,7 +204,7 @@ body.role-ortak .admin-only { display: none !important; }
 import { auth, stokDB, listingDB, setlerDB, satislarDB, ayarlarDB, bulBarcodeUrun } from './state.js';
 
 if(!auth.oturum()?.token) { window.location.href='./index.html'; }
-if(auth.rol()==='ortak') document.body.classList.add('role-ortak');
+if(auth.rol()==='ortak') { window.location.href='./dashboard.html'; }
 window._satislarDB = satislarDB;
 
 // ── ORTAK SABİTLER ────────────────────────────────────────────

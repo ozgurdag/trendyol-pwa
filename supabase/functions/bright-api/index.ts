@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
     const params = new URLSearchParams({ page: String(page), size: String(size) });
     if (body.startDate) params.set('startDate', String(body.startDate));
-    if (body.endDate)   params.set('endDate',   String(body.endDate));
+    if (body.endDate) params.set('endDate', String(body.endDate));
 
     let url = '';
 
@@ -43,22 +43,36 @@ Deno.serve(async (req) => {
     } else if (type === 'settlements') {
       if (body.transactionType) params.set('transactionType', body.transactionType);
 
-      // Birden fazla URL dene (CHE ve klasik)
-      const urls = [
+      const bearerHeaders = body.token ? {
+        'Authorization': `Bearer ${body.token}`,
+        'User-Agent': `${sellerId} - Self Integration`,
+        'Content-Type': 'application/json',
+      } : null;
+
+      const urlCandidates = [
         `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/settlements?${params}`,
         `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/settlements?${params}`,
+        `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/otherfinancials/settlements?${params}`,
       ];
-      for (const u of urls) {
-        const r = await fetch(u, { headers: basicHeaders });
-        const text = await r.text();
-        if (r.ok) return new Response(text, { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
+
+      const errors: string[] = [];
+      for (const candidate of urlCandidates) {
+        const attempts = bearerHeaders ? [bearerHeaders, basicHeaders] : [basicHeaders];
+        for (const hdrs of attempts) {
+          const r = await fetch(candidate, { headers: hdrs });
+          const text = await r.text();
+          const authType = hdrs === bearerHeaders ? 'bearer' : 'basic';
+          console.log(`[settlements] ${r.status} — ${candidate} — auth:${authType}`);
+          if (r.ok) return new Response(text, { status: 200, headers: { ...CORS, 'Content-Type': 'application/json' } });
+          errors.push(`[${authType}] ${r.status}: ${text.slice(0, 100)}`);
+        }
       }
-      return new Response(JSON.stringify({ error: 'Settlements API başarısız' }), {
+      return new Response(JSON.stringify({ error: 'Settlements API başarısız', details: errors }), {
         status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
       });
 
     } else if (type === 'otherfinancials') {
-      if (body.transactionType)    params.set('transactionType',    body.transactionType);
+      if (body.transactionType) params.set('transactionType', body.transactionType);
       if (body.transactionSubType) params.set('transactionSubType', body.transactionSubType);
 
       const urls = [
@@ -80,9 +94,10 @@ Deno.serve(async (req) => {
           status: 400, headers: { ...CORS, 'Content-Type': 'application/json' },
         });
       }
+      // Kargo invoice endpoints (parametre eklenmez!)
       const urls = [
-        `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/cargo-invoice/${body.invoiceSerialNumber}/items?${params}`,
-        `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/cargo-invoice/${body.invoiceSerialNumber}/items?${params}`,
+        `https://apigw.trendyol.com/integration/finance/che/sellers/${sellerId}/cargo-invoice/${body.invoiceSerialNumber}/items`,
+        `https://apigw.trendyol.com/integration/finance/sellers/${sellerId}/cargo-invoice/${body.invoiceSerialNumber}/items`,
       ];
       for (const u of urls) {
         const r = await fetch(u, { headers: basicHeaders });
@@ -94,8 +109,8 @@ Deno.serve(async (req) => {
       });
 
     } else if (type === 'products') {
-      if (body.barcode)           params.set('barcode',   body.barcode);
-      if (body.approved != null)  params.set('approved',  String(body.approved));
+      if (body.barcode) params.set('barcode', body.barcode);
+      if (body.approved != null) params.set('approved', String(body.approved));
       url = `https://apigw.trendyol.com/integration/product/sellers/${sellerId}/products?${params}`;
 
     } else {

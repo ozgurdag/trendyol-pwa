@@ -663,7 +663,7 @@ window.verileriCek = async () => {
       
       durumGoster(`Tarama yapılıyor: ${chunkLabel} (${cIdx+1}/${chunks.length})`);
       
-      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 7, {size:500});
+      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 7, {size:200});
       allSettlements = allSettlements.concat(items);
       items.forEach(it=>{
         const net=it.sellerRevenue??it.payoutAmount??it.netAmount??it.amount??0;
@@ -678,7 +678,7 @@ window.verileriCek = async () => {
       });
       fillEl.style.width = `${chunkProgressBase + chunkProgressStep * 0.3}%`;
 
-      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 7, {size:500});
+      const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, 'DeductionInvoices', 7, {size:200});
       const kargoFaturalar = dedItems.filter(it=>{
         const tip=(it.transactionType||it.description||'').toLowerCase();
         const invoiceNo = String(it.invoiceSerialNumber || it.id || '');
@@ -694,7 +694,7 @@ window.verileriCek = async () => {
         if(!serialNo || faturaSerials.has(serialNo)) continue;
         faturaSerials.add(serialNo);
         try {
-          const items=await fetchAllPages({type:'cargo-invoice', invoiceSerialNumber:serialNo, size:500});
+          const items=await fetchAllPages({type:'cargo-invoice', invoiceSerialNumber:serialNo, size:200});
           if(items) items.forEach(ci=>{
             if(ci.orderNumber) orderKargoMap[String(ci.orderNumber)] = (orderKargoMap[String(ci.orderNumber)]||0) + Math.abs(ci.amount||0);
           });

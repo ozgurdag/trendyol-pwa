@@ -9,10 +9,6 @@
 <style>
 /* ── ORTAK: sadece izleme ── */
 body.role-ortak .admin-only { display: none !important; }
-body.role-ortak input.form-input, body.role-ortak select.form-select,
-body.role-ortak input[type=number], body.role-ortak input[type=text],
-body.role-ortak input[type=date] { pointer-events:none;opacity:.7;background:var(--bg0,#0a0e1a);border-color:transparent }
-body.role-ortak button:not(.view-ok) { display: none !important; }
 /* ── TRENDYOL SYNC ── */
 .tab-bar{display:flex;gap:4px;background:var(--bg2);border-radius:var(--r-md);padding:4px;margin-bottom:16px}
 .tab-btn{flex:1;padding:8px 4px;text-align:center;font-size:12px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;border:none;background:transparent;color:var(--t3);transition:all .15s}
@@ -80,7 +76,7 @@ body.role-ortak button:not(.view-ok) { display: none !important; }
           <div class="section-title" style="color:#f5c518;margin-bottom:8px">⏳ Eşleştirilemeyen Siparişler</div>
           <div style="font-size:11px;color:var(--t3);margin-bottom:10px">Otomatik sync sırasında ürün bulunamayan siparişler. Stokta ilgili ürüne barkod ekledikten sonra buradan eşleştirebilirsiniz.</div>
           <div id="bekleyen-list"></div>
-          <button class="btn btn-primary btn-full mb-4" onclick="bekleyenleriAktar()">✅ Eşleşenleri Kaydet</button>
+          <button class="btn btn-primary btn-full mb-4 admin-only" onclick="bekleyenleriAktar()">✅ Eşleşenleri Kaydet</button>
           <button class="btn btn-ghost btn-full mb-16" style="font-size:11px" onclick="bekleyenleriTemizle()">🗑 Listeyi Temizle</button>
         </div>
 
@@ -110,7 +106,7 @@ body.role-ortak button:not(.view-ok) { display: none !important; }
               <option value="teslim">Yalnızca Teslim Edilenler</option>
             </select>
           </div>
-          <button class="btn btn-primary btn-full" id="s-cek-btn" onclick="siparisleriCek()">🔄 Siparişleri Getir</button>
+          <button class="btn btn-primary btn-full admin-only" id="s-cek-btn" onclick="siparisleriCek()">🔄 Siparişleri Getir</button>
           <div class="prog-bar" id="s-prog"><div class="prog-fill" id="s-prog-fill" style="width:0%"></div></div>
         </div>
 

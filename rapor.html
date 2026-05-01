@@ -238,14 +238,36 @@ function ozetHesapla(satislar){
 }
 
 // ─── Özet kartları ────────────────────────────────────────────────
-function renderOzet(ozet, targetId){
+function renderOzet(ozet, targetId, tahminOnce = false){
   const el=document.getElementById(targetId);
   if(!el) return;
-  
+
   const netRenk = ozet.net >= 0 ? 'var(--green)' : 'var(--red)';
   const doluluk = ozet.toplamSayi > 0 ? (ozet.tamSayi / ozet.toplamSayi) * 100 : 0;
-  
-  el.innerHTML = `
+
+  const tahminKart = ozet.tahmini && ozet.tahmini.sayi > 0 ? (() => {
+    const t = ozet.tahmini;
+    const ay = ayarlarDB.oku();
+    const renk = t.net >= 0 ? 'var(--green)' : 'var(--red)';
+    const eksikSayi = t.sayi - ozet.tamSayi;
+    return `
+    <div class="ozet-card full" style="margin-top:4px;border-color:${renk};background:linear-gradient(135deg,var(--bg2) 0%,${t.net>=0?'rgba(0,200,100,0.04)':'rgba(239,68,68,0.04)'} 100%)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div class="lbl" style="color:var(--t3)">TAHMİNİ KAR/ZARAR <span style="font-weight:400;opacity:.7">(${t.sayi} sipariş)</span></div>
+        ${eksikSayi > 0 ? `<div style="font-size:9px;color:var(--yellow);font-weight:700">${eksikSayi} sipariş barem ile tahmin edildi</div>` : ''}
+      </div>
+      <div style="font-size:26px;font-weight:900;font-family:var(--mono);color:${renk};margin-bottom:10px">${t.net>=0?'+':''}${p(t.net)}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;color:var(--t3)">
+        <div>Ciro: <b style="color:var(--t2)">${p(t.ciro)}</b></div>
+        <div>Alış: <b style="color:var(--red)">-${p(t.alis)}</b></div>
+        <div>Komisyon: <b style="color:var(--red)">-${p(t.kom)}</b></div>
+        <div>Kargo: <b style="color:var(--red)">-${p(t.kargo)}</b></div>
+        <div style="grid-column:span 2;opacity:.6;font-size:10px;margin-top:2px">Barem: &lt;${ay.kargoBaremEsik1||200}₺→${(ay.kargoBaremUcret1||51.492).toFixed(2)}₺ | &lt;${ay.kargoBaremEsik2||350}₺→${(ay.kargoBaremUcret2||88.488).toFixed(2)}₺ | üstü→100.72₺</div>
+      </div>
+    </div>`;
+  })() : '';
+
+  const netKarKart = `
     <div class="ozet-card full" style="background: linear-gradient(135deg, var(--bg2) 0%, rgba(0,200,100,0.05) 100%); border-color: ${netRenk}">
       <div style="display:flex; justify-content:space-between; align-items:flex-start">
         <div class="lbl">Toplam Net Kar</div>
@@ -258,7 +280,9 @@ function renderOzet(ozet, targetId){
       <div style="height:4px; background:var(--bg3); border-radius:2px; overflow:hidden">
         <div style="width:${doluluk}%; height:100%; background:${doluluk<100?'var(--yellow)':'var(--green)'}"></div>
       </div>
-    </div>
+    </div>`;
+
+  el.innerHTML = (tahminOnce ? tahminKart : netKarKart) + `
 
     <div class="ozet-card">
       <div class="lbl">Brüt Ciro</div>
@@ -296,27 +320,7 @@ function renderOzet(ozet, targetId){
       <div class="lbl" style="margin-top:4px; font-size:9px">Sip. Başı Kar: ${p(ozet.avgNet)}</div>
     </div>
 
-    ${ozet.tahmini && ozet.tahmini.sayi > 0 ? (() => {
-      const t = ozet.tahmini;
-      const ay = ayarlarDB.oku();
-      const renk = t.net >= 0 ? 'var(--green)' : 'var(--red)';
-      const eksikSayi = t.sayi - ozet.tamSayi;
-      return `
-    <div class="ozet-card full" style="margin-top:4px;border-color:${renk};background:linear-gradient(135deg,var(--bg2) 0%,${t.net>=0?'rgba(0,200,100,0.04)':'rgba(239,68,68,0.04)'} 100%)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <div class="lbl" style="color:var(--t3)">TAHMİNİ KAR/ZARAR <span style="font-weight:400;opacity:.7">(${t.sayi} sipariş)</span></div>
-        ${eksikSayi > 0 ? `<div style="font-size:9px;color:var(--yellow);font-weight:700">${eksikSayi} sipariş barem ile tahmin edildi</div>` : ''}
-      </div>
-      <div style="font-size:26px;font-weight:900;font-family:var(--mono);color:${renk};margin-bottom:10px">${t.net>=0?'+':''}${p(t.net)}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;color:var(--t3)">
-        <div>Ciro: <b style="color:var(--t2)">${p(t.ciro)}</b></div>
-        <div>Alış: <b style="color:var(--red)">-${p(t.alis)}</b></div>
-        <div>Komisyon: <b style="color:var(--red)">-${p(t.kom)}</b></div>
-        <div>Kargo: <b style="color:var(--red)">-${p(t.kargo)}</b></div>
-        <div style="grid-column:span 2;opacity:.6;font-size:10px;margin-top:2px">Barem: &lt;${ay.kargoBaremEsik1||200}₺→${(ay.kargoBaremUcret1||51.492).toFixed(2)}₺ | &lt;${ay.kargoBaremEsik2||350}₺→${(ay.kargoBaremUcret2||88.488).toFixed(2)}₺ | üstü→100.72₺</div>
-      </div>
-    </div>`;
-    })() : ''}
+    ${tahminOnce ? '' : tahminKart}
   `;
 }
 
@@ -453,7 +457,7 @@ function renderGunluk(){
   document.getElementById('gunluk-lbl').textContent=
     `${gunler[d.getDay()]} ${d.getDate()} ${aylar[d.getMonth()]} ${d.getFullYear()}`;
   const satislar=satislarDB.guneBGore(curGun);
-  renderOzet(ozetHesapla(satislar),'gunluk-ozet');
+  renderOzet(ozetHesapla(satislar),'gunluk-ozet', true);
   renderListe(satislar,'gunluk-liste');
 }
 window.navGun=delta=>{ const d=new Date(curGun+'T12:00:00'); d.setDate(d.getDate()+delta); curGun=d.toISOString().slice(0,10); renderGunluk(); };
@@ -475,7 +479,7 @@ function renderHaftalik(){
   document.getElementById('haftalik-lbl').textContent=
     `${basD.getDate()} ${aylar[basD.getMonth()]} — ${bitD.getDate()} ${aylar[bitD.getMonth()]}`;
   const satislar=satislarDB.aralik(bas,bit);
-  renderOzet(ozetHesapla(satislar),'haftalik-ozet');
+  renderOzet(ozetHesapla(satislar),'haftalik-ozet', true);
   renderListe(satislar,'haftalik-liste');
 }
 window.navHafta=delta=>{

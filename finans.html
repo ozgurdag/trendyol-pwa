@@ -116,6 +116,7 @@
         </div>
         <input type="file" id="dosya-gelen" multiple style="display:none" accept=".pdf,.jpg,.jpeg,.png"
                onchange="dosyaIsle(this.files)">
+        <div id="ai-status-gelen" style="display:none;margin:8px 0"></div>
         <div id="gelen-onizleme" style="margin-top:10px"></div>
         <button class="btn btn-primary btn-full mt-8" id="gelen-kaydet-btn" onclick="faturaKaydet()" style="display:none">✓ Kaydet</button>
       </div>
@@ -135,6 +136,7 @@
           </div>
           <input type="file" id="dosya-giden" multiple style="display:none" accept=".pdf,.jpg,.jpeg,.png"
                  onchange="dosyaIsleGiden(this.files)">
+          <div id="ai-status-giden" style="display:none;margin:8px 0"></div>
           <div id="giden-onizleme" style="margin-top:10px"></div>
           <button class="btn btn-primary btn-full mt-8" id="giden-kaydet-btn" onclick="faturaKaydetGiden()" style="display:none">✓ Kaydet</button>
        </div>
@@ -497,16 +499,74 @@ window.faturaFiyatSil = (id) => {
   toast('Fatura silindi');
 };
 
-// ── FATURA YÜKLEME — GELEN ────────────────────────────────────────
-let bekleyenler = []; // {dosyaAdi, tutar, tarih, aciklama, kdv, file}
+// ── CLAUDE AI FATURA OKUMA ───────────────────────────────────────
+async function claudeOku(base64Data, mimeType, tip = 'gelen') {
+  const apiKey = ayarlarDB.oku().claudeApiKey;
+  if (!apiKey) { toast('Ayarlar > Claude API Anahtarı gerekli', 'error'); return null; }
 
-window.dosyaIsle = (files) => {
-  Array.from(files).forEach(f => {
+  const statusId = tip === 'giden' ? 'ai-status-giden' : 'ai-status-gelen';
+  const statusEl = document.getElementById(statusId);
+  if (statusEl) { statusEl.style.display=''; statusEl.innerHTML='<div class="ai-loading"><div class="spinner"></div>AI faturayı okuyor…</div>'; }
+
+  try {
+    const isGiden = tip === 'giden';
+    const prompt = isGiden
+      ? `Görev: GİDEN SATIŞ FATURASI okumak. MÜŞTERİYİ bul.
+DÖNÜŞ ŞABLONU (Sadece JSON):
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"","aciklama":""}
+KURALLAR: 1) "SAYIN" veya "Müşteri" yazan alanın altındaki isim cari_adi olacak. 2) tutar = KDV hariç toplam.`
+      : `Görev: ALIŞ / MASRAF FATURASI okumak. SATICI FİRMAYI bul.
+DÖNÜŞ ŞABLONU (Sadece JSON):
+{"tarih":"YYYY-MM-DD","fatura_no":"","tutar":0.00,"kdv_tutari":0.00,"kdv_orani":20,"cari_adi":"","aciklama":""}
+KURALLAR: 1) Faturayı düzenleyen (bize satan) firmayı bul — genellikle sayfanın sol üstünde büyük harflerle. 2) tutar = KDV hariç toplam.`;
+
+    const content = mimeType === 'application/pdf'
+      ? [{ type:'document', source:{type:'base64', media_type:'application/pdf', data:base64Data} }, { type:'text', text:prompt }]
+      : [{ type:'text', text: prompt + '\n\nFatura Metni:\n' + atob(base64Data).substring(0,15000) }];
+
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1024, messages:[{role:'user', content}] })
+    });
+
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    const text = data.content?.[0]?.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*?\}/);
+    if (!jsonMatch) throw new Error('JSON çıkarılamadı');
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (statusEl) { statusEl.innerHTML='<div class="ai-loading" style="color:var(--green)">✓ AI başarıyla okudu!</div>'; setTimeout(()=>statusEl.style.display='none', 3000); }
+    return parsed;
+  } catch(e) {
+    console.error('Claude AI hata:', e);
+    if (statusEl) statusEl.innerHTML=`<div class="ai-loading" style="color:var(--red)">⚠ AI okuma hatası: ${e.message?.substring(0,80)}</div>`;
+    return null;
+  }
+}
+
+// ── FATURA YÜKLEME — GELEN ────────────────────────────────────────
+let bekleyenler = []; // {dosyaAdi, tutar, tarih, aciklama, file}
+
+window.dosyaIsle = async (files) => {
+  const dosyalar = Array.from(files);
+  document.getElementById('dosya-gelen').value = '';
+  for (const f of dosyalar) {
     const ad = f.name.replace(/\.[^.]+$/,'');
-    bekleyenler.push({ dosyaAdi: f.name, tutar:'', tarih: new Date().toISOString().slice(0,10), aciklama: ad, kdv:'', file: f });
-  });
-  document.getElementById('dosya-gelen').value='';
-  renderOnizleme();
+    const idx = bekleyenler.push({ dosyaAdi:f.name, tutar:'', tarih:new Date().toISOString().slice(0,10), aciklama:ad, file:f }) - 1;
+    renderOnizleme();
+    try {
+      const base64 = await new Promise(res => { const rd=new FileReader(); rd.onload=e=>res(e.target.result.split(',')[1]); rd.readAsDataURL(f); });
+      const mime = f.type || (f.name.endsWith('.pdf') ? 'application/pdf' : 'text/html');
+      const sonuc = await claudeOku(base64, mime, 'gelen');
+      if (sonuc) {
+        if (sonuc.tarih)    bekleyenler[idx].tarih    = sonuc.tarih;
+        if (sonuc.tutar)    bekleyenler[idx].tutar    = sonuc.tutar;
+        if (sonuc.cari_adi) bekleyenler[idx].aciklama = sonuc.cari_adi;
+        renderOnizleme();
+      }
+    } catch(e) { console.warn('AI okuma atlandı:', e.message); }
+  }
 };
 
 function renderOnizleme() {
@@ -564,13 +624,25 @@ window.faturaKaydet = async () => {
 // ── FATURA YÜKLEME — GİDEN ───────────────────────────────────────
 let bekleyenlerGiden = [];
 
-window.dosyaIsleGiden = (files) => {
-  Array.from(files).forEach(f => {
+window.dosyaIsleGiden = async (files) => {
+  const dosyalar = Array.from(files);
+  document.getElementById('dosya-giden').value = '';
+  for (const f of dosyalar) {
     const ad = f.name.replace(/\.[^.]+$/,'');
-    bekleyenlerGiden.push({ dosyaAdi: f.name, tutar:'', tarih: new Date().toISOString().slice(0,10), aciklama: ad, file: f });
-  });
-  document.getElementById('dosya-giden').value='';
-  renderOnizlemeGiden();
+    const idx = bekleyenlerGiden.push({ dosyaAdi:f.name, tutar:'', tarih:new Date().toISOString().slice(0,10), aciklama:ad, file:f }) - 1;
+    renderOnizlemeGiden();
+    try {
+      const base64 = await new Promise(res => { const rd=new FileReader(); rd.onload=e=>res(e.target.result.split(',')[1]); rd.readAsDataURL(f); });
+      const mime = f.type || (f.name.endsWith('.pdf') ? 'application/pdf' : 'text/html');
+      const sonuc = await claudeOku(base64, mime, 'giden');
+      if (sonuc) {
+        if (sonuc.tarih)    bekleyenlerGiden[idx].tarih    = sonuc.tarih;
+        if (sonuc.tutar)    bekleyenlerGiden[idx].tutar    = sonuc.tutar;
+        if (sonuc.cari_adi) bekleyenlerGiden[idx].aciklama = sonuc.cari_adi;
+        renderOnizlemeGiden();
+      }
+    } catch(e) { console.warn('AI okuma atlandı:', e.message); }
+  }
 };
 
 function renderOnizlemeGiden() {

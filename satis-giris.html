@@ -744,11 +744,20 @@ window.verileriCek = async () => {
     const mutSayi = mutabakatEslesimler.length ? satislarDB.netTutarlariUygula(mutabakatEslesimler) : 0;
     const kargoSayi = kargoEslesimler.length ? satislarDB.kargoUygula(kargoEslesimler) : 0;
 
+    // Barem fallback: mutabakat eşleşti ama kargo-invoice bulamadı → barem tahminini yaz
+    const ay = ayarlarDB.oku();
+    const baremFallback = [];
+    satislarDB.hepsini().filter(s => s.tySellerRevenue != null && s.tyKargo == null).forEach(s => {
+      const fiyat = (s.gercekFiyat || 0) * (s.adet || 1);
+      const kargo = ayarlarDB.gercekKargoBedeli(fiyat, s.desi || 0, ay, null);
+      baremFallback.push({ id: s.id, tyKargo: kargo });
+    });
+    const baremSayi = baremFallback.length ? satislarDB.kargoUygula(baremFallback) : 0;
+
     // ── 6. Özet ──
     const tumSatislar = satislarDB.hepsini();
     const donemSatislar = satislarDB.aralik(document.getElementById('m-start').value, document.getElementById('m-end').value);
     const mutEksik = donemSatislar.filter(s=>s.tySellerRevenue==null).length;
-    const kargoEksik = donemSatislar.filter(s=>s.tyKargo==null).length;
     const hesaplananKar = donemSatislar.reduce((t,s)=>{
       if(s.tySellerRevenue!=null&&s.tyKargo!=null) return t+s.tySellerRevenue-s.tyKargo-(s.alisMaliyeti||0)*s.adet;
       return t;
@@ -763,10 +772,10 @@ window.verileriCek = async () => {
     const sonucEl = document.getElementById('mk-sonuc');
     const satirlar2 = [
       mutSayi   ? `✅ <b>${mutSayi}</b> satışa TY net ödeme uygulandı` : null,
-      kargoSayi ? `✅ <b>${kargoSayi}</b> satışa kargo bedeli uygulandı` : null,
+      kargoSayi ? `✅ <b>${kargoSayi}</b> satışa gerçek kargo bedeli uygulandı` : null,
+      baremSayi ? `✅ <b>${baremSayi}</b> satışa barem tahmini kargo uygulandı` : null,
       kargoApiHata ? '⚠️ Kargo API erişimi yok (CHE) — kargo uygulanamadı' : null,
       mutEksik  ? `⚠️ <b>${mutEksik}</b> satışın mutabakat verisi yok` : null,
-      kargoEksik ? `⚠️ <b>${kargoEksik}</b> satışın kargo bilgisi yok` : null,
     ].filter(Boolean);
     sonucEl.innerHTML = satirlar2.join('<br>');
     sonucEl.style.display = 'block';

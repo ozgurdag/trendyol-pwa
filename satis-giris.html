@@ -663,49 +663,37 @@ window.verileriCek = async () => {
       
       durumGoster(`Tarama yapılıyor: ${chunkLabel} (${cIdx+1}/${chunks.length})`);
 
-      // Filtre yok — Sale + CargoFee + diğer tüm tipleri al
-      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 7, {size:500});
+      // Sale settlements → orderNetMap + toplamOdeme
+      const items = await fetchDateRange('settlements', chunk.start, chunk.end, null, 7, {size:500, transactionType: 'Sale'});
       allSettlements = allSettlements.concat(items);
-
-      // Diagnostic: gelen tüm transactionType'ları ve ilk item alanlarını logla
       if (cIdx === 0 && items.length) {
-        const uniqTypes = [...new Set(items.map(it => it.transactionType || '—'))];
-        console.log('[settlements] Gelen tipler:', uniqTypes.join(', '));
-        console.log('[settlements] İlk item alanları:', Object.keys(items[0]).join(', '));
-        console.log('[settlements] İlk item örnek:', JSON.stringify(items[0]).slice(0, 400));
+        console.log('[Sale settlements] İlk item alanları:', Object.keys(items[0]).join(', '));
+        console.log('[Sale settlements] İlk item örnek:', JSON.stringify(items[0]).slice(0, 500));
       }
-
       items.forEach(it=>{
         const net = it.sellerRevenue ?? it.payoutAmount ?? it.netAmount ?? it.amount ?? 0;
-        const type = (it.transactionType || '').toLowerCase();
-        const desc = (it.description || '').toLowerCase();
-
-        const isKargo = type === 'cargofee' || type === 'kargoucreti' || type === 'cargo' ||
-                        type === 'cargocharge' || type === 'shippingfee' || type === 'deliveryfee' ||
-                        desc.includes('kargo') || desc.includes('cargo') || desc.includes('taşım');
-        const isKomisyon = type.includes('commission') || type === 'komisyon' || type === 'commissionfee';
-
-        if (isKargo && it.orderNumber) {
-          orderKargoMap[String(it.orderNumber)] = (orderKargoMap[String(it.orderNumber)] || 0) + Math.abs(net);
-        } else if (!isKomisyon) {
-          // Sale ve diğer ödeme kalemleri → gelir
-          if (it.orderNumber) orderNetMap[String(it.orderNumber)] = (orderNetMap[String(it.orderNumber)] || 0) + net;
-          toplamOdeme += net;
-        }
-
-        // Sale item içinde gömülü kargo alanı varsa (TY API bazı versiyonlarında cargoAmount gönderir)
+        toplamOdeme += net;
+        if (it.orderNumber) orderNetMap[String(it.orderNumber)] = (orderNetMap[String(it.orderNumber)] || 0) + net;
+        // Sale item içinde gömülü kargo alanı varsa okuma yap
         const embeddedKargo = it.cargoAmount ?? it.cargoFee ?? it.deliveryCost ?? it.shipmentFee;
-        if (embeddedKargo && it.orderNumber) {
-          orderKargoMap[String(it.orderNumber)] = Math.abs(embeddedKargo);
-        }
+        if (embeddedKargo && it.orderNumber) orderKargoMap[String(it.orderNumber)] = Math.abs(embeddedKargo);
       });
+
+      // CargoFee settlements → orderKargoMap (ayrı tip olarak dene)
+      try {
+        const kargoItems = await fetchDateRange('settlements', chunk.start, chunk.end, null, 7, {size:500, transactionType: 'CargoFee'});
+        if (cIdx === 0) console.log(`[CargoFee settlements] ${kargoItems.length} kayıt${kargoItems.length ? ': ' + JSON.stringify(kargoItems[0]).slice(0,300) : ''}`);
+        kargoItems.forEach(it=>{
+          const net = it.sellerRevenue ?? it.payoutAmount ?? it.netAmount ?? it.amount ?? 0;
+          if (it.orderNumber) orderKargoMap[String(it.orderNumber)] = (orderKargoMap[String(it.orderNumber)] || 0) + Math.abs(net);
+        });
+      } catch(e){ console.warn('[CargoFee settlements]', e.message); }
+
       fillEl.style.width = `${chunkProgressBase + chunkProgressStep * 0.3}%`;
 
-      // otherfinancials + cargo-invoice (ek kaynak olarak tut)
+      // otherfinancials DeductionInvoices → DDA seri no ile cargo-invoice lookup
       const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, null, 7, {size:500, transactionType: 'DeductionInvoices'});
-      if (cIdx === 0 && dedItems.length) {
-        console.log('[otherfinancials] İlk item:', JSON.stringify(dedItems[0]).slice(0, 400));
-      }
+      if (cIdx === 0 && dedItems.length) console.log('[otherfinancials] İlk item:', JSON.stringify(dedItems[0]).slice(0, 400));
       const kargoFaturalar = dedItems.filter(it=>{
         const invoiceNo = String(it.invoiceSerialNumber || it.id || '');
         const docNo = String(it.documentNumber || '');
@@ -760,15 +748,8 @@ window.verileriCek = async () => {
     const mutSayi = mutabakatEslesimler.length ? satislarDB.netTutarlariUygula(mutabakatEslesimler) : 0;
     const kargoSayi = kargoEslesimler.length ? satislarDB.kargoUygula(kargoEslesimler) : 0;
 
-    // Barem fallback: mutabakat eşleşti ama kargo-invoice bulamadı → barem tahminini yaz
-    const ay = ayarlarDB.oku();
-    const baremFallback = [];
-    satislarDB.hepsini().filter(s => s.tySellerRevenue != null && s.tyKargo == null).forEach(s => {
-      const fiyat = (s.gercekFiyat || 0) * (s.adet || 1);
-      const kargo = ayarlarDB.gercekKargoBedeli(fiyat, s.desi || 0, ay, null);
-      baremFallback.push({ id: s.id, tyKargo: kargo });
-    });
-    const baremSayi = baremFallback.length ? satislarDB.kargoUygula(baremFallback) : 0;
+    // Barem tahmini sipariş sayısı (tyKargo'ya yazılmaz — sadece özet için sayılır)
+    const baremSayi = satislarDB.hepsini().filter(s => s.tySellerRevenue != null && s.tyKargo == null).length;
 
     // ── 6. Özet ──
     const tumSatislar = satislarDB.hepsini();

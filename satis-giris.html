@@ -685,6 +685,20 @@ window.verileriCek = async () => {
 
       // otherfinancials — DeductionInvoices (komisyon + platform bedeli + diğer kesintiler)
       const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, null, 7, {size:500, transactionType: 'DeductionInvoices'});
+
+      // Platform Hizmet Bedeli — subtype ile sipariş bazında mı geliyor? (diagnostic)
+      if (cIdx === 0) {
+        try {
+          const pfItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, null, 7, {size:500, transactionType: 'DeductionInvoices', transactionSubType: 'PlatformServiceFee'});
+          console.log(`[PlatformServiceFee] ${pfItems.length} kayıt`);
+          if (pfItems.length) {
+            console.log('[PlatformServiceFee] İlk item:', JSON.stringify(pfItems[0]).slice(0, 600));
+            const hasOrderNo = pfItems.filter(x => x.orderNumber).length;
+            console.log(`[PlatformServiceFee] orderNumber dolu olan: ${hasOrderNo}/${pfItems.length}`);
+          }
+        } catch(e) { console.warn('[PlatformServiceFee diagnostic]', e.message); }
+      }
+
       const tumFatItems = [...dedItems];
       const kargoFaturalar = tumFatItems.filter(it => {
         const invoiceNo = String(it.commissionInvoiceSerialNumber || it.invoiceSerialNumber || it.id || '');

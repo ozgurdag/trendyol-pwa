@@ -165,6 +165,7 @@ function satisKar(s){
   const alis = (s.alisMaliyeti ?? 0) * s.adet;
   const tySellerRevenue = s.tySellerRevenue ?? null;
   const tyKargo = s.tyKargo ?? null;
+  const tyPlatformBedeli = s.tyPlatformBedeli ?? null;
   // Barem tahmini: TY net var ama kargo faturası henüz kesilmemiş
   const baremKargo = tyKargo == null && tySellerRevenue != null
     ? hesapla.gercekKargoBedeli((s.gercekFiyat||0)*(s.adet||1), lRef?.desi||1, ay2)
@@ -176,7 +177,7 @@ function satisKar(s){
   let net = null, roi = null;
 
   if(veriTam || veriTahmini){
-    net = tySellerRevenue - efektifKargo - alis;
+    net = tySellerRevenue - efektifKargo - (tyPlatformBedeli ?? 0) - alis;
     roi = alis > 0 ? net / alis : 0;
   }
 

@@ -214,6 +214,7 @@ export async function supabasedenYukle(){
         tySellerRevenue: s.ty_seller_revenue ?? null,
         tyKomisyon:      s.ty_komisyon_tutar ?? null,
         tyKargo:         s.ty_kargo          ?? null,
+        tyPlatformBedeli: s.ty_platform_bedeli ?? null,
         tyOrderId:       s.ty_order_id       || null,
         tyOrderNumber:   s.ty_order_number   || null,
         tyStatus:        s.ty_status         || null,
@@ -936,6 +937,24 @@ export const satislarDB = {
     if(sayi){
       set(DB_KEYS.satislar, mevcut);
       dbGuncelle.forEach(u => sbPatch('satislar', u.id, {ty_kargo: u.ty_kargo}));
+      broadcastGonder();
+    }
+    return sayi;
+  },
+
+  platformUygula(eslesimler){
+    // eslesimler: [{id, tyPlatformBedeli}]
+    const mevcut = [...this.hepsini()];
+    let sayi = 0;
+    eslesimler.forEach(({id, tyPlatformBedeli}) => {
+      if(!id) return;
+      const idx = mevcut.findIndex(s => s.id === id);
+      if(idx === -1) return;
+      mevcut[idx] = {...mevcut[idx], tyPlatformBedeli: +tyPlatformBedeli};
+      sayi++;
+    });
+    if(sayi){
+      set(DB_KEYS.satislar, mevcut);
       broadcastGonder();
     }
     return sayi;

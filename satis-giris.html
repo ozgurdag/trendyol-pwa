@@ -637,8 +637,10 @@ window.verileriCek = async () => {
   
   const orderNetMap = {};
   const orderKargoMap = {};
+  const orderPlatformMap = {};
   const mutabakatEslesimler = [];
   const kargoEslesimler = [];
+  const platformEslesimler = [];
   let toplamOdeme = 0;
   let kargoApiHata = false;
   let allSettlements = [];
@@ -697,9 +699,9 @@ window.verileriCek = async () => {
       const kargoFatEndMs = chunk.end + 30 * 24 * 60 * 60 * 1000;
       const kargoFatItems = await fetchDateRange('otherfinancials', chunk.start, kargoFatEndMs, null, 7, {size:500, transactionType: 'Kargo Faturası'});
       const tumFatItems = [...dedItems, ...kargoFatItems];
-      if (cIdx === 0 && tumFatItems.length) {
-        console.log('[otherfinancials] Tipler:', [...new Set(tumFatItems.map(it=>it.transactionType))].join(', '));
-        console.log('[otherfinancials] İlk item:', JSON.stringify(tumFatItems[0]).slice(0, 400));
+      console.log(`[otherfinancials] chunk${cIdx}: DeductionInvoices=${dedItems.length}, KargoFaturası=${kargoFatItems.length}`);
+      if (kargoFatItems.length) {
+        console.log('[KargoFat] İlk item:', JSON.stringify(kargoFatItems[0]).slice(0, 500));
       }
       const kargoFaturalar = tumFatItems.filter(it => {
         const invoiceNo = String(it.commissionInvoiceSerialNumber || it.invoiceSerialNumber || it.id || '');
@@ -710,6 +712,7 @@ window.verileriCek = async () => {
         serial: it.commissionInvoiceSerialNumber || it.invoiceSerialNumber || it.documentNumber || it.id
       }));
 
+      console.log(`[KargoFat] chunk${cIdx}: filtreden geçen fatura=${kargoFaturalar.length}`);
       const faturaSerials = new Set();
       for(let i=0; i<kargoFaturalar.length; i++){
         const serialNo = kargoFaturalar[i].serial;
@@ -717,9 +720,16 @@ window.verileriCek = async () => {
         faturaSerials.add(serialNo);
         try {
           const ciItems=await fetchAllPages({type:'cargo-invoice', invoiceSerialNumber:serialNo, size:200});
-          if(ciItems) ciItems.forEach(ci=>{
-            if(ci.orderNumber) orderKargoMap[String(ci.orderNumber)] = (orderKargoMap[String(ci.orderNumber)]||0) + Math.abs(ci.amount||0);
-          });
+          if(ciItems && ciItems.length) {
+            // cargo-invoice her zaman kargo tutarı döndürür → kargoMap'e yaz
+            ciItems.forEach(ci=>{ if(ci.orderNumber) orderKargoMap[String(ci.orderNumber)] = (orderKargoMap[String(ci.orderNumber)]||0) + Math.abs(ci.amount||0); });
+            // Platform Hizmet Bedeli DDA'sı ise debt'i siparişlere dağıt → platformMap
+            const isPlatform = (kargoFaturalar[i].transactionType||'').toLowerCase().includes('platform');
+            if(isPlatform && kargoFaturalar[i].debt) {
+              const perOrder = Math.abs(kargoFaturalar[i].debt) / ciItems.length;
+              ciItems.forEach(ci=>{ if(ci.orderNumber) orderPlatformMap[String(ci.orderNumber)] = (orderPlatformMap[String(ci.orderNumber)]||0) + perOrder; });
+            }
+          }
         } catch(e){ console.warn(`cargo-invoice ${serialNo}:`,e.message); }
         if(i % 5 === 0) await new Promise(r => setTimeout(r, 100));
       }
@@ -750,6 +760,17 @@ window.verileriCek = async () => {
       });
     });
 
+    // Platform Hizmet Bedeli eşleştirme
+    Object.entries(orderPlatformMap).forEach(([orderNo,platform])=>{
+      const eslesen=kayitliSatislar.filter(s=>String(s.tyOrderNumber)===orderNo);
+      if(!eslesen.length) return;
+      const toplamGelir=eslesen.reduce((t,s)=>t+(s.gercekFiyat||0)*(s.adet||1),0);
+      eslesen.forEach(s=>{
+        const oran=toplamGelir>0?((s.gercekFiyat||0)*(s.adet||1))/toplamGelir:1/eslesen.length;
+        platformEslesimler.push({id:s.id, tyPlatformBedeli:platform*oran});
+      });
+    });
+
     fillEl.style.width='100%';
     setTimeout(()=>{ progEl.style.display='none'; durumGoster(''); },600);
 
@@ -757,6 +778,7 @@ window.verileriCek = async () => {
     durumGoster('Satışlara uygulanıyor…');
     const mutSayi = mutabakatEslesimler.length ? satislarDB.netTutarlariUygula(mutabakatEslesimler) : 0;
     const kargoSayi = kargoEslesimler.length ? satislarDB.kargoUygula(kargoEslesimler) : 0;
+    const platformSayi = platformEslesimler.length ? satislarDB.platformUygula(platformEslesimler) : 0;
 
     // Barem tahmini sipariş sayısı (tyKargo'ya yazılmaz — sadece özet için sayılır)
     const baremSayi = satislarDB.hepsini().filter(s => s.tySellerRevenue != null && s.tyKargo == null).length;
@@ -780,6 +802,7 @@ window.verileriCek = async () => {
     const satirlar2 = [
       mutSayi   ? `✅ <b>${mutSayi}</b> satışa TY net ödeme uygulandı` : null,
       kargoSayi ? `✅ <b>${kargoSayi}</b> satışa gerçek kargo bedeli uygulandı` : null,
+      platformSayi ? `✅ <b>${platformSayi}</b> satışa platform hizmet bedeli uygulandı` : null,
       baremSayi ? `✅ <b>${baremSayi}</b> satışa barem tahmini kargo uygulandı` : null,
       kargoApiHata ? '⚠️ Kargo API erişimi yok (CHE) — kargo uygulanamadı' : null,
       mutEksik  ? `⚠️ <b>${mutEksik}</b> satışın mutabakat verisi yok` : null,

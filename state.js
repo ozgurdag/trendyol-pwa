@@ -340,6 +340,21 @@ export async function otomatikTySenkronize(){
   const yeniSatislar   = [];
   const yeniBekleyenler = [];
 
+  if(teslimPaketler.length){
+    const ornek = teslimPaketler[0];
+    console.log('[TY order] Paket alanları:', Object.keys(ornek).join(', '));
+    console.log('[TY order] Paket örnek (kargo alanları):', JSON.stringify({
+      orderNumber: ornek.orderNumber,
+      agreedDeliveryCost: ornek.agreedDeliveryCost,
+      cargoAmount: ornek.cargoAmount,
+      deliveryCost: ornek.deliveryCost,
+      shippingCost: ornek.shippingCost,
+      cargoFee: ornek.cargoFee,
+      totalDiscount: ornek.totalDiscount,
+      totalPrice: ornek.totalPrice,
+    }));
+    if(ornek.lines?.length) console.log('[TY order] Line alanları:', Object.keys(ornek.lines[0]).join(', '));
+  }
   teslimPaketler.forEach(paket=>{
     const tarih = new Date(paket.orderDate||paket.packageLastModifiedDate||Date.now()).toISOString().slice(0,10);
     (paket.lines||[]).forEach(line=>{

@@ -681,28 +681,11 @@ window.verileriCek = async () => {
         if (embeddedKargo && it.orderNumber) orderKargoMap[String(it.orderNumber)] = Math.abs(embeddedKargo);
       });
 
-      // CargoFee settlements → orderKargoMap (ayrı tip olarak dene)
-      try {
-        const kargoItems = await fetchDateRange('settlements', chunk.start, chunk.end, null, 7, {size:500, transactionType: 'CargoFee'});
-        if (cIdx === 0) console.log(`[CargoFee settlements] ${kargoItems.length} kayıt${kargoItems.length ? ': ' + JSON.stringify(kargoItems[0]).slice(0,300) : ''}`);
-        kargoItems.forEach(it=>{
-          const net = it.sellerRevenue ?? it.payoutAmount ?? it.netAmount ?? it.amount ?? 0;
-          if (it.orderNumber) orderKargoMap[String(it.orderNumber)] = (orderKargoMap[String(it.orderNumber)] || 0) + Math.abs(net);
-        });
-      } catch(e){ console.warn('[CargoFee settlements]', e.message); }
-
       fillEl.style.width = `${chunkProgressBase + chunkProgressStep * 0.3}%`;
 
-      // otherfinancials — iki tip: DeductionInvoices + Kargo Faturası (ayrı tip!)
+      // otherfinancials — DeductionInvoices (komisyon + platform bedeli + diğer kesintiler)
       const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, null, 7, {size:500, transactionType: 'DeductionInvoices'});
-      // Kargo faturaları gecikmeli kesilebilir → +30 gün aralığıyla çek
-      const kargoFatEndMs = chunk.end + 30 * 24 * 60 * 60 * 1000;
-      const kargoFatItems = await fetchDateRange('otherfinancials', chunk.start, kargoFatEndMs, null, 7, {size:500, transactionType: 'Kargo Faturası'});
-      const tumFatItems = [...dedItems, ...kargoFatItems];
-      console.log(`[otherfinancials] chunk${cIdx}: DeductionInvoices=${dedItems.length}, KargoFaturası=${kargoFatItems.length}`);
-      if (kargoFatItems.length) {
-        console.log('[KargoFat] İlk item:', JSON.stringify(kargoFatItems[0]).slice(0, 500));
-      }
+      const tumFatItems = [...dedItems];
       const kargoFaturalar = tumFatItems.filter(it => {
         const invoiceNo = String(it.commissionInvoiceSerialNumber || it.invoiceSerialNumber || it.id || '');
         const tip = (it.transactionType || '').toLowerCase();

@@ -691,14 +691,24 @@ window.verileriCek = async () => {
 
       fillEl.style.width = `${chunkProgressBase + chunkProgressStep * 0.3}%`;
 
-      // otherfinancials DeductionInvoices → DDA seri no ile cargo-invoice lookup
+      // otherfinancials — iki tip: DeductionInvoices + Kargo Faturası (ayrı tip!)
       const dedItems = await fetchDateRange('otherfinancials', chunk.start, chunk.end, null, 7, {size:500, transactionType: 'DeductionInvoices'});
-      if (cIdx === 0 && dedItems.length) console.log('[otherfinancials] İlk item:', JSON.stringify(dedItems[0]).slice(0, 400));
-      const kargoFaturalar = dedItems.filter(it=>{
-        const invoiceNo = String(it.invoiceSerialNumber || it.id || '');
-        const docNo = String(it.documentNumber || '');
-        return invoiceNo.startsWith('DDA') || docNo.startsWith('DDA') || it.transactionType === 'DeductionInvoices';
-      }).map(it => ({ ...it, serial: it.invoiceSerialNumber || it.documentNumber || it.id }));
+      // Kargo faturaları gecikmeli kesilebilir → +30 gün aralığıyla çek
+      const kargoFatEndMs = chunk.end + 30 * 24 * 60 * 60 * 1000;
+      const kargoFatItems = await fetchDateRange('otherfinancials', chunk.start, kargoFatEndMs, null, 7, {size:500, transactionType: 'Kargo Faturası'});
+      const tumFatItems = [...dedItems, ...kargoFatItems];
+      if (cIdx === 0 && tumFatItems.length) {
+        console.log('[otherfinancials] Tipler:', [...new Set(tumFatItems.map(it=>it.transactionType))].join(', '));
+        console.log('[otherfinancials] İlk item:', JSON.stringify(tumFatItems[0]).slice(0, 400));
+      }
+      const kargoFaturalar = tumFatItems.filter(it => {
+        const invoiceNo = String(it.commissionInvoiceSerialNumber || it.invoiceSerialNumber || it.id || '');
+        const tip = (it.transactionType || '').toLowerCase();
+        return tip.includes('kargo') || invoiceNo.startsWith('DDA') || invoiceNo.startsWith('DCA');
+      }).map(it => ({
+        ...it,
+        serial: it.commissionInvoiceSerialNumber || it.invoiceSerialNumber || it.documentNumber || it.id
+      }));
 
       const faturaSerials = new Set();
       for(let i=0; i<kargoFaturalar.length; i++){
